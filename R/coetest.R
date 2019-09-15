@@ -96,7 +96,7 @@ fftcreate <- function(data){
 #' The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
 #'
 #' @param data A vector containing Fourier transformed (spectral density) data.
-#' @param sims.df A dataframe containing simulations, including columns "index".
+#' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
 #' @param sim.df.col The column of the simulation dataframe that contains the comparison data.
 #' @return A list containing the number and proportion of Top5 Frequencies as well as a list containing the names of these frequencies.
 #' @examples
@@ -112,7 +112,7 @@ ffttest <- function(data, sim.df = sims, sim.df.col = "density.bf"){
   for (H in 1:length(data)){
 
     CHz <- sim.df[sim.df$index==H,]
-    if (((sum(CHz[[sim.df.col]] > data[H]))/u.nsims)<0.05) {
+    if (((sum(CHz[[sim.df.col]] > data[H]))/max(sim.df$simid))<0.05) {
       #if (H < 50) {
       #  cat(H, "Hz: ",((sum(CHz$density > data[H]))/u.nsims)*100,"% \n")
       #}

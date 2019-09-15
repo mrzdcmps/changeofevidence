@@ -11,7 +11,7 @@ ffttest(data, sim.df = sims, sim.df.col = "density.bf")
 
 \item{sim.df.col}{The column of the simulation dataframe that contains the comparison data.}
 
-\item{sims.df}{A dataframe containing simulations, including columns "index".}
+\item{sims.df}{A dataframe containing simulations, including columns "index" and "simid".}
 }
 \value{
 A list containing the number and proportion of Top5 Frequencies as well as a list containing the names of these frequencies.
