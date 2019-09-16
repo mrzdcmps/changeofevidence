@@ -36,7 +36,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
     cl <- makeCluster(cores[1]-1) #not to overload your computer
     registerDoParallel(cl)
 
-    sims.out <- foreach(i=1:n.sims, .combine=rbind) %dopar% {
+    sim.out <- foreach(i=1:n.sims, .combine=rbind) %dopar% {
       sink("log.txt", append = TRUE)
       cat(paste(Sys.time(),"Starting iteration",i,"\n"))
       sink()
@@ -44,26 +44,26 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
       if(use.files == TRUE){
         # read txt
         sim <- read.table(paste0(filespath,"/",i,".txt"))
-        line.start <- sample.int(nrow(sim)-(u.trials*n.sims),1)
-        line.stop <- line.start+(u.trials*n.sims)-1
+        line.start <- sample.int(nrow(sim)-(u.trials),1)
+        line.stop <- line.start+u.trials-1
         sim <- data.frame(V1=sim[line.start:line.stop,])
       } else {
-        sim <- data.frame(V1=rbinom(u.trials*n.sims, 1, 0.5))
+        sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
       }
 
       if(!is.null(mean.scores)){
         # sum up bits
-        sim$group = rep(1:(nrow(sim)/u.trials), each=mean.scores*2)
+        sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
         sim <- tapply(sim[,1], sim$group, FUN = sum)
         sim <- data.frame(sums=sim)
         sim$cumsum <- cumsum(sim$sums-mean.scores)
 
         # BAYES t TEST
-        devtools::install_github("richarddmorey/BayesFactorExtras", subdir="BayesFactorExtras")
-        ttest.s <- BayesFactor::ttestBF(x = sums$sums, mu = u.trials/2, rscale = 0.1, nullInterval = c(0, Inf))
-        ttest.s.seq <- BayesFactorExtras::seqBF(ttest.s, min.n = 5)
-        bfs <- exp(subset(ttest.s.seq@bayesFactorSeq$bf, ttest.s.seq@bayesFactorSeq$Alt == 1))
-        sim$bf <- c(rep(1, times=4),bfs)
+        sim$bf <- 1
+        for (b in 5:nrow(sim)){
+          tmpbf <- BayesFactor::ttestBF(x = sim$sums[1:b], mu = mean.scores, rscale = 0.1, nullInterval = c(0, Inf))
+          sim$bf[b] <- exp(tmpbf@bayesFactor$bf)[1]
+        }
 
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
@@ -97,8 +97,70 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
 
     #stop cluster
     stopCluster(cl)
-    colnames(sims.out) <- c("simid","index","rw","density.rw","bf","density.bf")
+    colnames(sim.out) <- c("simid","index","rw","density.rw","bf","density.bf")
+  } else{
+    # Parallel = FALSE
+    sim.out <- list()
+
+    pb = txtProgressBar(min = 0, max = n.sims, initial = 0, style = 3)
+    for(i in 1:n.sims){
+      if(use.files == TRUE){
+        # read txt
+        sim <- read.table(paste0(filespath,"/",i,".txt"))
+        line.start <- sample.int(nrow(sim)-(u.trials),1)
+        line.stop <- line.start+u.trials-1
+        sim <- data.frame(V1=sim[line.start:line.stop,])
+      } else {
+        sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
+      }
+
+      if(!is.null(mean.scores)){
+        # sum up bits
+        sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
+        sim <- tapply(sim[,1], sim$group, FUN = sum)
+        sim <- data.frame(sums=sim)
+        sim$cumsum <- cumsum(sim$sums-mean.scores)
+
+        # BAYES t TEST
+        sim$bf <- 1
+        for (b in 5:nrow(sim)){
+          tmpbf <- BayesFactor::ttestBF(x = sim$sums[1:b], mu = mean.scores, rscale = 0.1, nullInterval = c(0, Inf))
+          sim$bf[b] <- exp(tmpbf@bayesFactor$bf)[1]
+        }
+
+      } else {
+        sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
+        sim$cumsum <- cumsum(sim$qbitmin1)
+
+        #(2) BAYES BINOM TEST
+        sim$bf <- 1
+        for (b in 5:nrow(sim)){
+          tmpbf <- BayesFactor::proportionBF(sum(sim$V1[1:b]), b, p = .5, rscale = 0.1)
+          sim$bf[b] <- exp(tmpbf@bayesFactor$bf)
+        }
+      }
+
+      # Run FFT on Random Walk
+      L <- length(sim$cumsum) # Länge
+      T <- 1/L # Tastrate
+      Y <- fft(sim$cumsum) # Fast Fourier Transformation
+      P <- abs(Y/L)
+
+      # Run FFT on Bayes Test
+      Y2 <- fft(sim$bf) # Fast Fourier Transformation
+      P2 <- abs(Y2/L)
+
+      # Write results to Matrix
+      index <- as.numeric(1:L)
+      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
+
+      sim.out[[i]] <- tempMatrix
+      setTxtProgressBar(pb,i)
+
+    }
+
+    sim.out <- dplyr::bind_rows(sim.out)
   }
-  #PARALLEL NOT TRUE
-  return(sims.out)
+
+  return(sim.out)
 }
