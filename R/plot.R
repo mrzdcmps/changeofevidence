@@ -38,7 +38,7 @@ plotrw <- function(data, sims.df = sims, sims.df.col = "rw", color = 1){
 
   absolutemax <- max(c(max(data),abs(min(data))))
 
-  print("Depending on the amount of simulations to be drawn, this might take a while!")
+  if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
 
   p <- ggplot2::ggplot()
   if (!is.null(sims.df)){
@@ -85,7 +85,7 @@ plotbf <- function(data, sims.df = sims, sims.df.col = "bf", color = 2){
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
 
-  print("Depending on the amount of simulations to be drawn, this might take a while!")
+  if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
 
   p <- ggplot2::ggplot()
   if (!is.null(sims.df)){
