@@ -36,6 +36,8 @@ plotrw <- function(data, sims.df = sims, sims.df.col = "rw", color = 1){
 
   xrow <- as.numeric(row.names(p.s))
 
+  absolutemax <- max(c(max(data),abs(min(data))))
+
   print("Depending on the amount of simulations to be drawn, this might take a while!")
 
   p <- ggplot2::ggplot()
@@ -47,7 +49,7 @@ plotrw <- function(data, sims.df = sims, sims.df.col = "rw", color = 1){
     ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=cbPalette[color], size=1)+
     ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", size=1)+
     ggplot2::labs(x="Trials", y = "Random Walk")+
-    ggplot2::coord_cartesian(ylim = c(-max(data),max(data)))+
+    ggplot2::coord_cartesian(ylim = c(-absolutemax,absolutemax))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::theme_bw(base_size = 14)+
     ggplot2::theme(legend.position = 'none')
