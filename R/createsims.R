@@ -36,6 +36,11 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
     cl <- makeCluster(cores[1]-1) #not to overload your computer
     registerDoParallel(cl)
 
+    if(use.files == TRUE){
+      rfiles <- list.files(filespath, full.names = TRUE)
+      if (length(rfiles) < n.sims) stop("Not enough Random Files!")
+    }
+
     sim.out <- foreach(i=1:n.sims, .combine=rbind) %dopar% {
       sink("log.txt", append = TRUE)
       cat(paste(Sys.time(),"Starting iteration",i,"\n"))
@@ -43,7 +48,8 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
 
       if(use.files == TRUE){
         # read txt
-        sim <- read.table(paste0(filespath,"/",i,".txt"))
+
+        sim <- read.table(rfiles[i])
         line.start <- sample.int(nrow(sim)-(u.trials),1)
         line.stop <- line.start+u.trials-1
         sim <- data.frame(V1=sim[line.start:line.stop,])

@@ -4,7 +4,7 @@
 \alias{plotbf}
 \title{Plot Sequential Bayesian Analysis}
 \usage{
-plotbf(data, sims.df = sims, sims.df.col = "bf", color = 2)
+plotbf(data, sims.df = NULL, sims.df.col = "bf", color = 2)
 }
 \arguments{
 \item{sims.df}{A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.}
@@ -25,7 +25,7 @@ Depending on the amount of simulations, drawing might take a while. It might be 
 p.bf <- plotbf(tbl$bf)
 p.bf
 
-plotbf(tbl$bf, sims.df = NULL)
+plotbf(tbl$bf, sims.df = sims)
 
 sims1000 <- subset(sims, simid <= 1000)
 plotbf(tbl$bf, sims.df = sims1000)

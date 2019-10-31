@@ -4,7 +4,7 @@
 \alias{plotfft}
 \title{Plot Fast Fourier Transform}
 \usage{
-plotfft(data, sims.df = sims, sims.df.col = "density.bf", n.hz = 50,
+plotfft(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
   color = 3)
 }
 \arguments{
@@ -28,6 +28,6 @@ Use the full simulation set to correcly identify the 5% border line.
 p.fftbf <- plotfft(tblFFT$density.bf, color = 2)
 p.fftbf
 
-p.fftrw <- plotfft(tblFFT$density.rw, sims.df.col = "density.rw", color = 1)
+p.fftrw <- plotfft(tblFFT$density.rw, sims.df = sims, sims.df.col = "density.rw", color = 1)
 p.fftrw
 }

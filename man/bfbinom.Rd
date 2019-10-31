@@ -2,22 +2,24 @@
 % Please edit documentation in R/bayestest.R
 \name{bfbinom}
 \alias{bfbinom}
-\title{Bayesian Binomial Test}
+\title{Bayesian Sequential Binomial Test}
 \usage{
-bfbinom(data, p = 0.5, rscale = 0.1)
+bfbinom(data, p = 0.5, rscale = 0.1, nstart = 3)
 }
 \arguments{
-\item{data}{The vector containing binary data.}
+\item{data}{A vector containing binary data.}
 
 \item{p}{Probability of one result.}
 
 \item{rscale}{The r of the Prior Cauchy distribution.}
+
+\item{nstart}{How many data points should be considered before calculating the first BF (min = 2)}
 }
 \description{
 This function calculates Bayes Factors for every added data point of dichotomous data.
 }
 \details{
-The first BF is calculated for 3 data points. For every subsequent data point a new BF is added.
+The first BF is calculated for nstart data points. For every subsequent data point a new BF is added.
 The resulting BF vector indicates the change of evidence over time.
 The function uses "proportionBF" from the BayesFactor package
 }

@@ -4,12 +4,12 @@
 \alias{plotrw}
 \title{Plot Random Walk}
 \usage{
-plotrw(data, sims.df = sims, sims.df.col = "rw", color = 1)
+plotrw(data, sims.df = NULL, sims.df.col = "rw", color = 1)
 }
 \arguments{
 \item{data}{A vector containing the random walk to be drawn.}
 
-\item{sims.df}{A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.}
+\item{sims.df}{A dataframe containing simulations, including column "simid" and "index". Set to NULL if you don't want to display simulations.}
 
 \item{sims.df.col}{The name of the column of the simulation dataframe to compare to.}
 }
@@ -25,9 +25,7 @@ Depending on the amount of simulations, drawing might take a while. It might be 
 p.rw <- plotrw(tbl$rw)
 p.rw
 
-plotrw(tbl$rw, sims.df = NULL)
-
-plotrw(mean, sims.df.col = sums)
+plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw")
 
 sims1000 <- subset(sims, simid <= 1000)
 plotrw(tbl, sims.df = sims1000)

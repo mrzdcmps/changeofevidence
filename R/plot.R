@@ -9,22 +9,20 @@
 #' Depending on the amount of simulations, drawing might take a while. It might be wise to chose a smaller simulation set for this purpose.
 #'
 #' @param data A vector containing the random walk to be drawn.
-#' @param sims.df A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.
+#' @param sims.df A dataframe containing simulations, including column "simid" and "index". Set to NULL if you don't want to display simulations.
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @examples
 #' p.rw <- plotrw(tbl$rw)
 #' p.rw
 #'
-#' plotrw(tbl$rw, sims.df = NULL)
-#'
-#' plotrw(mean, sims.df.col = sums)
+#' plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw")
 #'
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotrw(tbl, sims.df = sims1000)
 #' @export
 
 # Plot Random Walk
-plotrw <- function(data, sims.df = sims, sims.df.col = "rw", color = 1){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = 1){
   library(ggplot2)
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
@@ -73,14 +71,14 @@ plotrw <- function(data, sims.df = sims, sims.df.col = "rw", color = 1){
 #' p.bf <- plotbf(tbl$bf)
 #' p.bf
 #'
-#' plotbf(tbl$bf, sims.df = NULL)
+#' plotbf(tbl$bf, sims.df = sims)
 #'
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotbf(tbl$bf, sims.df = sims1000)
 #' @export
 
 # Plot Sequential BF
-plotbf <- function(data, sims.df = sims, sims.df.col = "bf", color = 2){
+plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = 2){
   library(ggplot2)
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
@@ -91,13 +89,14 @@ plotbf <- function(data, sims.df = sims, sims.df.col = "bf", color = 2){
   if (!is.null(sims.df)){
     p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)
   }
-  p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'dashed')+
+  p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
+    ggplot2::geom_hline(yintercept = c(1000,300,100,30,10,3,1/3,1/10,1/30), color='grey60', linetype='dashed')+
     ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=cbPalette[color], size=1)+
     ggplot2::labs(x="Trials", y = "Evidence (BF)")+
     ggplot2::scale_y_continuous(trans='log10', breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30"))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = c(min(data),2*max(data)))+
-    ggplot2::theme_bw(base_size = 14)+
+    ggplot2::theme_classic(base_size = 14)+
     ggplot2::theme(legend.position = "none")
 
   #ggsave(paste0("bf.png"), width = 9, height = 7, dpi = 300, limitsize = TRUE)
@@ -120,13 +119,13 @@ plotbf <- function(data, sims.df = sims, sims.df.col = "bf", color = 2){
 #' p.fftbf <- plotfft(tblFFT$density.bf, color = 2)
 #' p.fftbf
 #'
-#' p.fftrw <- plotfft(tblFFT$density.rw, sims.df.col = "density.rw", color = 1)
+#' p.fftrw <- plotfft(tblFFT$density.rw, sims.df = sims, sims.df.col = "density.rw", color = 1)
 #' p.fftrw
 #' @export
 
 # Plot FFT
 # Data for 95-CI ribbon FFT
-plotfft <- function(data, sims.df = sims, sims.df.col = "density.bf", n.hz = 50, color = 3){
+plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50, color = 3){
   library(ggplot2)
   cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
