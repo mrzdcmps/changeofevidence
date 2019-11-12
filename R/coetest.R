@@ -10,14 +10,14 @@
 #' @return A list containing the Maximum BF of the experimental data, its position in the temporal order of data points, and the proportion of simulations with higher BFs at any time.
 #' @examples
 #' r.maxbf <- maxbf(tbl$bf)
-#' r.maxbf <- maxbf(tbl$bf, sim.df = newsims)
+#' r.maxbf <- maxbf(tbl$bf, sims.df = newsims)
 #' @export
 
 # Maximum BF analysis
-maxbf <- function(data, sim.df=sims){
+maxbf <- function(data, sims.df=sims){
   cat(">> MAXIMUM BF << \n")
-  u.nsims <- max(sim.df$simid)
-  sim.maxbf <- tapply(sim.df$bf, sim.df$simid, max, na.rm=TRUE)
+  u.nsims <- max(sims.df$simid)
+  sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm=TRUE)
   cat("Highest BF:",max(data),"( at N =",which.max(data),") \n")
   cat("Percentage of Sims with higher BFs:",(sum(sim.maxbf > max(data))/u.nsims)*100," \n")
   maxbf.out <- list("MaxBF" = max(data), "MaxBF (N)" = which.max(data), "Sims with higher BFs (%)" = (sum(sim.maxbf > max(data))/u.nsims)*100)
@@ -38,19 +38,19 @@ maxbf <- function(data, sim.df=sims){
 #' @return A list containing the Energy of the experimental data, the mean and SD of the energy values of all simulations, and the proportion of simulations with a higher energy than the experimental data.
 #' @examples
 #' r.energybf <- energybf(tbl$bf)
-#' r.energybf <- energybf(tbl$bf, sim.df = newsims)
+#' r.energybf <- energybf(tbl$bf, sims.df = newsims)
 #' @export
 
 # Energy of BF
-energybf <- function(data, sim.df=sims){
+energybf <- function(data, sims.df=sims){
   cat(">> BF ENERGY << \n")
-  u.nsims <- max(sim.df$simid)
+  u.nsims <- max(sims.df$simid)
   sim.energy <- numeric(length = u.nsims)
 
   cat("Calculating Energy of sims... \n")
   pb = txtProgressBar(min = 0, max = u.nsims, initial = 0, style = 3)
   for (sid in 1:u.nsims){
-    sim.energy.data <- subset(sim.df, sim.df$simid == sid)
+    sim.energy.data <- subset(sims.df, sims.df$simid == sid)
     sim.energy[sid] <- pracma::trapz(as.numeric(rownames(sim.energy.data)), sim.energy.data$bf)-pracma::trapz(as.numeric(rownames(sim.energy.data)), rep(1, nrow(sim.energy.data)))
     setTxtProgressBar(pb,sid)
   }
@@ -97,22 +97,22 @@ fftcreate <- function(data){
 #'
 #' @param data A vector containing Fourier transformed (spectral density) data.
 #' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
-#' @param sim.df.col The column of the simulation dataframe that contains the comparison data.
+#' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
 #' @return A list containing the number and proportion of Top5 Frequencies as well as a list containing the names of these frequencies.
 #' @examples
 #' r.fftbf <- ffttest(tblFFT$density.bf)
-#' r.fftrw <- ffttest(tblFFT$density.rw, sim.df = newsims, sim.df.col = "density.rw")
+#' r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
 #' @export
 
 # Check for high Amplitudes
-ffttest <- function(data, sim.df = sims, sim.df.col = "density.bf"){
+ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   cat(">> FREQUENCY ANALYSIS << \n")
   list.HB <- list()
   pb = txtProgressBar(min = 0, max = length(data), initial = 0, style = 3)
   for (H in 1:length(data)){
 
-    CHz <- sim.df[sim.df$index==H,]
-    if (((sum(CHz[[sim.df.col]] > data[H]))/max(sim.df$simid))<0.05) {
+    CHz <- sim.df[sims.df$index==H,]
+    if (((sum(CHz[[sims.df.col]] > data[H]))/max(sims.df$simid))<0.05) {
       #if (H < 50) {
       #  cat(H, "Hz: ",((sum(CHz$density > data[H]))/u.nsims)*100,"% \n")
       #}

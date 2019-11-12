@@ -4,7 +4,7 @@
 \alias{energybf}
 \title{BF Energy Analysis}
 \usage{
-energybf(data, sim.df = sims)
+energybf(data, sims.df = sims)
 }
 \arguments{
 \item{data}{A vector containing Bayes Factors.}
@@ -24,5 +24,5 @@ Mean and SD scores of the simulations' energies are provided.
 }
 \examples{
 r.energybf <- energybf(tbl$bf)
-r.energybf <- energybf(tbl$bf, sim.df = newsims)
+r.energybf <- energybf(tbl$bf, sims.df = newsims)
 }

@@ -4,14 +4,14 @@
 \alias{ffttest}
 \title{Frequency Analysis}
 \usage{
-ffttest(data, sim.df = sims, sim.df.col = "density.bf")
+ffttest(data, sims.df = sims, sims.df.col = "density.bf")
 }
 \arguments{
 \item{data}{A vector containing Fourier transformed (spectral density) data.}
 
-\item{sim.df.col}{The column of the simulation dataframe that contains the comparison data.}
-
 \item{sims.df}{A dataframe containing simulations, including columns "index" and "simid".}
+
+\item{sims.df.col}{The column of the simulation dataframe that contains the comparison data.}
 }
 \value{
 A list containing the number and proportion of Top5 Frequencies as well as a list containing the names of these frequencies.
@@ -26,5 +26,5 @@ The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory e
 }
 \examples{
 r.fftbf <- ffttest(tblFFT$density.bf)
-r.fftrw <- ffttest(tblFFT$density.rw, sim.df = newsims, sim.df.col = "density.rw")
+r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
 }

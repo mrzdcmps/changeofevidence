@@ -4,7 +4,7 @@
 \alias{maxbf}
 \title{Maximum BF Analysis}
 \usage{
-maxbf(data, sim.df = sims)
+maxbf(data, sims.df = sims)
 }
 \arguments{
 \item{data}{A vector containing Bayes Factors.}
@@ -23,5 +23,5 @@ An unusual peak can be assumed if less than 5% of simulations show a higher BF a
 }
 \examples{
 r.maxbf <- maxbf(tbl$bf)
-r.maxbf <- maxbf(tbl$bf, sim.df = newsims)
+r.maxbf <- maxbf(tbl$bf, sims.df = newsims)
 }
