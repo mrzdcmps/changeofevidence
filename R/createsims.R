@@ -50,9 +50,13 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         # read txt
 
         sim <- read.table(rfiles[i])
-        line.start <- sample.int(nrow(sim)-(u.trials),1)
-        line.stop <- line.start+u.trials-1
-        sim <- data.frame(V1=sim[line.start:line.stop,])
+        if(u.trials < nrow(sim)){
+          line.start <- sample.int(nrow(sim)-(u.trials),1)
+          line.stop <- line.start+u.trials-1
+          sim <- data.frame(V1=sim[line.start:line.stop,])
+        }
+        if(u.trials > nrow(sims)) stop("Not enough Random Bits per simulation!")
+
       } else {
         sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
       }

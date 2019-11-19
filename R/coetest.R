@@ -111,7 +111,7 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   pb = txtProgressBar(min = 0, max = length(data), initial = 0, style = 3)
   for (H in 1:length(data)){
 
-    CHz <- sims.df[sims.df$index==H,]
+    CHz <- sim.df[sims.df$index==H,]
     if (((sum(CHz[[sims.df.col]] > data[H]))/max(sims.df$simid))<0.05) {
       #if (H < 50) {
       #  cat(H, "Hz: ",((sum(CHz$density > data[H]))/u.nsims)*100,"% \n")
