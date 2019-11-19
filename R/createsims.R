@@ -38,7 +38,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
 
     if(use.files == TRUE){
       rfiles <- list.files(filespath, full.names = TRUE)
-      if (length(rfiles) < n.sims) stop("Not enough Random Files!")
+      if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
     }
 
     sim.out <- foreach(i=1:n.sims, .combine=rbind) %dopar% {
@@ -50,12 +50,12 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         # read txt
 
         sim <- read.table(rfiles[i])
-        if(u.trials < nrow(sim)){
+        if(trials < nrow(sim)){
           line.start <- sample.int(nrow(sim)-(u.trials),1)
           line.stop <- line.start+u.trials-1
           sim <- data.frame(V1=sim[line.start:line.stop,])
         }
-        if(u.trials > nrow(sims)) stop("Not enough Random Bits per simulation!")
+        if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
 
       } else {
         sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
@@ -115,11 +115,17 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
     pb = txtProgressBar(min = 0, max = n.sims, initial = 0, style = 3)
     for(i in 1:n.sims){
       if(use.files == TRUE){
-        # read txt
-        sim <- read.table(paste0(filespath,"/",i,".txt"))
-        line.start <- sample.int(nrow(sim)-(u.trials),1)
-        line.stop <- line.start+u.trials-1
-        sim <- data.frame(V1=sim[line.start:line.stop,])
+        rfiles <- list.files(filespath, full.names = TRUE)
+        if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
+
+        sim <- read.table(rfiles[i])
+        if(trials < nrow(sim)){
+          line.start <- sample.int(nrow(sim)-(u.trials),1)
+          line.stop <- line.start+u.trials-1
+          sim <- data.frame(V1=sim[line.start:line.stop,])
+        }
+        if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
+
       } else {
         sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
       }
