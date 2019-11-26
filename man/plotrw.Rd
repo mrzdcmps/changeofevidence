@@ -4,7 +4,8 @@
 \alias{plotrw}
 \title{Plot Random Walk}
 \usage{
-plotrw(data, sims.df = NULL, sims.df.col = "rw", color = 1)
+plotrw(data, sims.df = NULL, sims.df.col = "rw", color = "black",
+  coordy = c(-absolutemax, absolutemax))
 }
 \arguments{
 \item{data}{A vector containing the random walk to be drawn.}
@@ -12,6 +13,10 @@ plotrw(data, sims.df = NULL, sims.df.col = "rw", color = 1)
 \item{sims.df}{A dataframe containing simulations, including column "simid" and "index". Set to NULL if you don't want to display simulations.}
 
 \item{sims.df.col}{The name of the column of the simulation dataframe to compare to.}
+
+\item{color}{A color in which the Random Walk will be drawn.}
+
+\item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 }
 \description{
 This function allows to plot random walks.
@@ -25,7 +30,7 @@ Depending on the amount of simulations, drawing might take a while. It might be 
 p.rw <- plotrw(tbl$rw)
 p.rw
 
-plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw")
+plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
 
 sims1000 <- subset(sims, simid <= 1000)
 plotrw(tbl, sims.df = sims1000)

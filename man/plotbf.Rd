@@ -4,12 +4,17 @@
 \alias{plotbf}
 \title{Plot Sequential Bayesian Analysis}
 \usage{
-plotbf(data, sims.df = NULL, sims.df.col = "bf", color = 2)
+plotbf(data, sims.df = NULL, sims.df.col = "bf", color = "black",
+  coordy = c(min(data), 2 * max(data)))
 }
 \arguments{
 \item{sims.df}{A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.}
 
 \item{sims.df.col}{The name of the column of the simulation dataframe to compare to.}
+
+\item{color}{A color in which the Seq BF-function will be drawn.}
+
+\item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 
 \item{df}{A vector containing sequential Bayes Factors.}
 }

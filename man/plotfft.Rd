@@ -5,7 +5,8 @@
 \title{Plot Fast Fourier Transform}
 \usage{
 plotfft(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
-  color = 3)
+  color = "black", coordy = c(0, sort(data, partial = length(data) -
+  1)[length(data) - 1]))
 }
 \arguments{
 \item{data}{A vector containing Fourier transformed spectral densities.}
@@ -15,6 +16,10 @@ plotfft(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
 \item{sims.df.col}{The name of the column of the simulation dataframe to compare to.}
 
 \item{n.hz}{The amount of frequencies to be displayed.}
+
+\item{color}{A color in which the FFT will be drawn.}
+
+\item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 }
 \description{
 This function allows to plot a Fast Fourier Transform.
@@ -25,9 +30,9 @@ An experimental 95% Confidence Interval is calculated. Values above the black do
 Use the full simulation set to correcly identify the 5% border line.
 }
 \examples{
-p.fftbf <- plotfft(tblFFT$density.bf, color = 2)
+p.fftbf <- plotfft(tblFFT$density.bf, color = "blue")
 p.fftbf
 
-p.fftrw <- plotfft(tblFFT$density.rw, sims.df = sims, sims.df.col = "density.rw", color = 1)
+p.fftrw <- plotfft(tblFFT$density.rw, sims.df = sims, sims.df.col = "density.rw")
 p.fftrw
 }

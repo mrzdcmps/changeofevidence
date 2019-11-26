@@ -11,20 +11,22 @@
 #' @param data A vector containing the random walk to be drawn.
 #' @param sims.df A dataframe containing simulations, including column "simid" and "index". Set to NULL if you don't want to display simulations.
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
+#' @param color A color in which the Random Walk will be drawn.
+#' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
 #' @examples
 #' p.rw <- plotrw(tbl$rw)
 #' p.rw
 #'
-#' plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw")
+#' plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
 #'
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotrw(tbl, sims.df = sims1000)
 #' @export
 
 # Plot Random Walk
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = 1){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax)){
   library(ggplot2)
-  cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
 
   # Data for p-parabel
@@ -42,17 +44,16 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = 1){
   if (!is.null(sims.df)){
     p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)
   }
-  p + ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "black", linetype="dotted", size=1)+
-    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "black", linetype="dotted", size=1)+
-    ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=cbPalette[color], size=1)+
+  p + ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", size=1)+
+    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", size=1)+
+    ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, size=1)+
     ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", size=1)+
     ggplot2::labs(x="Trials", y = "Random Walk")+
-    ggplot2::coord_cartesian(ylim = c(-absolutemax,absolutemax))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
+    ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_bw(base_size = 14)+
     ggplot2::theme(legend.position = 'none')
 
-  #ggsave(paste0("randomwalk.png"), width = 9, height = 7, dpi = 300, limitsize = TRUE)
 }
 
 
@@ -67,6 +68,8 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = 1){
 #' @param df A vector containing sequential Bayes Factors.
 #' @param sims.df A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
+#' @param color A color in which the Seq BF-function will be drawn.
+#' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
 #' @examples
 #' p.bf <- plotbf(tbl$bf)
 #' p.bf
@@ -78,9 +81,9 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = 1){
 #' @export
 
 # Plot Sequential BF
-plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = 2){
+plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = c(min(data),2*max(data))){
   library(ggplot2)
-  cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
 
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
@@ -90,16 +93,15 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = 2){
     p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)
   }
   p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
-    ggplot2::geom_hline(yintercept = c(1000,300,100,30,10,3,1/3,1/10,1/30), color='grey60', linetype='dashed')+
-    ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=cbPalette[color], size=1)+
+    ggplot2::geom_hline(yintercept = c(1000,300,100,30,10,3,1/3,1/10,1/30,1/100,1/300,1/1000), color='grey60', linetype='dotted')+
+    ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
     ggplot2::labs(x="Trials", y = "Evidence (BF)")+
-    ggplot2::scale_y_continuous(trans='log10', breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30"))+
+    ggplot2::scale_y_continuous(trans='log10', breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000"))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
-    ggplot2::coord_cartesian(ylim = c(min(data),2*max(data)))+
+    ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_classic(base_size = 14)+
     ggplot2::theme(legend.position = "none")
 
-  #ggsave(paste0("bf.png"), width = 9, height = 7, dpi = 300, limitsize = TRUE)
 }
 
 
@@ -115,19 +117,21 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = 2){
 #' @param sims.df A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @param n.hz The amount of frequencies to be displayed.
+#' @param color A color in which the FFT will be drawn.
+#' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
 #' @examples
-#' p.fftbf <- plotfft(tblFFT$density.bf, color = 2)
+#' p.fftbf <- plotfft(tblFFT$density.bf, color = "blue")
 #' p.fftbf
 #'
-#' p.fftrw <- plotfft(tblFFT$density.rw, sims.df = sims, sims.df.col = "density.rw", color = 1)
+#' p.fftrw <- plotfft(tblFFT$density.rw, sims.df = sims, sims.df.col = "density.rw")
 #' p.fftrw
 #' @export
 
 # Plot FFT
 # Data for 95-CI ribbon FFT
-plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50, color = 3){
+plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50, color = "black", coordy = c(0,sort(data,partial=length(data)-1)[length(data)-1])){
   library(ggplot2)
-  cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
 
   p <- ggplot2::ggplot()
@@ -144,13 +148,12 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
   }
   # Plot FFT
   p+
-    ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=cbPalette[color], size=1)+
+    ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
     ggplot2::labs(title=paste0("Fast Fourier Transform"), x="Frequency (No of Cycles)", y = "Amplitude")+
-    ggplot2::coord_cartesian(xlim = c(1,n.hz), ylim = c(0,sort(data,partial=length(data)-1)[length(data)-1]))+
+    ggplot2::coord_cartesian(xlim = c(1,n.hz), ylim = coordy)+
     ggplot2::scale_x_continuous(breaks = seq(0, n.hz, by = (n.hz/(n.hz/2))), expand = c(0,0))+
     #scale_y_continuous(breaks = seq(0, 50, by = 1))+
     ggplot2::theme_bw(base_size = 14)+
     ggplot2::theme(legend.position = "none")
 
-  #ggsave(paste0("fft_rw.png"), width = 9, height = 7, dpi = 300, limitsize = TRUE)
 }
