@@ -99,8 +99,8 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
     ggplot2::scale_y_continuous(trans='log10', breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000"))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+
-    ggplot2::theme_classic(base_size = 14)+
-    ggplot2::theme(legend.position = "none")
+    ggplot2::theme_bw(base_size = 14)+
+    ggplot2::theme(legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 }
 
@@ -133,6 +133,8 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
+
+  if(length(data) < n.hz) n.hz <- length(data)
 
   p <- ggplot2::ggplot()
 
