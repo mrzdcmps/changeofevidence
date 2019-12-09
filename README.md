@@ -8,3 +8,5 @@ This package provides functions to test for a change of evidence over time. It c
     
     # Get package from Github
     devtools::install_github("mrzdcmps/changeofevidence")
+
+test
