@@ -65,7 +65,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
 
       } else {
-        sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
+        sim <- data.frame(V1=rbinom(u.trials, 1, p))
       }
 
       if(!is.null(mean.scores)){
@@ -83,7 +83,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$qbitmin1)
 
         #(2) BAYES BINOM TEST
-        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.scale, nstart = nstart, inc = inc)
+        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.r, nstart = nstart, inc = inc)
 
       }
 
