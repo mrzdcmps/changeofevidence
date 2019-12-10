@@ -9,9 +9,9 @@ bfttest(
   alternative = c("two.sided", "less", "greater"),
   mu = 0,
   paired = FALSE,
-  nstart = 3,
   prior.loc = 0,
-  prior.r = 0.1
+  prior.r = 0.1,
+  nstart = 3
 )
 }
 \arguments{
@@ -23,11 +23,11 @@ bfttest(
 
 \item{paired}{A logical indicating whether you want a paired t-test.}
 
-\item{nstart}{How many data points should be considered before calculating the first BF (min = 2)}
-
 \item{prior.loc}{Location of the cauchy distributed prior function (use 0 for an uninformed prior).}
 
 \item{prior.r}{Scale of thr cauchy distributed prior function.}
+
+\item{nstart}{How many data points should be considered before calculating the first BF (min = 2)}
 }
 \description{
 This function calculates Bayes Factors for every added data point of normally distributed data, e.g. sum scores.
@@ -36,10 +36,10 @@ This function calculates Bayes Factors for every added data point of normally di
 The first BF is calculated for Nstart data points. For every subsequent data point a new BF is added.
 The resulting BF vector indicates the change of evidence over time.
 The function first calculates t-scores and p-values and subsequently uses the BFDA package to translate the data into BFs.
-Returns a list of t-scores (@t-value), p-scores (@p-value), and BF (either @BF10, @BFplus0, or @BFmin0)
+Returns a list of t-scores (@t-value), p-scores (@p-value), and BF (@BF10)
 }
 \examples{
 bflist <- bfttest(sumscores, alternative = "greater")
 
-tbl$bf <- bfttest(tbl$sums, alternative = "two.sided", mu = 50, nstart = 10, prior.loc = 0.1, prior.r = 0.05)$BF10
+tbl$bf <- bfttest(tbl$sums, alternative = "two.sided", mu = 50, nstart = 10, prior.loc = 0.1, prior.r = 0.05)$BF
 }

@@ -4,14 +4,14 @@
 \alias{bfbinom}
 \title{Bayesian Sequential Binomial Test}
 \usage{
-bfbinom(data, p = 0.5, rscale = 0.1, nstart = 3, inc = 1)
+bfbinom(data, p = 0.5, prior.scale = 0.1, nstart = 3, inc = 1)
 }
 \arguments{
 \item{data}{A vector containing binary data.}
 
 \item{p}{Probability of one result.}
 
-\item{rscale}{The r of the Prior Cauchy distribution.}
+\item{prior.scale}{The r of the Prior Cauchy distribution.}
 
 \item{nstart}{Number of data points that are considered before calculating the first BF (min = 2)}
 

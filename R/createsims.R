@@ -14,6 +14,13 @@
 #' @param use.files Should the random data be taken out of the tRNG files (TRUE) or should a pseudo RNG be used (FALSE).
 #' @param filespath If random files should be used indicate the path to those files.
 #' @param parallel If set to TRUE, multiple cores are being used in parallel to generate the simulations (recommenden).
+#' @param nstart Number of data points that are considered before calculating the first BF (min = 2)
+#' @param inc Number of new data points that are considered for each BF.
+#' @param alternative Set parameter for Bayesian testing (t-Test).
+#' @param paired Set parameter for Bayesian testing (t-Test).
+#' @param prior.loc Set parameter for Bayesian testing (t-Test).
+#' @param prior.r Set parameter for Bayesian testing.
+#' @param p Set parameter for Bayesian testing (Binomial).
 #' @return A dataframe with trials*nsims rows containing the columns "simid","index","rw","density.rw","bf" and "density.bf".
 #' @examples
 #' sims <- simcreate(100)
@@ -22,7 +29,7 @@
 #' sims.pseudo <- simcreate(2000, use.files = FALSE)
 #' @export
 
-simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TRUE, filespath = "simfiles/", parallel = TRUE){
+simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TRUE, filespath = "simfiles/", parallel = TRUE, nstart = 5, inc = 1, alternative = c("two.sided", "less", "greater"), paired = FALSE, prior.loc = 0, prior.r = 0.1, p = 0.5){
   require(foreach)
   require(doParallel)
 
@@ -69,22 +76,15 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$sums-mean.scores)
 
         # BAYES t TEST
-        sim$bf <- 1
-        for (b in 5:nrow(sim)){
-          tmpbf <- BayesFactor::ttestBF(x = sim$sums[1:b], mu = mean.scores, rscale = 0.1, nullInterval = c(0, Inf))
-          sim$bf[b] <- exp(tmpbf@bayesFactor$bf)[1]
-        }
+        sim$bf <- bfttest(sim$sums, alternative = alternative, mu = mean.scores, paired = paired, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
 
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
         sim$cumsum <- cumsum(sim$qbitmin1)
 
         #(2) BAYES BINOM TEST
-        sim$bf <- 1
-        for (b in 5:nrow(sim)){
-          tmpbf <- BayesFactor::proportionBF(sum(sim$V1[1:b]), b, p = .5, rscale = 0.1)
-          sim$bf[b] <- exp(tmpbf@bayesFactor$bf)
-        }
+        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.scale, nstart = nstart, inc = inc)
+
       }
 
       # Run FFT on Random Walk
@@ -138,22 +138,16 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$sums-mean.scores)
 
         # BAYES t TEST
-        sim$bf <- 1
-        for (b in 5:nrow(sim)){
-          tmpbf <- BayesFactor::ttestBF(x = sim$sums[1:b], mu = mean.scores, rscale = 0.1, nullInterval = c(0, Inf))
-          sim$bf[b] <- exp(tmpbf@bayesFactor$bf)[1]
-        }
+        sim$bf <- bfttest(sim$sums, alternative = alternative, mu = mean.scores, paired = paired, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
+        
 
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
         sim$cumsum <- cumsum(sim$qbitmin1)
 
         #(2) BAYES BINOM TEST
-        sim$bf <- 1
-        for (b in 5:nrow(sim)){
-          tmpbf <- BayesFactor::proportionBF(sum(sim$V1[1:b]), b, p = .5, rscale = 0.1)
-          sim$bf[b] <- exp(tmpbf@bayesFactor$bf)
-        }
+        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.scale, nstart = nstart, inc = inc)
+        
       }
 
       # Run FFT on Random Walk
