@@ -9,19 +9,20 @@
 #' @param data A vector containing binary data.
 #' @param p Probability of one result.
 #' @param rscale The r of the Prior Cauchy distribution.
-#' @param nstart How many data points should be considered before calculating the first BF (min = 2)
+#' @param nstart Number of data points that are considered before calculating the first BF (min = 2)
+#' @param inc Number of new data points that are considered for each BF.
 #' @examples
 #' tbl$bf <- bfbinom(tbl@qbit)
 #' @export
 
 
 # Binomial Seq BF
-bfbinom <- function(data, p = .5, rscale = 0.1, nstart = 3){
+bfbinom <- function(data, p = .5, rscale = 0.1, nstart = 3, inc = 1){
   require(BayesFactor)
   bf <- rep(1, (nstart-1))
   cat("Calculating Sequential Bayes Factors... \n")
-  pb = txtProgressBar(min = 3, max = length(data), initial = 3, style = 3)
-  for (b in 3:length(data)){
+  pb = txtProgressBar(min = nstart, max = length(data), initial = nstart, style = 3)
+  for (b in seq(nstart,length(data),inc)){
     tmpbfs <- proportionBF(sum(data[1:b]), b, p = p, rscale = rscale)
     bf[b] <- exp(tmpbfs@bayesFactor$bf)
     setTxtProgressBar(pb,b)

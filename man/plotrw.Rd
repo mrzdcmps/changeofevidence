@@ -4,8 +4,13 @@
 \alias{plotrw}
 \title{Plot Random Walk}
 \usage{
-plotrw(data, sims.df = NULL, sims.df.col = "rw", color = "black",
-  coordy = c(-absolutemax, absolutemax))
+plotrw(
+  data,
+  sims.df = NULL,
+  sims.df.col = "rw",
+  color = "black",
+  coordy = c(-absolutemax, absolutemax)
+)
 }
 \arguments{
 \item{data}{A vector containing the random walk to be drawn.}

@@ -4,9 +4,14 @@
 \alias{plotfft}
 \title{Plot Fast Fourier Transform}
 \usage{
-plotfft(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
-  color = "black", coordy = c(0, sort(data, partial = length(data) -
-  1)[length(data) - 1]))
+plotfft(
+  data,
+  sims.df = NULL,
+  sims.df.col = "density.bf",
+  n.hz = 50,
+  color = "black",
+  coordy = c(0, sort(data, partial = length(data) - 1)[length(data) - 1])
+)
 }
 \arguments{
 \item{data}{A vector containing Fourier transformed spectral densities.}

@@ -4,8 +4,13 @@
 \alias{plotbf}
 \title{Plot Sequential Bayesian Analysis}
 \usage{
-plotbf(data, sims.df = NULL, sims.df.col = "bf", color = "black",
-  coordy = c(min(data), 2 * max(data)))
+plotbf(
+  data,
+  sims.df = NULL,
+  sims.df.col = "bf",
+  color = "black",
+  coordy = c(min(data), 2 * max(data))
+)
 }
 \arguments{
 \item{sims.df}{A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.}

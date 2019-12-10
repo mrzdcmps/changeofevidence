@@ -4,8 +4,14 @@
 \alias{simcreate}
 \title{Generate simulations for comparison}
 \usage{
-simcreate(trials, n.sims = 10000, mean.scores = NULL,
-  use.files = TRUE, filespath = "simfiles/", parallel = TRUE)
+simcreate(
+  trials,
+  n.sims = 10000,
+  mean.scores = NULL,
+  use.files = TRUE,
+  filespath = "simfiles/",
+  parallel = TRUE
+)
 }
 \arguments{
 \item{trials}{The amount of trials in a single experiment (this includes all subjects).}

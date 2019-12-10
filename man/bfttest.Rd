@@ -4,8 +4,15 @@
 \alias{bfttest}
 \title{Bayesian Sequential t-Test}
 \usage{
-bfttest(data, alternative = c("two.sided", "less", "greater"), mu = 0,
-  paired = FALSE, nstart = 3, prior.loc = 0, prior.r = 0.1)
+bfttest(
+  data,
+  alternative = c("two.sided", "less", "greater"),
+  mu = 0,
+  paired = FALSE,
+  nstart = 3,
+  prior.loc = 0,
+  prior.r = 0.1
+)
 }
 \arguments{
 \item{data}{A vector containing data values.}
