@@ -85,16 +85,19 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
+  df <- data.frame(bf = data, index = as.numeric(1:length(data)))
+  df <- df[!is.na(df$bf),]
 
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
 
   p <- ggplot2::ggplot()
   if (!is.null(sims.df)){
+    sims.df <- sims.df[!is.na(sims.df[[sims.df.col]]),]
     p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)
   }
   p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
     ggplot2::geom_hline(yintercept = c(1000,300,100,30,10,3,1/3,1/10,1/30,1/100,1/300,1/1000), color='grey60', linetype='dotted')+
-    ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
+    ggplot2::geom_line(data=df, aes(x=index, y=bf), color=color, size=1)+
     ggplot2::labs(x="Trials", y = "Evidence (BF)")+
     ggplot2::scale_y_continuous(trans='log10', breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000"))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
@@ -133,13 +136,16 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
-
+  # Remove NAs
+  data <- data[!is.na(data)]
+  
+  # If data points is less than hertz to be shown, set hertz to this value
   if(length(data) < n.hz) n.hz <- length(data)
 
   p <- ggplot2::ggplot()
 
   if(!is.null(sims.df)){
-
+    sims.df <- sims.df[!is.na(sims.df[[sims.df.col]]),]
     simci.fft <- numeric(n.hz)
     for (sindex in 1:n.hz){
       simci.fft[sindex] <- sort(sims.df[sims.df$index == sindex,sims.df.col])[max(sims.df$simid)*0.95]

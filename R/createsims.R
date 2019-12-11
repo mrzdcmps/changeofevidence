@@ -76,14 +76,14 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
         # BAYES t TEST
-        sim$bf <- bfttest(sim$sums, alternative = alternative, mu = mean.scores, paired = paired, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
+        sim$bf <- changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, paired = paired, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
         
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
         sim$cumsum <- cumsum(sim$qbitmin1)
         
         #(2) BAYES BINOM TEST
-        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.r, nstart = nstart, inc = inc)
+        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.scale = prior.r, nstart = nstart, inc = inc)
         
       }
       
