@@ -32,30 +32,30 @@
 simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TRUE, filespath = "simfiles/", parallel = TRUE, nstart = 5, inc = 1, alternative = c("two.sided", "less", "greater"), paired = FALSE, prior.loc = 0, prior.r = 0.1, p = 0.5){
   require(foreach)
   require(doParallel)
-
+  
   u.trials <- trials
   print("Generating Simulations...")
-
+  
   if(parallel == TRUE){
     print("This will probably take a while. See log.txt for status updates!")
     #setup parallel backend to use many processors
     cores=detectCores()
     cl <- makeCluster(cores[1]-1) #not to overload your computer
     registerDoParallel(cl)
-
+    
     if(use.files == TRUE){
       rfiles <- list.files(filespath, full.names = TRUE)
       if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
     }
-
+    
     sim.out <- foreach(i=1:n.sims, .combine=rbind) %dopar% {
       sink("log.txt", append = TRUE)
       cat(paste(Sys.time(),"Starting iteration",i,"\n"))
       sink()
-
+      
       if(use.files == TRUE){
         # read txt
-
+        
         sim <- read.table(rfiles[i])
         if(trials < nrow(sim)){
           line.start <- sample.int(nrow(sim)-(u.trials),1)
@@ -63,61 +63,68 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
           sim <- data.frame(V1=sim[line.start:line.stop,])
         }
         if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
-
+        
       } else {
         sim <- data.frame(V1=rbinom(u.trials, 1, p))
       }
-
+      
       if(!is.null(mean.scores)){
         # sum up bits
         sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
         sim <- tapply(sim[,1], sim$group, FUN = sum)
         sim <- data.frame(sums=sim)
         sim$cumsum <- cumsum(sim$sums-mean.scores)
-
+        
         # BAYES t TEST
         sim$bf <- bfttest(sim$sums, alternative = alternative, mu = mean.scores, paired = paired, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
-
+        
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
         sim$cumsum <- cumsum(sim$qbitmin1)
-
+        
         #(2) BAYES BINOM TEST
         sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.r, nstart = nstart, inc = inc)
-
+        
       }
-
+      
       # Run FFT on Random Walk
       L <- length(sim$cumsum) # Länge
       T <- 1/L # Tastrate
       Y <- fft(sim$cumsum) # Fast Fourier Transformation
       P <- abs(Y/L)
-
+      
       # Run FFT on Bayes Test
-      Y2 <- fft(sim$bf) # Fast Fourier Transformation
-      P2 <- abs(Y2/L)
-
+      bf.naomit <- as.numeric(na.omit(sim$bf))
+      L2 <- length(bf.naomit)
+      T2 <- 1/L2
+      Y2 <- fft(bf.naomit) # Fast Fourier Transformation
+      P2 <- abs(Y2/L2)
+      
+      bffft <- rep(NA,length(sim$bf))
+      good_indices <- !is.na(sim$bf)
+      bffft[good_indices] <- P2
+      
       # Write results to Matrix
       index <- as.numeric(1:L)
-      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
-
+      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=bffft)
+      
       tempMatrix #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
     }
-
-
+    
+    
     #stop cluster
     stopCluster(cl)
     colnames(sim.out) <- c("simid","index","rw","density.rw","bf","density.bf")
   } else{
     # Parallel = FALSE
     sim.out <- list()
-
+    
     pb = txtProgressBar(min = 0, max = n.sims, initial = 0, style = 3)
     for(i in 1:n.sims){
       if(use.files == TRUE){
         rfiles <- list.files(filespath, full.names = TRUE)
         if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
-
+        
         sim <- read.table(rfiles[i])
         if(trials < nrow(sim)){
           line.start <- sample.int(nrow(sim)-(u.trials),1)
@@ -125,52 +132,59 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
           sim <- data.frame(V1=sim[line.start:line.stop,])
         }
         if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
-
+        
       } else {
-        sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
+        sim <- data.frame(V1=rbinom(u.trials, 1, p))
       }
-
+      
       if(!is.null(mean.scores)){
         # sum up bits
         sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
         sim <- tapply(sim[,1], sim$group, FUN = sum)
         sim <- data.frame(sums=sim)
         sim$cumsum <- cumsum(sim$sums-mean.scores)
-
+        
         # BAYES t TEST
         sim$bf <- bfttest(sim$sums, alternative = alternative, mu = mean.scores, paired = paired, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
         
-
+        
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
         sim$cumsum <- cumsum(sim$qbitmin1)
-
+        
         #(2) BAYES BINOM TEST
-        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.scale, nstart = nstart, inc = inc)
+        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.r, nstart = nstart, inc = inc)
         
       }
-
+      
       # Run FFT on Random Walk
       L <- length(sim$cumsum) # Länge
       T <- 1/L # Tastrate
       Y <- fft(sim$cumsum) # Fast Fourier Transformation
       P <- abs(Y/L)
-
+      
       # Run FFT on Bayes Test
-      Y2 <- fft(sim$bf) # Fast Fourier Transformation
-      P2 <- abs(Y2/L)
-
+      bf.naomit <- as.numeric(na.omit(sim$bf))
+      L2 <- length(bf.naomit)
+      T2 <- 1/L2
+      Y2 <- fft(bf.naomit) # Fast Fourier Transformation
+      P2 <- abs(Y2/L2)
+      
+      bffft <- rep(NA,length(sim$bf))
+      good_indices <- !is.na(sim$bf)
+      bffft[good_indices] <- P2
+      
       # Write results to Matrix
       index <- as.numeric(1:L)
-      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
-
+      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=bffft)
+      
       sim.out[[i]] <- tempMatrix
       setTxtProgressBar(pb,i)
-
+      
     }
-
+    
     sim.out <- dplyr::bind_rows(sim.out)
   }
-
+  
   return(sim.out)
 }
