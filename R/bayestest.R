@@ -19,7 +19,7 @@
 # Binomial Seq BF
 bfbinom <- function(data, p = .5, prior.scale = 0.1, nstart = 3, inc = 1){
   require(BayesFactor)
-  bf <- vector()
+  bf <- rep(NA,length(data))
   cat("Calculating Sequential Bayes Factors... \n")
   pb = txtProgressBar(min = nstart, max = length(data), initial = nstart, style = 3)
   for (b in seq(nstart,length(data),inc)){
