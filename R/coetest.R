@@ -46,7 +46,7 @@ energybf <- function(data, sims.df=sims){
   cat(">> BF ENERGY << \n")
   u.nsims <- max(sims.df$simid)
   sim.energy <- numeric(length = u.nsims)
-
+  
   cat("Calculating Energy of sims... \n")
   pb = txtProgressBar(min = 0, max = u.nsims, initial = 0, style = 3)
   for (sid in 1:u.nsims){
@@ -54,9 +54,9 @@ energybf <- function(data, sims.df=sims){
     sim.energy[sid] <- pracma::trapz(as.numeric(rownames(sim.energy.data)), sim.energy.data$bf)-pracma::trapz(as.numeric(rownames(sim.energy.data)), rep(1, nrow(sim.energy.data)))
     setTxtProgressBar(pb,sid)
   }
-
+  
   real.energy <- pracma::trapz(as.numeric(1:length(data)), data)-pracma::trapz(as.numeric(1:length(data)), rep(1, length(data)))
-
+  
   cat("\n Energy of BF of data: ",real.energy,"\n")
   cat("Sims Energy: M =",mean(sim.energy),", SD =",sd(sim.energy),"\n")
   cat("Percentage of Sims with higher Energy:",(sum(sim.energy > real.energy)/u.nsims)*100," \n")
@@ -110,7 +110,7 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   list.HB <- list()
   pb = txtProgressBar(min = 0, max = length(data), initial = 0, style = 3)
   for (H in 1:length(data)){
-
+    
     CHz <- sims.df[sims.df$index==H,]
     if (((sum(CHz[[sims.df.col]] > data[H]))/max(sims.df$simid))<0.05) {
       #if (H < 50) {

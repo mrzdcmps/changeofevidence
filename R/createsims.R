@@ -15,9 +15,7 @@
 #' @param filespath If random files should be used indicate the path to those files.
 #' @param parallel If set to TRUE, multiple cores are being used in parallel to generate the simulations (recommenden).
 #' @param nstart Number of data points that are considered before calculating the first BF (min = 2)
-#' @param inc Number of new data points that are considered for each BF.
 #' @param alternative Set parameter for Bayesian testing (t-Test).
-#' @param paired Set parameter for Bayesian testing (t-Test).
 #' @param prior.loc Set parameter for Bayesian testing (t-Test).
 #' @param prior.r Set parameter for Bayesian testing.
 #' @param p Set parameter for Bayesian testing (Binomial).
@@ -29,7 +27,7 @@
 #' sims.pseudo <- simcreate(2000, use.files = FALSE)
 #' @export
 
-simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TRUE, filespath = "simfiles/", parallel = TRUE, nstart = 5, inc = 1, alternative = c("two.sided", "less", "greater"), paired = FALSE, prior.loc = 0, prior.r = 0.1, p = 0.5){
+simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TRUE, filespath = "simfiles/", parallel = TRUE, nstart = 5, alternative = c("two.sided", "less", "greater"), prior.loc = 0, prior.r = 0.1, p = 0.5){
   require(foreach)
   require(doParallel)
   
@@ -65,7 +63,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
         
       } else {
-        sim <- data.frame(V1=rbinom(u.trials, 1, p))
+        sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
       }
       
       if(!is.null(mean.scores)){
@@ -76,15 +74,14 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
         # BAYES t TEST
-        sim$bf <- changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, paired = paired, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
+        sim$bf <- bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
         
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
         sim$cumsum <- cumsum(sim$qbitmin1)
         
         #(2) BAYES BINOM TEST
-        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.scale = prior.r, nstart = nstart, inc = inc)
-        
+        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.scale, nstart = nstart)
       }
       
       # Run FFT on Random Walk
@@ -94,19 +91,12 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
       P <- abs(Y/L)
       
       # Run FFT on Bayes Test
-      bf.naomit <- as.numeric(na.omit(sim$bf))
-      L2 <- length(bf.naomit)
-      T2 <- 1/L2
-      Y2 <- fft(bf.naomit) # Fast Fourier Transformation
-      P2 <- abs(Y2/L2)
-      
-      bffft <- rep(NA,length(sim$bf))
-      good_indices <- !is.na(sim$bf)
-      bffft[good_indices] <- P2
+      Y2 <- fft(sim$bf) # Fast Fourier Transformation
+      P2 <- abs(Y2/L)
       
       # Write results to Matrix
       index <- as.numeric(1:L)
-      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=bffft)
+      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
       
       tempMatrix #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
     }
@@ -134,7 +124,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
         
       } else {
-        sim <- data.frame(V1=rbinom(u.trials, 1, p))
+        sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
       }
       
       if(!is.null(mean.scores)){
@@ -145,7 +135,8 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
         # BAYES t TEST
-        sim$bf <- bfttest(sim$sums, alternative = alternative, mu = mean.scores, paired = paired, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
+        sim$bf <- changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
+        
         
         
       } else {
@@ -153,8 +144,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$qbitmin1)
         
         #(2) BAYES BINOM TEST
-        sim$bf <- bfbinom(sim$V1, p = p, prior.scale = prior.r, nstart = nstart, inc = inc)
-        
+        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)
       }
       
       # Run FFT on Random Walk
@@ -164,19 +154,12 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
       P <- abs(Y/L)
       
       # Run FFT on Bayes Test
-      bf.naomit <- as.numeric(na.omit(sim$bf))
-      L2 <- length(bf.naomit)
-      T2 <- 1/L2
-      Y2 <- fft(bf.naomit) # Fast Fourier Transformation
-      P2 <- abs(Y2/L2)
-      
-      bffft <- rep(NA,length(sim$bf))
-      good_indices <- !is.na(sim$bf)
-      bffft[good_indices] <- P2
+      Y2 <- fft(sim$bf) # Fast Fourier Transformation
+      P2 <- abs(Y2/L)
       
       # Write results to Matrix
       index <- as.numeric(1:L)
-      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=bffft)
+      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
       
       sim.out[[i]] <- tempMatrix
       setTxtProgressBar(pb,i)

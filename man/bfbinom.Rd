@@ -4,18 +4,16 @@
 \alias{bfbinom}
 \title{Bayesian Sequential Binomial Test}
 \usage{
-bfbinom(data, p = 0.5, prior.scale = 0.1, nstart = 3, inc = 1)
+bfbinom(data, p = 0.5, prior.r = 0.1, nstart = 3)
 }
 \arguments{
 \item{data}{A vector containing binary data.}
 
 \item{p}{Probability of one result.}
 
-\item{prior.scale}{The r of the Prior Cauchy distribution.}
+\item{prior.r}{The r of the Prior Cauchy distribution.}
 
-\item{nstart}{Number of data points that are considered before calculating the first BF (min = 2)}
-
-\item{inc}{Number of new data points that are considered for each BF.}
+\item{nstart}{How many data points should be considered before calculating the first BF (min = 2)}
 }
 \description{
 This function calculates Bayes Factors for every added data point of dichotomous data.
