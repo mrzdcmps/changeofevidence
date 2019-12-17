@@ -138,7 +138,6 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$bf <- changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
         
         
-        
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
         sim$cumsum <- cumsum(sim$qbitmin1)
