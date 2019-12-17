@@ -27,7 +27,11 @@ bfbinom <- function(data, p = 0.5, prior.scale = 0.1, nstart = 3, inc = 1) {
     bf[b] <- exp(tmpbfs@bayesFactor$bf)
     setTxtProgressBar(pb,b)
   }
-  if(inc == 1) bf[1:(nstart-1)] <- 1
+  if(inc == 1){
+    bf[1:(nstart-1)] <- 1
+  } else{
+    bf[1] <- 1
+  }
   return(bf)
 }
 
