@@ -81,7 +81,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$qbitmin1)
         
         #(2) BAYES BINOM TEST
-        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.scale = prior.scale, nstart = nstart)
+        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)
       }
       
       # Run FFT on Random Walk
