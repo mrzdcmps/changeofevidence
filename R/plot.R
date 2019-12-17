@@ -81,10 +81,12 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' @export
 
 # Plot Sequential BF
-plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = c(min(data),2*max(data))){
+plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = c(min(data, na.rm=T),2*max(data, na.rm=T))){
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
+  
+  # Exclude NAs
   df <- data.frame(bf = data, index = as.numeric(1:length(data)))
   df <- df[!is.na(df$bf),]
 

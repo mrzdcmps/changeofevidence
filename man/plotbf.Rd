@@ -9,7 +9,7 @@ plotbf(
   sims.df = NULL,
   sims.df.col = "bf",
   color = "black",
-  coordy = c(min(data), 2 * max(data))
+  coordy = c(min(data, na.rm = T), 2 * max(data, na.rm = T))
 )
 }
 \arguments{
