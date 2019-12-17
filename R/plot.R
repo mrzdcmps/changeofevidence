@@ -70,6 +70,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @param color A color in which the Seq BF-function will be drawn.
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
+#' @param label.x A character that is used as label for the x-axis ("N" for sum scores, "Trials" for binomial data).
 #' @examples
 #' p.bf <- plotbf(tbl$bf)
 #' p.bf
@@ -81,7 +82,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' @export
 
 # Plot Sequential BF
-plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = c(min(data),2*max(data))){
+plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = c(min(data),2*max(data)), label.x = "N"){
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
@@ -95,7 +96,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
     ggplot2::geom_hline(yintercept = c(1000,300,100,30,10,3,1/3,1/10,1/30,1/100,1/300,1/1000), color='grey60', linetype='dotted')+
     ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
-    ggplot2::labs(x="Trials", y = "Evidence (BF)")+
+    ggplot2::labs(x=label.x, y = "Evidence (BF)")+
     ggplot2::scale_y_continuous(trans='log10', breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000"))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+

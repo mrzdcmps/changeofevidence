@@ -25,8 +25,6 @@ bfttest(
 \item{prior.r}{Scale of thr cauchy distributed prior function.}
 
 \item{nstart}{How many data points should be considered before calculating the first BF (min = 2).}
-
-\item{paired}{A logical indicating whether you want a paired t-test.}
 }
 \description{
 This function calculates Bayes Factors for every added data point of normally distributed data, e.g. sum scores.

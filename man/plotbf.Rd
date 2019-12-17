@@ -9,7 +9,8 @@ plotbf(
   sims.df = NULL,
   sims.df.col = "bf",
   color = "black",
-  coordy = c(min(data), 2 * max(data))
+  coordy = c(min(data), 2 * max(data)),
+  label.x = "N"
 )
 }
 \arguments{
@@ -20,6 +21,8 @@ plotbf(
 \item{color}{A color in which the Seq BF-function will be drawn.}
 
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
+
+\item{label.x}{A character that is used as label for the x-axis ("N" for sum scores, "Trials" for binomial data).}
 
 \item{df}{A vector containing sequential Bayes Factors.}
 }
