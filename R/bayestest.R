@@ -42,7 +42,6 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 3){
 #' @param data A vector containing data values.
 #' @param alternative Indicates the direction of the alternative hypothesis: two.sided, less, or greater
 #' @param mu A number indicating the true value of the mean (or difference in means if you are performing a two sample test).
-#' @param paired A logical indicating whether you want a paired t-test.
 #' @param prior.loc Location of the cauchy distributed prior function (use 0 for an uninformed prior).
 #' @param prior.r Scale of thr cauchy distributed prior function.
 #' @param nstart How many data points should be considered before calculating the first BF (min = 2).
