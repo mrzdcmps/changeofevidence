@@ -9,7 +9,7 @@ simcreate(
   n.sims = 10000,
   mean.scores = NULL,
   use.files = TRUE,
-  filespath = "simfiles/",
+  filespath = "RandomFiles/",
   parallel = TRUE,
   nstart = 5,
   alternative = c("two.sided", "less", "greater"),

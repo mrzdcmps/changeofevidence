@@ -3,7 +3,7 @@
 #' This function evaluates the likelihood of the highest reached Bayes Factor.
 #'
 #' The highest reached (Maximum) BF of the experimental data is compared to those of all simulations.
-#' An unusual peak can be assumed if less than 5% of simulations show a higher BF at any time.
+#' An unusual peak can be assumed if less than 5\% of simulations show a higher BF at any time.
 #'
 #' @param data A vector containing Bayes Factors.
 #' @param sims.df A dataframe containing simulations, including columns "simid" and "bf".

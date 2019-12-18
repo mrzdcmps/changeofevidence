@@ -19,7 +19,7 @@ This function evaluates the likelihood of the highest reached Bayes Factor.
 }
 \details{
 The highest reached (Maximum) BF of the experimental data is compared to those of all simulations.
-An unusual peak can be assumed if less than 5% of simulations show a higher BF at any time.
+An unusual peak can be assumed if less than 5\% of simulations show a higher BF at any time.
 }
 \examples{
 r.maxbf <- maxbf(tbl$bf)

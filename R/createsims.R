@@ -27,7 +27,7 @@
 #' sims.pseudo <- simcreate(2000, use.files = FALSE)
 #' @export
 
-simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TRUE, filespath = "simfiles/", parallel = TRUE, nstart = 5, alternative = c("two.sided", "less", "greater"), prior.loc = 0, prior.r = 0.1, p = 0.5){
+simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TRUE, filespath = "RandomFiles/", parallel = TRUE, nstart = 5, alternative = c("two.sided", "less", "greater"), prior.loc = 0, prior.r = 0.1, p = 0.5){
   require(foreach)
   require(doParallel)
   
