@@ -37,7 +37,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 3){
 #' The first BF is calculated for Nstart data points. For every subsequent data point a new BF is added.
 #' The resulting BF vector indicates the change of evidence over time.
 #' The function first calculates t-scores and p-values and subsequently uses the BFDA package to translate the data into BFs.
-#' Returns a list of t-scores (@t-value), p-scores (@p-value), and BF (@BF)
+#' Returns a list of t-scores ($t-value), p-scores ($p-value), and BF ($BF)
 #'
 #' @param data A vector containing data values.
 #' @param alternative Indicates the direction of the alternative hypothesis: two.sided, less, or greater

@@ -33,7 +33,7 @@ This function calculates Bayes Factors for every added data point of normally di
 The first BF is calculated for Nstart data points. For every subsequent data point a new BF is added.
 The resulting BF vector indicates the change of evidence over time.
 The function first calculates t-scores and p-values and subsequently uses the BFDA package to translate the data into BFs.
-Returns a list of t-scores (@t-value), p-scores (@p-value), and BF (@BF)
+Returns a list of t-scores ($t-value), p-scores ($p-value), and BF ($BF)
 }
 \examples{
 bflist <- bfttest(sumscores, alternative = "greater")
