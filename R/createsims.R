@@ -74,7 +74,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
         # BAYES t TEST
-        sim$bf <- changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
+        sim$bf <- changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)$BF
         
       } else {
         sim$qbitmin1 <- ifelse(sim[,1] == 0, -1, 1)
@@ -135,7 +135,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
         # BAYES t TEST
-        sim$bf <- changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)
+        sim$bf <- changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)$BF
         
         
       } else {
