@@ -112,17 +112,18 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   for (H in 1:length(data)){
     
     CHz <- sims.df[sims.df$index==H,]
-    if (((sum(CHz[[sims.df.col]] > data[H]))/max(sims.df$simid))<0.05) {
+    #if (((sum(CHz[[sims.df.col]] > data[H]))/max(sims.df$simid))<0.05) {
       #if (H < 50) {
       #  cat(H, "Hz: ",((sum(CHz$density > data[H]))/u.nsims)*100,"% \n")
       #}
-      list.HB[[length(list.HB)+1]] = H
-    }
+      list.HB[[length(list.HB)+1]] = data.frame(H = H, LowerSims = (sum(CHz[[sims.df.col]] < data[H]))/max(sims.df$simid))
+    #}
     setTxtProgressBar(pb,H)
   }
   cat("\nNumber of Frequencies: ",length(data),"\n")
   cat("Number of Frequencies above 95% of Simulations:",length(list.HB),"\n")
   cat("Percentage of Frequencies above 95% of Simulations:",(length(list.HB)/length(data))*100,"\n")
-  fftbf.out <- list("Top5 Frequencies (#)" = length(list.HB), "Top5 Frequencies (%)"=(length(list.HB)/length(data))*100, "Top5 Frequencies" = list.HB)
+  #fftbf.out <- list("Top5 Frequencies (#)" = length(list.HB), "Top5 Frequencies (%)"=(length(list.HB)/length(data))*100, "Top5 Frequencies" = list.HB)
+  fftbf.out <- list.HB
   return(fftbf.out)
 }
