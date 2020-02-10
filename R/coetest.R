@@ -98,7 +98,7 @@ fftcreate <- function(data){
 #' @param data A vector containing Fourier transformed (spectral density) data.
 #' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
 #' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
-#' @return A list containing the number and proportion of Top5 Frequencies as well as a list containing the names of these frequencies.
+#' @return A list containing the proportions of sims with a lower amplitude than each frequency.
 #' @examples
 #' r.fftbf <- ffttest(tblFFT$density.bf)
 #' r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
