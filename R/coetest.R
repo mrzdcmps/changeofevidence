@@ -87,18 +87,18 @@ fftcreate <- function(data){
 }
 
 
-#' Frequency Analysis
+#' Frequency Analysis Test
 #'
 #' This function analyses FFTs and compares the amplitudes of all frequencies to those of simulations.
 #'
 #' For each Frequency this function counts how many simulations show a higher amplitude.
-#' If no more than 5% of simulations are above the experimental value, it is added to the "Top5"-list.
+#' If no more than 5% of simulations are above the experimental value, it is considered a "Top5-Frequency".
 #' The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
 #'
 #' @param data A vector containing Fourier transformed (spectral density) data.
 #' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
 #' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
-#' @return A list containing the proportions of sims with a lower amplitude than each frequency.
+#' @return A dataframe containing all frequencies and the proportion of simulations with a lower amplitude.
 #' @examples
 #' r.fftbf <- ffttest(tblFFT$density.bf)
 #' r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
@@ -120,6 +120,7 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
     #}
     setTxtProgressBar(pb,H)
   }
+  list.HB <- dplyr::bind_rows(list.HB)
   cat("\nNumber of Frequencies: ",length(data),"\n")
   cat("Number of Frequencies above 95% of Simulations:",sum(list.HB$LowerSims > 0.95),"\n")
   cat("Percentage of Frequencies above 95% of Simulations:",(sum(list.HB$LowerSims > 0.95)/length(data))*100,"% \n")
@@ -127,3 +128,37 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   fftbf.out <- list.HB
   return(fftbf.out)
 }
+
+
+#' Frequency Analysis Likelihood Test
+#'
+#' This function estimates the likelihood of a specific proportion of Top5-Frequencies.
+#' To serve as reference, the Top5-Frequencies of 10% of simulations in comparison to all simulations are calculated.
+#'
+#' @param df A dataframe containing the results of a ffttest.
+#' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
+#' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
+#' @return A vector containing the number of Top5-Frequencies of simulations.
+#' @examples
+#' fftlikelihood(r.fft)
+#' @export
+
+
+# Count likelihood and distribution of Top5 occurrences
+fftlikelihood <- function(df, sims.df = sims, sims.df.col = "density.bf"){
+  likelihoodlist <- list()
+  for(i in 1:(max(sims.df$simid)/10)){
+    tmpdat.r <- subset(sims.df, simid == i)
+    tmptest <- ffttest(tmpdat.r$density.bf, sims.df)
+    likelihoodlist[[i]] <- sum(tmptest$LowerSims > 0.95)
+  }
+  likelihoodlist <- unlist(likelihoodlist)
+  
+  cat("\nLikelihood for",sum(df$LowerSims > 0.95),"or more Top5-Frequencies is estimated",(sum(likelihoodlist >= sum(df$LowerSims > 0.95))/length(likelihoodlist))*100,"% \n")
+  
+  return(likelihoodlist)
+}
+  
+  
+  
+  

@@ -2,7 +2,7 @@
 % Please edit documentation in R/coetest.R
 \name{ffttest}
 \alias{ffttest}
-\title{Frequency Analysis}
+\title{Frequency Analysis Test}
 \usage{
 ffttest(data, sims.df = sims, sims.df.col = "density.bf")
 }
@@ -14,14 +14,14 @@ ffttest(data, sims.df = sims, sims.df.col = "density.bf")
 \item{sims.df.col}{The column of the simulation dataframe that contains the comparison data.}
 }
 \value{
-A list containing the number and proportion of Top5 Frequencies as well as a list containing the names of these frequencies.
+A dataframe containing all frequencies and the proportion of simulations with a lower amplitude.
 }
 \description{
 This function analyses FFTs and compares the amplitudes of all frequencies to those of simulations.
 }
 \details{
 For each Frequency this function counts how many simulations show a higher amplitude.
-If no more than 5% of simulations are above the experimental value, it is added to the "Top5"-list.
+If no more than 5% of simulations are above the experimental value, it is considered a "Top5-Frequency".
 The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
 }
 \examples{
