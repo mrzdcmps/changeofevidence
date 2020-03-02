@@ -121,8 +121,8 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
     setTxtProgressBar(pb,H)
   }
   cat("\nNumber of Frequencies: ",length(data),"\n")
-  cat("Number of Frequencies above 95% of Simulations:",length(list.HB),"\n")
-  cat("Percentage of Frequencies above 95% of Simulations:",(length(list.HB)/length(data))*100,"\n")
+  cat("Number of Frequencies above 95% of Simulations:",sum(list.HB$LowerSims > 0.95),"\n")
+  cat("Percentage of Frequencies above 95% of Simulations:",(sum(list.HB$LowerSims > 0.95)/length(data))*100,"% \n")
   #fftbf.out <- list("Top5 Frequencies (#)" = length(list.HB), "Top5 Frequencies (%)"=(length(list.HB)/length(data))*100, "Top5 Frequencies" = list.HB)
   fftbf.out <- list.HB
   return(fftbf.out)
