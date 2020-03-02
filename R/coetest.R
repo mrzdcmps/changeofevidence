@@ -146,19 +146,28 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
 
 # Count likelihood and distribution of Top5 occurrences
 fftlikelihood <- function(df, sims.df = sims, sims.df.col = "density.bf"){
-  likelihoodlist <- list()
-  for(i in 1:(max(sims.df$simid)/10)){
+  require(foreach)
+  require(doParallel)
+  
+  cores=detectCores()
+  cl <- makeCluster(cores[1]-1) #not to overload your computer
+  registerDoParallel(cl)
+  
+  cat(">> FREQUENCY ANALYSIS LIKELIHOOD << \n")
+  cat("This test runs in parallel. See log.txt for status updates!")
+  
+  likelihoodlist <- foreach(i=1:(max(sims.df$simid)/10), .combine=c) %dopar% {
+    sink("log.txt", append=TRUE)  
+    cat(paste(Sys.time(),"Starting iteration",i,"\n"))
+    sink()
     tmpdat.r <- subset(sims.df, simid == i)
-    tmptest <- ffttest(tmpdat.r$density.bf, sims.df)
-    likelihoodlist[[i]] <- sum(tmptest$LowerSims > 0.95)
+    tmptest <- changeofevidence::ffttest(tmpdat.r$density.bf, sims.df)
+    likeresult <- sum(tmptest$LowerSims > 0.95)
+    likeresult
   }
-  likelihoodlist <- unlist(likelihoodlist)
+  stopCluster(cl)
   
   cat("\nLikelihood for",sum(df$LowerSims > 0.95),"or more Top5-Frequencies is estimated",(sum(likelihoodlist >= sum(df$LowerSims > 0.95))/length(likelihoodlist))*100,"% \n")
   
   return(likelihoodlist)
 }
-  
-  
-  
-  
