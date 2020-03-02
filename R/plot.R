@@ -13,6 +13,7 @@
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @param color A color in which the Random Walk will be drawn.
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
+#' @param pparabel logical. Should a p-parabel for binomial data be drawn?
 #' @examples
 #' p.rw <- plotrw(tbl$rw)
 #' p.rw
@@ -24,7 +25,7 @@
 #' @export
 
 # Plot Random Walk
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax)){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), pparabel = TRUE){
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
@@ -44,9 +45,11 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   if (!is.null(sims.df)){
     p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)
   }
-  p + ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", size=1)+
-    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", size=1)+
-    ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, size=1)+
+  if (pparabel == TRUE){
+    p <- p + ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", size=1)+
+      ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", size=1)
+  }
+  p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, size=1)+
     ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", size=1)+
     ggplot2::labs(x="Trials", y = "Random Walk")+
     ggplot2::scale_x_continuous(expand = c(0,0))+
