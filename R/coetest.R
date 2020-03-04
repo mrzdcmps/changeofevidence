@@ -136,6 +136,7 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
 #' To serve as reference, the Top5-Frequencies of 10% of simulations in comparison to all simulations are calculated.
 #'
 #' @param df A dataframe containing the results of a ffttest.
+#' @param proportion The porportion of simulations in sims.df that should be tested against all simulations.
 #' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
 #' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
 #' @return A vector containing the number of Top5-Frequencies of simulations.
@@ -145,7 +146,7 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
 
 
 # Count likelihood and distribution of Top5 occurrences
-fftlikelihood <- function(df, sims.df = sims, sims.df.col = "density.bf"){
+fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "density.bf"){
   require(foreach)
   require(doParallel)
   
@@ -156,9 +157,9 @@ fftlikelihood <- function(df, sims.df = sims, sims.df.col = "density.bf"){
   cat(">> FREQUENCY ANALYSIS LIKELIHOOD << \n")
   cat("This test runs in parallel. See log.txt for status updates!")
   
-  likelihoodlist <- foreach(i=1:(max(sims.df$simid)/10), .combine=c) %dopar% {
+  likelihoodlist <- foreach(i=1:(max(sims.df$simid)*(proportion/100)), .combine=c) %dopar% {
     sink("log.txt", append=TRUE)  
-    cat(paste(Sys.time(),"Starting iteration",i,"\n"))
+    cat(paste(Sys.time(),"Starting iteration",i,"of",proportion/100,"\n"))
     sink()
     tmpdat.r <- subset(sims.df, simid == i)
     tmptest <- changeofevidence::ffttest(tmpdat.r$density.bf, sims.df)
