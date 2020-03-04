@@ -159,7 +159,7 @@ fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "d
   
   likelihoodlist <- foreach(i=1:(max(sims.df$simid)*(proportion/100)), .combine=c) %dopar% {
     sink("log.txt", append=TRUE)  
-    cat(paste(Sys.time(),"Starting iteration",i,"of",proportion/100,"\n"))
+    cat(paste(Sys.time(),"Starting iteration",i,"of",max(sims.df$simid)*(proportion/100),"\n"))
     sink()
     tmpdat.r <- subset(sims.df, simid == i)
     tmptest <- changeofevidence::ffttest(tmpdat.r$density.bf, sims.df)
