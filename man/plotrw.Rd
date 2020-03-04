@@ -9,7 +9,8 @@ plotrw(
   sims.df = NULL,
   sims.df.col = "rw",
   color = "black",
-  coordy = c(-absolutemax, absolutemax)
+  coordy = c(-absolutemax, absolutemax),
+  pparabel = TRUE
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ plotrw(
 \item{color}{A color in which the Random Walk will be drawn.}
 
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
+
+\item{pparabel}{logical. Should a p-parabel for binomial data be drawn?}
 }
 \description{
 This function allows to plot random walks.

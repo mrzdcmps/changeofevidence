@@ -4,10 +4,12 @@
 \alias{fftlikelihood}
 \title{Frequency Analysis Likelihood Test}
 \usage{
-fftlikelihood(df, sims.df = sims, sims.df.col = "density.bf")
+fftlikelihood(df, proportion = 100, sims.df = sims, sims.df.col = "density.bf")
 }
 \arguments{
 \item{df}{A dataframe containing the results of a ffttest.}
+
+\item{proportion}{The porportion of simulations in sims.df that should be tested against all simulations.}
 
 \item{sims.df}{A dataframe containing simulations, including columns "index" and "simid".}
 
