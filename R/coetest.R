@@ -168,7 +168,7 @@ fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "d
   }
   stopCluster(cl)
   
-  cat("\nLikelihood for",sum(df$LowerSims > 0.95),"or more Top5-Frequencies is estimated",(sum(likelihoodlist >= sum(df$LowerSims > 0.95))/length(likelihoodlist))*100,"% \n")
+  cat("\nLikelihood for",sum(df$LowerSims > 0.95),"(=",sum(df$LowerSims > 0.95)/nrow(df),"%) or more Top5-Frequencies is estimated",(sum(likelihoodlist >= sum(df$LowerSims > 0.95))/length(likelihoodlist))*100,"% \n")
   
   return(likelihoodlist)
 }
