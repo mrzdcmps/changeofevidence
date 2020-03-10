@@ -11,6 +11,7 @@ Imports:
     pracma,
     foreach,
     doParallel,
+    hypergeo,
     pbapply
 Remotes:
 License: 
