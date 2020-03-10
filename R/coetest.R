@@ -87,6 +87,15 @@ fftcreate <- function(data){
 }
 
 
+### Helper-Function: Count Frequencies
+.fftcount <- function(data, sims.df = sims, sims.df.col = "density.bf"){
+  
+  CHz <- sims.df[sims.df$index==as.numeric(data[2]),]
+  output <- data.frame(H = as.numeric(data[2]), LowerSims = (sum(CHz[[sims.df.col]] < as.numeric(data[1])))/max(sims.df$simid))
+  output
+  
+}
+
 #' Frequency Analysis Test
 #'
 #' This function analyses FFTs and compares the amplitudes of all frequencies to those of simulations.
@@ -104,29 +113,19 @@ fftcreate <- function(data){
 #' r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
 #' @export
 
-# Check for high Amplitudes
 ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   cat(">> FREQUENCY ANALYSIS << \n")
-  list.HB <- list()
-  pb = txtProgressBar(min = 0, max = length(data), initial = 0, style = 3)
-  for (H in 1:length(data)){
-    
-    CHz <- sims.df[sims.df$index==H,]
-    #if (((sum(CHz[[sims.df.col]] > data[H]))/max(sims.df$simid))<0.05) {
-      #if (H < 50) {
-      #  cat(H, "Hz: ",((sum(CHz$density > data[H]))/u.nsims)*100,"% \n")
-      #}
-      list.HB[[length(list.HB)+1]] = data.frame(H = H, LowerSims = (sum(CHz[[sims.df.col]] < data[H]))/max(sims.df$simid))
-    #}
-    setTxtProgressBar(pb,H)
-  }
+  data.df <- data.frame(data = data, H = seq_along(data))
+  
+  list.HB <- pbapply::pbapply(data.df,1,.fftcount,sims.df = sims.df, sims.df.col = sims.df.col)
   list.HB <- dplyr::bind_rows(list.HB)
+  
   cat("\nNumber of Frequencies: ",length(data),"\n")
   cat("Number of Frequencies above 95% of Simulations:",sum(list.HB$LowerSims > 0.95),"\n")
   cat("Percentage of Frequencies above 95% of Simulations:",(sum(list.HB$LowerSims > 0.95)/length(data))*100,"% \n")
   #fftbf.out <- list("Top5 Frequencies (#)" = length(list.HB), "Top5 Frequencies (%)"=(length(list.HB)/length(data))*100, "Top5 Frequencies" = list.HB)
-  fftbf.out <- list.HB
-  return(fftbf.out)
+  #fftbf.out <- list.HB
+  return(list.HB)
 }
 
 
