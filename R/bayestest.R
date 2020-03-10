@@ -52,14 +52,13 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 3){
 #' @export
 
 bfttest <- function(data, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = 3){
-  # devtools::install_github("nicebread/BFDA", subdir="package")
   # calculate t-scores and BFs
   bf <- t <- list()
   cat("Calculating Sequential Bayes Factors... \n")
   pb = txtProgressBar(min = nstart, max = length(data), initial = 3, style = 3)
   for (i in nstart:length(data)) {
     t[[i]] <- t.test(data[1:i], alternative = alternative, mu = mu)
-    bf[[i]] <- BFDA:::bf10_t(t = t[[i]][[1]], n1 = i, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
+    bf[[i]] <- changeofevidence::bf10_t(t = t[[i]][[1]], n1 = i, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
     setTxtProgressBar(pb,i)
   }
   

@@ -1,7 +1,7 @@
 Package: changeofevidence
 Type: Package
 Title: Change of Evidence
-Version: 0.1.5
+Version: 0.1.6
 Author: Moritz Dechamps
 Maintainer: Moritz Dechamps <moritz.dechamps@psy.lmu.de>
 Description: This package provides functions to test for a change of evidence over time. It can be used to examine volatile effects.
@@ -11,8 +11,8 @@ Imports:
     pracma,
     foreach,
     doParallel,
-    BFDA
-Remotes: nicebread/BFDA/package
+    pbapply
+Remotes:
 License: 
 Encoding: UTF-8
 LazyData: true
