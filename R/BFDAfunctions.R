@@ -3,7 +3,7 @@
 # ==============================================================================
 # see also https://arxiv.org/abs/1704.02479 for the formulae
 
-#' @import hypergeo
+#@import hypergeo
 
 # helper functions for the computation of the Bayes factor with informed priors
 
