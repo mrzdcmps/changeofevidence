@@ -58,7 +58,7 @@ bfttest <- function(data, alternative = c("two.sided", "less", "greater"), mu = 
   pb = txtProgressBar(min = nstart, max = length(data), initial = 3, style = 3)
   for (i in nstart:length(data)) {
     t[[i]] <- t.test(data[1:i], alternative = alternative, mu = mu)
-    bf[[i]] <- changeofevidence::bf10_t(t = t[[i]][[1]], n1 = i, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
+    bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = i, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
     setTxtProgressBar(pb,i)
   }
   
