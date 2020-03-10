@@ -10,9 +10,7 @@ Imports:
     ggplot2,
     pracma,
     foreach,
-    doParallel,
-    hypergeo,
-    pbapply
+    doParallel
 Remotes:
 License: 
 Encoding: UTF-8
