@@ -6,8 +6,10 @@
 \usage{
 bfttest(
   data,
+  ydata = NULL,
   alternative = c("two.sided", "less", "greater"),
   mu = 0,
+  paired = FALSE,
   prior.loc = 0,
   prior.r = 0.1,
   nstart = 3
@@ -16,9 +18,13 @@ bfttest(
 \arguments{
 \item{data}{A vector containing data values.}
 
+\item{ydata}{A vector containing another set of values for a paired samples test (independent samples are currently not supported). Please indicate with paired = TRUE.}
+
 \item{alternative}{Indicates the direction of the alternative hypothesis: two.sided, less, or greater}
 
 \item{mu}{A number indicating the true value of the mean (or difference in means if you are performing a two sample test).}
+
+\item{paired}{Logical. Set TRUE if you want to perform a paired samples t-Test.}
 
 \item{prior.loc}{Location of the cauchy distributed prior function (use 0 for an uninformed prior).}
 
