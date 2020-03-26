@@ -100,8 +100,8 @@ bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "gr
 #' The resulting BF vector indicates the change of evidence over time.
 #' The function uses "correlationBF" from the BayesFactor package
 #'
-#' @param data A vector containing continous data.
-#' @param ydata A second vector containing continous data.
+#' @param x A vector containing continous data.
+#' @param y A second vector containing continous data.
 #' @param nullIntervall optional vector of length 2 containing lower and upper bounds of an interval hypothesis to test, in correlation units
 #' @param prior.r Prior distribution (scaled beta)
 #' @param nstart How many data points should be considered before calculating the first BF (min = 2)
@@ -111,13 +111,16 @@ bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "gr
 
 
 # Binomial Seq BF
-bfcor <- function(data, ydata, nullInterval = NULL, prior.r = 0.1, nstart = 3){
+bfcor <- function(x, y, nullInterval = 0, prior.r = 0.1, nstart = 3){
   require(BayesFactor)
+  if (length(y) != length(x)) 
+    stop("Length of y and x must be the same.")
+  
   bf <- rep(1, (nstart-1))
   cat("Calculating Sequential Bayes Factors... \n")
-  pb = txtProgressBar(min = 3, max = length(data), initial = 3, style = 3)
-  for (b in nstart:length(data)){
-    bf[b] <- exp(correlationBF(data[1:b], ydata[1:b], rscale=prior.r, nullInterval = nullInterval)@bayesFactor$bf[2])
+  pb = txtProgressBar(min = nstart, max = length(x), initial = nstart, style = 3)
+  for (b in nstart:length(x)){
+    bf[b] <- exp(correlationBF(x[1:b], y[1:b], rscale=prior.r, nullInterval = nullInterval)@bayesFactor$bf[2])
     setTxtProgressBar(pb,b)
   }
   return(bf)
