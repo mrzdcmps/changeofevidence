@@ -90,6 +90,8 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
+  if(coordy[1] > 1/10 || coordy[2] < 10) coordy <- c(1/10,10)
+  
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
   p <- ggplot2::ggplot()
