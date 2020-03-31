@@ -100,10 +100,10 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
     p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)
   }
   p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
-    ggplot2::geom_hline(yintercept = c(1000,300,100,30,10,3,1/3,1/10,1/30,1/100,1/300,1/1000), color='grey60', linetype='dotted')+
+    ggplot2::geom_hline(yintercept = c(1000000,300000,100000,30000,10000,3000,1000,300,100,30,10,3,1/3,1/10,1/30,1/100,1/300,1/1000,1/3000,1/10000,1/30000,1/100000), color='grey60', linetype='dotted')+
     ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
     ggplot2::labs(x=label.x, y = "Evidence (BF)")+
-    ggplot2::scale_y_continuous(trans='log10', breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000"))+
+    ggplot2::scale_y_continuous(trans='log10', breaks = c(1000000,300000,100000,30000,10000,3000,1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000,1/3000,1/10000,1/30000,1/100000), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000"))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_bw(base_size = 14)+
