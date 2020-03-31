@@ -91,7 +91,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
   if(coordy[1] > 1/10) coordy[1] <- 1/10
-  if(coordy[2] < 10) coordy[2] <- c(10)
+  if(coordy[2] < 10) coordy[2] <- 10
   
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
@@ -103,7 +103,9 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
     ggplot2::geom_hline(yintercept = c(1000000,300000,100000,30000,10000,3000,1000,300,100,30,10,3,1/3,1/10,1/30,1/100,1/300,1/1000,1/3000,1/10000,1/30000,1/100000), color='grey60', linetype='dotted')+
     ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
     ggplot2::labs(x=label.x, y = "Evidence (BF)")+
-    ggplot2::scale_y_continuous(trans='log10', breaks = c(1000000,300000,100000,30000,10000,3000,1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000,1/3000,1/10000,1/30000,1/100000), labels = c("1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000"))+
+    ggplot2::scale_y_continuous(trans='log10', 
+                                breaks = c(1000000,300000,100000,30000,10000,3000,1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000,1/3000,1/10000,1/30000,1/100000), 
+                                labels = c("1000000","300000","100000","30000","10000","3000","1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000","1/3000","1/10000","1/30000","1/100000"))+
     ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_bw(base_size = 14)+
