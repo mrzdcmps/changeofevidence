@@ -61,7 +61,7 @@ bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "gr
   for (i in nstart:length(data)) {
     if (!is.null(ydata)){
       if (paired == TRUE) { # Paired Samples Test
-        t[[i]] <- t.test(data[1:i], alternative = alternative, mu = mu)
+        t[[i]] <- t.test(data[1:i], ydata[1:i], alternative = alternative, paired = T)
         bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = i, independentSamples = F, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
       } else { # Independent Samples Test
         stop("Independent Samples t-Test currently not supported!")

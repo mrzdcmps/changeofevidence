@@ -114,6 +114,7 @@ fftcreate <- function(data){
 #' @export
 
 ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
+  if(!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
   cat(">> FREQUENCY ANALYSIS << \n")
   data.df <- data.frame(data = data, H = seq_along(data))
   
