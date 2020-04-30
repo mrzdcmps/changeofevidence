@@ -4,12 +4,12 @@
 \alias{bfcor}
 \title{Bayesian Sequential Correlation Test}
 \usage{
-bfcor(data, ydata, nullInterval = NULL, prior.r = 0.1, nstart = 3)
+bfcor(x, y, nullInterval = 0, prior.r = 0.1, nstart = 3)
 }
 \arguments{
-\item{data}{A vector containing continous data.}
+\item{x}{A vector containing continous data.}
 
-\item{ydata}{A second vector containing continous data.}
+\item{y}{A second vector containing continous data.}
 
 \item{prior.r}{Prior distribution (scaled beta)}
 

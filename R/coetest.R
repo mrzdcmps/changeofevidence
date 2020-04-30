@@ -107,7 +107,7 @@ fftcreate <- function(data){
 #' @param data A vector containing Fourier transformed (spectral density) data.
 #' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
 #' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
-#' @return A dataframe containing all frequencies and the proportion of simulations with a lower amplitude.
+#' @return A list containing a dataframe of all frequencies and the proportion of simulations with a lower amplitude, and information on the sum of amplitudes.
 #' @examples
 #' r.fftbf <- ffttest(tblFFT$density.bf)
 #' r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
@@ -117,16 +117,24 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   if(!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
   cat(">> FREQUENCY ANALYSIS << \n")
   data.df <- data.frame(data = data, H = seq_along(data))
+  ampsum <- sum(data.df$data)
+  
+  sims.df <- sims.df[sims.df$index <= length(data),]
   
   list.HB <- pbapply::pbapply(data.df,1,.fftcount,sims.df = sims.df, sims.df.col = sims.df.col)
   list.HB <- dplyr::bind_rows(list.HB)
   
+  simampsum <- tapply(sims.df[[sims.df.col]], sims.df$simid, sum)
+  
   cat("\nNumber of Frequencies: ",length(data),"\n")
-  cat("Number of Frequencies above 95% of Simulations:",sum(list.HB$LowerSims > 0.95),"\n")
-  cat("Percentage of Frequencies above 95% of Simulations:",(sum(list.HB$LowerSims > 0.95)/length(data))*100,"% \n")
-  #fftbf.out <- list("Top5 Frequencies (#)" = length(list.HB), "Top5 Frequencies (%)"=(length(list.HB)/length(data))*100, "Top5 Frequencies" = list.HB)
-  #fftbf.out <- list.HB
-  return(list.HB)
+  cat("Number of Frequencies above 95% of Simulations:",sum(list.HB$LowerSims > 0.95),"(",(sum(list.HB$LowerSims > 0.95)/length(data))*100,"% )\n")
+  cat("-------\n")
+  cat("Sum of Amplitudes:",ampsum,"\n")
+  cat("Sims Amplitude Sums: M =",mean(simampsum),"SD =",sd(simampsum),"\n")
+  cat("Simulations with higher amplitude sum:",sum(ampsum < simampsum),"(",(sum(ampsum < simampsum)/max(sims.df$simid))*100,"% )\n")
+
+  fftbf.out <- list("FFTComparison" = list.HB, "Frequencies above 95% of Sims" = sum(list.HB$LowerSims > 0.95)/length(data), "Amplitude sum" = ampsum, "Sims with higher Ampsum" = sum(ampsum < simampsum)/max(sims.df$simid), "Sim Ampsum (M)" = mean(simampsum), "Sim Ampsum (SD)" = sd(simampsum))
+  return(fftbf.out)
 }
 
 
@@ -162,7 +170,7 @@ fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "d
     cat(paste(Sys.time(),"Starting iteration",i,"of",max(sims.df$simid)*(proportion/100),"\n"))
     sink()
     tmpdat.r <- subset(sims.df, simid == i)
-    tmptest <- changeofevidence::ffttest(tmpdat.r$density.bf, sims.df)
+    tmptest <- changeofevidence::ffttest(tmpdat.r[[sims.dfl.col]], sims.df)
     likeresult <- sum(tmptest$LowerSims > 0.95)
     likeresult
   }

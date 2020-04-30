@@ -14,7 +14,7 @@ ffttest(data, sims.df = sims, sims.df.col = "density.bf")
 \item{sims.df.col}{The column of the simulation dataframe that contains the comparison data.}
 }
 \value{
-A dataframe containing all frequencies and the proportion of simulations with a lower amplitude.
+A list containing a dataframe of all frequencies and the proportion of simulations with a lower amplitude, and information on the sum of amplitudes.
 }
 \description{
 This function analyses FFTs and compares the amplitudes of all frequencies to those of simulations.
