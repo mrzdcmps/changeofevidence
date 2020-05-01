@@ -54,13 +54,13 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
       if(use.files == TRUE){
         # read txt
         
-        sim <- read.table(rfiles[i])
-        if(trials < nrow(sim)){
-          line.start <- sample.int(nrow(sim)-(u.trials),1)
+        simf <- read.table(rfiles[i])
+        if(trials > nrow(simf)) stop("Number of trials is larger than amount of random bits per file!")
+        if(trials < nrow(simf)){
+          line.start <- sample.int(nrow(simf)-(u.trials),1)
           line.stop <- line.start+u.trials-1
-          sim <- data.frame(V1=sim[line.start:line.stop,])
+          sim <- data.frame(V1=simf[line.start:line.stop,])
         }
-        if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
         
       } else {
         sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
@@ -70,6 +70,14 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
         # sum up bits
         sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
         sim <- tapply(sim[,1], sim$group, FUN = sum)
+        if(var(sim[1:nstart]) == 0) repeat{ #repeat reading data until variance is not 0 so t-test will work
+          line.start <- sample.int(nrow(simf)-(u.trials),1)
+          line.stop <- line.start+u.trials-1
+          sim <- data.frame(V1=simf[line.start:line.stop,])
+          sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
+          sim <- tapply(sim[,1], sim$group, FUN = sum)
+          if(var(sim[1:nstart]) != 0) break
+        }
         sim <- data.frame(sums=sim)
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
@@ -109,28 +117,36 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
     # Parallel = FALSE
     sim.out <- list()
     
-    pb = txtProgressBar(min = 0, max = n.sims, initial = 0, style = 3)
     for(i in 1:n.sims){
+      cat("Sim",i,"of",n.sims,"\n")
       if(use.files == TRUE){
         rfiles <- list.files(filespath, full.names = TRUE)
         if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
-        
-        sim <- read.table(rfiles[i])
-        if(trials < nrow(sim)){
-          line.start <- sample.int(nrow(sim)-(u.trials),1)
+      
+        simf <- read.table(rfiles[i])
+        if(trials > nrow(simf)) stop("Number of trials is larger than amount of random bits per file!")
+        if(trials < nrow(simf)){
+          line.start <- sample.int(nrow(simf)-(u.trials),1)
           line.stop <- line.start+u.trials-1
-          sim <- data.frame(V1=sim[line.start:line.stop,])
+          sim <- data.frame(V1=simf[line.start:line.stop,])
         }
-        if(trials > nrow(sim)) stop("Number of trials is larger than amount of random bits per file!")
-        
+      
       } else {
         sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
       }
-      
+    
       if(!is.null(mean.scores)){
         # sum up bits
         sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
         sim <- tapply(sim[,1], sim$group, FUN = sum)
+        if(var(sim[1:nstart]) == 0) repeat{ #repeat reading data until variance is not 0 so t-test will work
+          line.start <- sample.int(nrow(simf)-(u.trials),1)
+          line.stop <- line.start+u.trials-1
+          sim <- data.frame(V1=simf[line.start:line.stop,])
+          sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
+          sim <- tapply(sim[,1], sim$group, FUN = sum)
+          if(var(sim[1:nstart]) != 0) break
+        }
         sim <- data.frame(sums=sim)
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
@@ -161,7 +177,6 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
       tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
       
       sim.out[[i]] <- tempMatrix
-      setTxtProgressBar(pb,i)
       
     }
     

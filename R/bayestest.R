@@ -19,13 +19,14 @@
 bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 3){
   require(BayesFactor)
   bf <- rep(1, (nstart-1))
-  cat("Calculating Sequential Bayes Factors... \n")
+  cat("Calculating Sequential Bayes Factors...\n")
   pb = txtProgressBar(min = 3, max = length(data), initial = 3, style = 3)
   for (b in nstart:length(data)){
     tmpbfs <- proportionBF(sum(data[1:b]), b, p = p, rscale = prior.r)
     bf[b] <- exp(tmpbfs@bayesFactor$bf)
     setTxtProgressBar(pb,b)
   }
+  close(pb)
   return(bf)
 }
 
@@ -56,23 +57,28 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 3){
 bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, paired = FALSE, prior.loc = 0, prior.r = 0.1, nstart = 3){
   # calculate t-scores and BFs
   bf <- t <- list()
-  cat("Calculating Sequential Bayes Factors... \n")
-  pb = txtProgressBar(min = nstart, max = length(data), initial = 3, style = 3)
-  for (i in nstart:length(data)) {
-    if (!is.null(ydata)){
-      if (paired == TRUE) { # Paired Samples Test
+  cat("Calculating Sequential Bayes Factors...\n")
+  pb = txtProgressBar(min = nstart, max = length(data), style = 3)
+  if (!is.null(ydata)){
+    if (paired == TRUE) { # Paired Samples Test
+      for (i in nstart:length(data)) {
         t[[i]] <- t.test(data[1:i], ydata[1:i], alternative = alternative, paired = T)
         bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = i, independentSamples = F, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
-      } else { # Independent Samples Test
-        stop("Independent Samples t-Test currently not supported!")
+        setTxtProgressBar(pb,i)
       }
-    } else { # One Sample Test
+    } else { # Independent Samples Test
+        stop("Independent Samples t-Test currently not supported!")
+    }
+  } else { # One Sample Test
+    if(var(data[1:nstart]) == 0) stop("Cannot compute t-Test since there is no variance in the data. Please choose a larger nstart!")
+      for (i in nstart:length(data)) {
         t[[i]] <- t.test(data[1:i], alternative = alternative, mu = mu)
         bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = i, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
-    }
-    
-    setTxtProgressBar(pb,i)
+        setTxtProgressBar(pb,i)
+      }
   }
+  
+  close(pb)
   
   tlist <- c(rep(NA,(nstart-1)),unlist(lapply(t, `[[`, 1)))
   plist <- c(rep(NA,(nstart-1)),unlist(lapply(t, `[[`, 3)))
@@ -117,11 +123,12 @@ bfcor <- function(x, y, nullInterval = 0, prior.r = 0.1, nstart = 3){
     stop("Length of y and x must be the same.")
   
   bf <- rep(1, (nstart-1))
-  cat("Calculating Sequential Bayes Factors... \n")
+  cat("Calculating Sequential Bayes Factors...\n")
   pb = txtProgressBar(min = nstart, max = length(x), initial = nstart, style = 3)
   for (b in nstart:length(x)){
     bf[b] <- exp(correlationBF(x[1:b], y[1:b], rscale=prior.r, nullInterval = nullInterval)@bayesFactor$bf[2])
     setTxtProgressBar(pb,b)
   }
+  close(pb)
   return(bf)
 }
