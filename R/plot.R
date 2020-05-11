@@ -43,7 +43,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   
   p <- ggplot2::ggplot()
   if (!is.null(sims.df)){
-    p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)
+    p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
   }
   if (pparabel == TRUE){
     p <- p + ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", size=1)+
@@ -97,7 +97,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   
   p <- ggplot2::ggplot()
   if (!is.null(sims.df)){
-    p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)
+    p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
   }
   p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
     ggplot2::geom_hline(yintercept = c(1000000,300000,100000,30000,10000,3000,1000,300,100,30,10,3,1/3,1/10,1/30,1/100,1/300,1/1000,1/3000,1/10000,1/30000,1/100000), color='grey60', linetype='dotted')+
@@ -154,7 +154,7 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
       simci.fft[sindex] <- sort(sims.df[sims.df$index == sindex,sims.df.col])[max(sims.df$simid)*0.95]
     }
     p <- p+
-      ggplot2::geom_line(data=sims.df, aes(x=index, y=sims.df[[sims.df.col]], group=simid), color=greycol)+
+      ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)+
       ggplot2::geom_line(data=as.data.frame(simci.fft), aes(x=as.numeric(1:n.hz), y=simci.fft), linetype="dotted", size=1)
   }
   # Plot FFT
