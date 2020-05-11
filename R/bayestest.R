@@ -16,7 +16,7 @@
 
 
 # Binomial Seq BF
-bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 3){
+bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 5){
   require(BayesFactor)
   bf <- rep(1, (nstart-1))
   cat("Calculating Sequential Bayes Factors...\n")
@@ -54,7 +54,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 3){
 #' tbl$bf <- bfttest(tbl$sums, alternative = "two.sided", mu = 50, nstart = 10, prior.loc = 0.1, prior.r = 0.05)$BF
 #' @export
 
-bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, paired = FALSE, prior.loc = 0, prior.r = 0.1, nstart = 3){
+bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, paired = FALSE, prior.loc = 0, prior.r = 0.1, nstart = 5){
   # calculate t-scores and BFs
   bf <- t <- list()
   cat("Calculating Sequential Bayes Factors...\n")
@@ -117,7 +117,7 @@ bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "gr
 
 
 # Binomial Seq BF
-bfcor <- function(x, y, nullInterval = 0, prior.r = 0.1, nstart = 3){
+bfcor <- function(x, y, nullInterval = 0, prior.r = 0.1, nstart = 5){
   require(BayesFactor)
   if (length(y) != length(x)) 
     stop("Length of y and x must be the same.")
