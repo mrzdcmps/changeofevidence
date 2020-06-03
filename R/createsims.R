@@ -43,6 +43,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
     
     if(use.files == TRUE){
       rfiles <- list.files(filespath, full.names = TRUE)
+      if (length(rfiles) == 0) stop("No random files found! Did you specify the correct folder?")
       if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
     }
     
@@ -104,7 +105,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
       
       # Write results to Matrix
       index <- as.numeric(1:L)
-      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
+      tempMatrix <- data.frame(simid=i, index=index, raw=sim[,1], rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
       
       tempMatrix #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
     }
@@ -112,7 +113,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
     
     #stop cluster
     stopCluster(cl)
-    colnames(sim.out) <- c("simid","index","rw","density.rw","bf","density.bf")
+    #colnames(sim.out) <- c("simid","index","raw","rw","density.rw","bf","density.bf")
   } else{
     # Parallel = FALSE
     sim.out <- list()
@@ -121,6 +122,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
       cat("Sim",i,"of",n.sims,"\n")
       if(use.files == TRUE){
         rfiles <- list.files(filespath, full.names = TRUE)
+        if (length(rfiles) == 0) stop("No random files found! Did you specify the correct folder?")
         if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
       
         simf <- read.table(rfiles[i])
@@ -174,7 +176,7 @@ simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TR
       
       # Write results to Matrix
       index <- as.numeric(1:L)
-      tempMatrix <- data.frame(simid=i, index=index, rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
+      tempMatrix <- data.frame(simid=i, index=index, raw=sim[,1], rw=sim$cumsum, density.rw=P, bf=sim$bf, density.bf=P2)
       
       sim.out[[i]] <- tempMatrix
       
