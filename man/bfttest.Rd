@@ -12,7 +12,7 @@ bfttest(
   paired = FALSE,
   prior.loc = 0,
   prior.r = 0.1,
-  nstart = 3
+  nstart = 5
 )
 }
 \arguments{

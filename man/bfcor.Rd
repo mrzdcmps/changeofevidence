@@ -4,7 +4,7 @@
 \alias{bfcor}
 \title{Bayesian Sequential Correlation Test}
 \usage{
-bfcor(x, y, nullInterval = 0, prior.r = 0.1, nstart = 3)
+bfcor(x, y, nullInterval = 0, prior.r = 0.1, nstart = 5)
 }
 \arguments{
 \item{x}{A vector containing continous data.}

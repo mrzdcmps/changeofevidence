@@ -4,7 +4,7 @@
 \alias{bfbinom}
 \title{Bayesian Sequential Binomial Test}
 \usage{
-bfbinom(data, p = 0.5, prior.r = 0.1, nstart = 3)
+bfbinom(data, p = 0.5, prior.r = 0.1, nstart = 5)
 }
 \arguments{
 \item{data}{A vector containing binary data.}
