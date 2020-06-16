@@ -16,7 +16,7 @@
 # Maximum BF analysis
 maxbf <- function(data, sims.df=sims){
   cat(">> MAXIMUM BF << \n")
-  u.nsims <- max(sims.df$simid)
+  u.nsims <- length(unique(sims.df$simid))
   sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm=TRUE)
   cat("Highest BF:",max(data),"( at N =",which.max(data),") \n")
   cat("Percentage of Sims with higher BFs:",(sum(sim.maxbf > max(data))/u.nsims)*100," \n")
@@ -44,7 +44,7 @@ maxbf <- function(data, sims.df=sims){
 # Energy of BF
 energybf <- function(data, sims.df=sims){
   cat(">> BF ENERGY << \n")
-  u.nsims <- max(sims.df$simid)
+  u.nsims <- length(unique(sims.df$simid))
   sim.energy <- numeric(length = u.nsims)
   
   cat("Calculating Energy of sims... \n")
@@ -150,7 +150,6 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
 #' @return A vector containing the number of Top5-Frequencies of simulations.
 #' @examples
 #' fftlikelihood(r.fft)
-#' @export
 
 
 # Count likelihood and distribution of Top5 occurrences
