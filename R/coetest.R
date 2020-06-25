@@ -91,7 +91,7 @@ fftcreate <- function(data){
 .fftcount <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   
   CHz <- sims.df[sims.df$index==as.numeric(data[2]),]
-  output <- data.frame(H = as.numeric(data[2]), LowerSims = (sum(CHz[[sims.df.col]] < as.numeric(data[1])))/max(sims.df$simid))
+  output <- data.frame(H = as.numeric(data[2]), LowerSims = (sum(CHz[[sims.df.col]] < as.numeric(data[1])))/length(unique(sims.df$simid)))
   output
   
 }
@@ -116,6 +116,7 @@ fftcreate <- function(data){
 ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   if(!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
   cat(">> FREQUENCY ANALYSIS << \n")
+  u.nsims <- length(unique(sims.df$simid))
   data.df <- data.frame(data = data, H = seq_along(data))
   ampsum <- sum(data.df$data)
   
@@ -131,9 +132,9 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   cat("-------\n")
   cat("Sum of Amplitudes:",ampsum,"\n")
   cat("Sims Amplitude Sums: M =",mean(simampsum),"SD =",sd(simampsum),"\n")
-  cat("Simulations with higher amplitude sum:",sum(ampsum < simampsum),"(",(sum(ampsum < simampsum)/max(sims.df$simid))*100,"% )\n")
+  cat("Simulations with higher amplitude sum:",sum(ampsum < simampsum),"(",(sum(ampsum < simampsum)/u.nsims)*100,"% )\n")
 
-  fftbf.out <- list("FFTComparison" = list.HB, "Frequencies above 95% of Sims" = sum(list.HB$LowerSims > 0.95)/length(data), "Amplitude sum" = ampsum, "Sims with higher Ampsum" = sum(ampsum < simampsum)/max(sims.df$simid), "Sim Ampsum (M)" = mean(simampsum), "Sim Ampsum (SD)" = sd(simampsum))
+  fftbf.out <- list("FFTComparison" = list.HB, "Frequencies above 95% of Sims" = sum(list.HB$LowerSims > 0.95)/length(data), "Amplitude sum" = ampsum, "Sims with higher Ampsum" = sum(ampsum < simampsum)/u.nsims, "Sim Ampsum (M)" = mean(simampsum), "Sim Ampsum (SD)" = sd(simampsum))
   return(fftbf.out)
 }
 
@@ -164,9 +165,9 @@ fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "d
   cat(">> FREQUENCY ANALYSIS LIKELIHOOD << \n")
   cat("This test runs in parallel. See log.txt for status updates!")
   
-  likelihoodlist <- foreach(i=1:(max(sims.df$simid)*(proportion/100)), .combine=c) %dopar% {
+  likelihoodlist <- foreach(i=1:(length(unique(sims.df$simid))*(proportion/100)), .combine=c) %dopar% {
     sink("log.txt", append=TRUE)  
-    cat(paste(Sys.time(),"Starting iteration",i,"of",max(sims.df$simid)*(proportion/100),"\n"))
+    cat(paste(Sys.time(),"Starting iteration",i,"of",length(unique(sims.df$simid))*(proportion/100),"\n"))
     sink()
     tmpdat.r <- subset(sims.df, simid == i)
     tmptest <- changeofevidence::ffttest(tmpdat.r[[sims.dfl.col]], sims.df)
