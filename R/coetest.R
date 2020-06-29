@@ -24,6 +24,10 @@ maxbf <- function(data, sims.df=sims){
   return(maxbf.out)
 }
 
+### Helper function: Calculate Energy
+.energycount <- function(data, nullenergy = nullenergy){
+  pracma::trapz(as.numeric(1:length(data)), data)-nullenergy
+}
 
 #' BF Energy Analysis
 #'
@@ -44,19 +48,21 @@ maxbf <- function(data, sims.df=sims){
 # Energy of BF
 energybf <- function(data, sims.df=sims){
   cat(">> BF ENERGY << \n")
-  simids <- unique(sims$simid)
+  
+  simids <- sims.df[seq(1, nrow(sims.df), max(sims.df$index)),]$simid
   u.nsims <- length(simids)
   sim.energy <- numeric(length = u.nsims)
   
-  cat("Calculating Energy of sims... \n")
-  pb = txtProgressBar(min = 0, max = u.nsims, initial = 0, style = 3)
-  for (sid in 1:u.nsims){
-    sim.energy.data <- subset(sims, sims$simid == simids[sid])$bf
-    sim.energy[sid] <- pracma::trapz(as.numeric(1:length(sim.energy.data)), sim.energy.data)-pracma::trapz(as.numeric(1:length(sim.energy.data)), rep(1, length(sim.energy.data)))
-    setTxtProgressBar(pb,sid)
-  }
+  if(!is.numeric(data)) stop("Data must be a numeric vector!")
+  if(length(data) != nrow(sims.df[sims.df$simid == simids[1],])) stop("Data is not the same length as simulations!")
   
-  real.energy <- pracma::trapz(as.numeric(1:length(data)), data)-pracma::trapz(as.numeric(1:length(data)), rep(1, length(data)))
+  cat("Calculating Energy of sims... \n")
+  
+  nullenergy <- length(data)-1
+  
+  sim.energy <- tapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
+  
+  real.energy <- pracma::trapz(as.numeric(1:length(data)), data)-nullenergy
   
   cat("\n Energy of BF of data: ",real.energy,"\n")
   cat("Sims Energy: M =",mean(sim.energy),", SD =",sd(sim.energy),"\n")
