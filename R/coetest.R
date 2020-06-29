@@ -44,14 +44,15 @@ maxbf <- function(data, sims.df=sims){
 # Energy of BF
 energybf <- function(data, sims.df=sims){
   cat(">> BF ENERGY << \n")
-  u.nsims <- length(unique(sims.df$simid))
+  simids <- unique(sims$simid)
+  u.nsims <- length(simids)
   sim.energy <- numeric(length = u.nsims)
   
   cat("Calculating Energy of sims... \n")
   pb = txtProgressBar(min = 0, max = u.nsims, initial = 0, style = 3)
-  for (sid in u.nsims){
-    sim.energy.data <- subset(sims.df, sims.df$simid == sid)
-    sim.energy[sid] <- pracma::trapz(as.numeric(rownames(sim.energy.data)), sim.energy.data$bf)-pracma::trapz(as.numeric(rownames(sim.energy.data)), rep(1, nrow(sim.energy.data)))
+  for (sid in 1:u.nsims){
+    sim.energy.data <- subset(sims, sims$simid == simids[sid])$bf
+    sim.energy[sid] <- pracma::trapz(as.numeric(1:length(sim.energy.data)), sim.energy.data)-pracma::trapz(as.numeric(1:length(sim.energy.data)), rep(1, length(sim.energy.data)))
     setTxtProgressBar(pb,sid)
   }
   
