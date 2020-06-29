@@ -19,8 +19,8 @@ maxbf <- function(data, sims.df=sims){
   u.nsims <- length(unique(sims.df$simid))
   sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm=TRUE)
   cat("Highest BF:",max(data),"( at N =",which.max(data),") \n")
-  cat("Percentage of Sims with higher BFs:",(sum(sim.maxbf > max(data))/u.nsims)*100," \n")
-  maxbf.out <- list("MaxBF" = max(data), "MaxBF (N)" = which.max(data), "Sims with higher BFs (%)" = (sum(sim.maxbf > max(data))/u.nsims)*100)
+  cat("Sims with higher BFs:",(sum(sim.maxbf > max(data))/u.nsims)*100,"% \n")
+  maxbf.out <- list("MaxBF" = max(data), "MaxBF (N)" = which.max(data), "Sims with higher BFs" = (sum(sim.maxbf > max(data))/u.nsims))
   return(maxbf.out)
 }
 
@@ -49,7 +49,7 @@ energybf <- function(data, sims.df=sims){
   
   cat("Calculating Energy of sims... \n")
   pb = txtProgressBar(min = 0, max = u.nsims, initial = 0, style = 3)
-  for (sid in 1:u.nsims){
+  for (sid in u.nsims){
     sim.energy.data <- subset(sims.df, sims.df$simid == sid)
     sim.energy[sid] <- pracma::trapz(as.numeric(rownames(sim.energy.data)), sim.energy.data$bf)-pracma::trapz(as.numeric(rownames(sim.energy.data)), rep(1, nrow(sim.energy.data)))
     setTxtProgressBar(pb,sid)
@@ -59,8 +59,8 @@ energybf <- function(data, sims.df=sims){
   
   cat("\n Energy of BF of data: ",real.energy,"\n")
   cat("Sims Energy: M =",mean(sim.energy),", SD =",sd(sim.energy),"\n")
-  cat("Percentage of Sims with higher Energy:",(sum(sim.energy > real.energy)/u.nsims)*100," \n")
-  energybf.out <- list("Energy" = real.energy, "Simenergy (M)" = mean(sim.energy), "Simenergy (SD)" = sd(sim.energy), "Sims with more energy (%)" = (sum(sim.energy > real.energy)/u.nsims)*100)
+  cat("Sims with higher Energy:",(sum(sim.energy > real.energy)/u.nsims)*100,"% \n")
+  energybf.out <- list("Energy" = real.energy, "Simenergy (M)" = mean(sim.energy), "Simenergy (SD)" = sd(sim.energy), "Sims with more energy" = (sum(sim.energy > real.energy)/u.nsims))
   return(energybf.out)
 }
 
@@ -100,20 +100,20 @@ fftcreate <- function(data){
 #'
 #' This function analyses FFTs and compares the amplitudes of all frequencies to those of simulations.
 #'
-#' For each Frequency this function counts how many simulations show a higher amplitude.
-#' If no more than 5% of simulations are above the experimental value, it is considered a "Top5-Frequency".
-#' The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
+#' If you want to use the old "Top5-Frequency" method instead of amplitude sums, indicate by setting 'top5 = TRUE'.
 #'
-#' @param data A vector containing Fourier transformed (spectral density) data.
+#' @param data A vector containing Fourier transformed (spectral density) data (use 'fftcreate' function).
 #' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
 #' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
+#' @param top5 Logical. If set to TRUE, function will additionally return the Top5-Frequency method. For each frequency th function counts how many simulations show a higher amplitude. If no more than 5% of simulations are above the experimental value, it is considered a "Top5-Frequency". The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
 #' @return A list containing a dataframe of all frequencies and the proportion of simulations with a lower amplitude, and information on the sum of amplitudes.
 #' @examples
 #' r.fftbf <- ffttest(tblFFT$density.bf)
 #' r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
 #' @export
 
-ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
+ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE){
+  if(var(data[1:3]) == 0) stop("It seems like you specified a vector containing BFs. Please use fftcreate(bf) to Fourier transform first.")
   if(!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
   cat(">> FREQUENCY ANALYSIS << \n")
   u.nsims <- length(unique(sims.df$simid))
@@ -122,19 +122,26 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf"){
   
   sims.df <- sims.df[sims.df$index <= length(data),]
   
-  list.HB <- pbapply::pbapply(data.df,1,.fftcount,sims.df = sims.df, sims.df.col = sims.df.col)
-  list.HB <- dplyr::bind_rows(list.HB)
+  if(top5 == TRUE){
+    list.HB <- pbapply::pbapply(data.df,1,.fftcount,sims.df = sims.df, sims.df.col = sims.df.col)
+    list.HB <- dplyr::bind_rows(list.HB)
+  }
   
   simampsum <- tapply(sims.df[[sims.df.col]], sims.df$simid, sum)
   
   cat("\nNumber of Frequencies: ",length(data),"\n")
+  if(top5 == TRUE){
   cat("Number of Frequencies above 95% of Simulations:",sum(list.HB$LowerSims > 0.95),"(",(sum(list.HB$LowerSims > 0.95)/length(data))*100,"% )\n")
   cat("-------\n")
+  }
   cat("Sum of Amplitudes:",ampsum,"\n")
   cat("Sims Amplitude Sums: M =",mean(simampsum),"SD =",sd(simampsum),"\n")
   cat("Simulations with higher amplitude sum:",sum(ampsum < simampsum),"(",(sum(ampsum < simampsum)/u.nsims)*100,"% )\n")
-
+  if(top5 == TRUE){
   fftbf.out <- list("FFTComparison" = list.HB, "Frequencies above 95% of Sims" = sum(list.HB$LowerSims > 0.95)/length(data), "Amplitude sum" = ampsum, "Sims with higher Ampsum" = sum(ampsum < simampsum)/u.nsims, "Sim Ampsum (M)" = mean(simampsum), "Sim Ampsum (SD)" = sd(simampsum))
+  } else {
+  fftbf.out <- list("Amplitude sum" = ampsum, "Sims with higher Ampsum" = sum(ampsum < simampsum)/u.nsims, "Sim Ampsum (M)" = mean(simampsum), "Sim Ampsum (SD)" = sd(simampsum))
+  }  
   return(fftbf.out)
 }
 
