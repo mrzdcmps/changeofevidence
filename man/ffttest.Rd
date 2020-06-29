@@ -13,7 +13,7 @@ ffttest(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE)
 
 \item{sims.df.col}{The column of the simulation dataframe that contains the comparison data.}
 
-\item{top5}{Logical. If set to TRUE, function will additionally return the Top5-Frequency method. For each frequency th function counts how many simulations show a higher amplitude. If no more than 5% of simulations are above the experimental value, it is considered a "Top5-Frequency". The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.}
+\item{top5}{Logical. If set to TRUE, function will additionally return the Top5-Frequency method. For each frequency th function counts how many simulations show a higher amplitude. If no more than 5 percent of simulations are above the experimental value, it is considered a "Top5-Frequency". The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.}
 }
 \value{
 A list containing a dataframe of all frequencies and the proportion of simulations with a lower amplitude, and information on the sum of amplitudes.
