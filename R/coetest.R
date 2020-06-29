@@ -49,10 +49,12 @@ energybf <- function(data, sims.df=sims){
   
   cat("Calculating Energy of sims... \n")
   pb = txtProgressBar(min = 0, max = u.nsims, initial = 0, style = 3)
+  i <- 1
   for (sid in u.nsims){
     sim.energy.data <- subset(sims.df, sims.df$simid == sid)
-    sim.energy[sid] <- pracma::trapz(as.numeric(rownames(sim.energy.data)), sim.energy.data$bf)-pracma::trapz(as.numeric(rownames(sim.energy.data)), rep(1, nrow(sim.energy.data)))
-    setTxtProgressBar(pb,sid)
+    sim.energy[i] <- pracma::trapz(as.numeric(rownames(sim.energy.data)), sim.energy.data$bf)-pracma::trapz(as.numeric(rownames(sim.energy.data)), rep(1, nrow(sim.energy.data)))
+    setTxtProgressBar(pb,i)
+    i <- i+1
   }
   
   real.energy <- pracma::trapz(as.numeric(1:length(data)), data)-pracma::trapz(as.numeric(1:length(data)), rep(1, length(data)))
