@@ -9,21 +9,25 @@
 #' @param data A vector containing binary data.
 #' @param p Probability of one result.
 #' @param prior.r The r of the Prior Cauchy distribution.
+#' @param nullInterval Optional vector of length 2 containing lower and upper bounds of an interval hypothesis to test, in probability units.
 #' @param nstart How many data points should be considered before calculating the first BF (min = 2)
 #' @examples
 #' tbl$bf <- bfbinom(tbl@qbit)
 #' @export
 
 
-# Binomial Seq BF
-bfbinom <- function(data, p = 0.5, prior.r = 0.1, nstart = 5){
+bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5){
   require(BayesFactor)
   bf <- rep(1, (nstart-1))
   cat("Calculating Sequential Bayes Factors...\n")
   pb = txtProgressBar(min = 3, max = length(data), initial = 3, style = 3)
   for (b in nstart:length(data)){
-    tmpbfs <- proportionBF(sum(data[1:b]), b, p = p, rscale = prior.r)
-    bf[b] <- exp(tmpbfs@bayesFactor$bf)
+    if(!is.null(nullInterval)){
+      tmpbfs <- proportionBF(sum(data[1:b]), b, p = p, rscale = prior.r, nullInterval = nullInterval)
+    } else{
+      tmpbfs <- proportionBF(sum(data[1:b]), b, p = p, rscale = prior.r)
+    }
+    bf[b] <- exp(tmpbfs@bayesFactor$bf)[1]
     setTxtProgressBar(pb,b)
   }
   close(pb)
