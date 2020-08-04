@@ -92,12 +92,13 @@ bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "gr
   BFmin0 <- c(rep(1,(nstart-1)),unlist(lapply(bf, `[[`, 3)))
   
   if (alternative=="less"){
-    bft.out <- list("t-value" = tlist, "p-value" = plist, "BF" = BFmin0)
+    bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BFmin0))
   } else if (alternative=="greater"){
-    bft.out <- list("t-value" = tlist, "p-value" = plist, "BF" = BFplus0)
+    bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BFplus0))
   } else {
-    bft.out <- list("t-value" = tlist, "p-value" = plist, "BF" = BF10)
+    bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BF10))
   }
+  cat("Final Bayes Factor: ",tail(bft.out$BF,n=1)," (t=",tail(bft.out$`t-value`,n=1),"; p=",tail(bft.out$`p-value`,n=1),")",sep="")
   return(bft.out)
 }
 
