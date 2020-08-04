@@ -90,23 +90,66 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
+  #Set minimum coordinates to 1/10 and 10
   if(coordy[1] > 1/10) coordy[1] <- 1/10
   if(coordy[2] < 10) coordy[2] <- 10
+  
+  # Specify Text annotations
+  annotation <- c("Decisive ~H[1]","paste(\"Very Strong\",~H[1])","Strong ~H[1]","Substantial ~H[1]","Anecdotal ~H[1]","Anecdotal ~H[0]","Substantial ~H[0]","Strong ~H[0]","paste(\"Very Strong\",~H[0])","Decisive ~H[0]")
+  annobreaks <- exp(c(mean(c(log(300),log(100))),mean(c(log(100),log(30))),mean(c(log(30),log(10))),mean(c(log(10),log(3))),mean(c(log(3),log(1))),mean(c(log(1),log(1/3))),mean(c(log(1/3),log(1/10))),mean(c(log(1/10),log(1/30))),mean(c(log(1/30),log(1/100))),mean(c(log(1/100),log(1/300)))))
+  
+  if(coordy[2] > 96 && coordy[2] < 125){
+    annotation <- annotation[-1]
+    annobreaks <- annobreaks[-1]
+  }
+  if(coordy[1] < 1/96 && coordy[1] > 1/125){
+    annotation <- head(annotation,-1)
+    annobreaks <- head(annobreaks,-1)
+  }
+  if(coordy[2] > 32 && coordy[2] < 41){
+    annotation <- annotation[-c(1:2)]
+    annobreaks <- annobreaks[-c(1:2)]
+  }
+  if(coordy[1] < 1/32 && coordy[1] > 1/41){
+    annotation <- head(annotation,-2)
+    annobreaks <- head(annobreaks,-2)
+  }
+  if(coordy[2] > 12 && coordy[2] < 15){
+    annotation <- annotation[-c(1:3)]
+    annobreaks <- annobreaks[-c(1:3)]
+  }
+  if(coordy[1] < 1/12 && coordy[1] > 1/15){
+    annotation <- head(annotation,-3)
+    annobreaks <- head(annobreaks,-3)
+  }
+  
+  #Scale y-Axis
+  if(coordy[2] <= 1000 && coordy[1] >= 1/1000){
+    breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000)
+    labels = c("1,000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1,000")
+  } else if(coordy[2] <= 1000000 && coordy[1] >= 1/1000000){
+    breaks = c(1000000,100000,10000,1000,100,10,1,1/10,1/100,1/1000,1/10000,1/100000,1/1000000)
+    labels = c("1,000,000","100,000","10,000","1,000","100","10","1","1/10","1/100","1/1,000","1/10,000","1/100,000","1/1,000,000")
+    #annotation = annotation[c(1,3,5,6,8,10)]
+    #annobreaks = exp(c(mean(c(log(1000),log(100))),mean(c(log(100),log(10))),mean(c(log(10),log(1))),mean(c(log(1),log(1/10))),mean(c(log(1/10),log(1/100))),mean(c(log(1/100),log(1/1000)))))
+  } else {
+    breaks = c(1e+12,1e+10,1e+8,1e+6,1e+4,1e+2,1,1/1e+2,1/1e+4,1/1e+6,1/1e+8,1/1e+10,1/1e+12)
+    labels = c("1e+12","1e+10","1e+8","1e+6","1e+4","1e+2","1","1/1e+2","1/1e+4","1/1e+6","1/1e+8","1/1e+10","1/1e+12")
+    #annotation = annotation[c(1,10)]
+    #annobreaks = exp(c(mean(c(log(1000),log(100))),mean(c(log(1/100),log(1/1000)))))
+  }
   
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
   p <- ggplot2::ggplot()
-  if (!is.null(sims.df)){
-    p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
-  }
+  if(!is.null(sims.df)) p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
+  if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
   p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
-    ggplot2::geom_hline(yintercept = c(1000000,300000,100000,30000,10000,3000,1000,300,100,30,10,3,1/3,1/10,1/30,1/100,1/300,1/1000,1/3000,1/10000,1/30000,1/100000), color='grey60', linetype='dotted')+
+    ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')+
     ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
     ggplot2::labs(x=label.x, y = "Evidence (BF)")+
-    ggplot2::scale_y_continuous(trans='log10', 
-                                breaks = c(1000000,300000,100000,30000,10000,3000,1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000,1/3000,1/10000,1/30000,1/100000), 
-                                labels = c("1000000","300000","100000","30000","10000","3000","1000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1000","1/3000","1/10000","1/30000","1/100000"))+
-    ggplot2::scale_x_continuous(expand = c(0,0))+
+    ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
+    #ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_bw(base_size = 14)+
     ggplot2::theme(legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank())
