@@ -60,7 +60,7 @@ energybf <- function(data, sims.df=sims){
   
   nullenergy <- length(data)-1
   
-  sim.energy <- tapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
+  sim.energy <- pbapply::pbtapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
   
   real.energy <- pracma::trapz(as.numeric(1:length(data)), data)-nullenergy
   
