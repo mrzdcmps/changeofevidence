@@ -93,6 +93,13 @@ fftcreate <- function(data){
   P <- abs(Y/L)[1:(L/2)]
 }
 
+### Helper-Function: Create FFT without cutting frequencies
+.fftcreatefull <- function(data){
+  L <- length(data) # Länge
+  T <- 1/L # Tastrate
+  Y <- fft(data) # Fast Fourier Transformation
+  P <- abs(Y/L)
+}
 
 ### Helper-Function: Count Frequencies
 .fftcount <- function(data, sims.df = sims, sims.df.col = "density.bf"){
@@ -112,7 +119,7 @@ fftcreate <- function(data){
 #' @param data A vector containing Fourier transformed (spectral density) data (use 'fftcreate' function).
 #' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
 #' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
-#' @param top5 Logical. If set to TRUE, function will additionally return the Top5-Frequency method. For each frequency th function counts how many simulations show a higher amplitude. If no more than 5 percent of simulations are above the experimental value, it is considered a "Top5-Frequency". The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
+#' @param top5 Logical. If set to TRUE, function will additionally return the Top5-Frequency method. For each frequency the function counts how many simulations show a higher amplitude. If no more than 5 percent of simulations are above the experimental value, it is considered a "Top5-Frequency". The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
 #' @return A list containing a dataframe of all frequencies and the proportion of simulations with a lower amplitude, and information on the sum of amplitudes.
 #' @examples
 #' r.fftbf <- ffttest(tblFFT$density.bf)
@@ -194,4 +201,30 @@ fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "d
   
   likelihood.out <- list("Likelihood" = sum(likelihoodlist >= sum(df$LowerSims > 0.95))/length(likelihoodlist), "Top5 of Sims" = likelihoodlist)
   return(likelihood.out)
+}
+
+
+# Create a copy of simulations and only redo FFT
+#' Create a copy of simulation-df with different amount of trials.
+#'
+#' This function copies the BFs of an already computated simulation dataframe and re-calculates only the density via a FFT.
+#'
+#' Computating BFs for monte-carlo-simulations can take a very long time. You can reuse an already calculated simulation-df and cut off the amount of trials per simulation. This function re-calculates only the densities of BF and RW via the Fast Fourier transformation.
+#'
+#' @param df A dataframe containing monte-carlo simulations. Must include the columns 'bf', 'density.bf', 'index', and 'simid'.
+#' @param n The amount of trials per simulation. Must be smaller than in the original simulation df.
+#' @param rw boolean. Set to TRUE if you also want to recalculate the density of the Random Walk. Needs the colums 'rw' and 'density.rw'.
+#' @examples
+#' sim.new <- simredo(sims, 200, rw=F)
+#' @export
+simredo <- function(df, n, rw = TRUE){
+  if(n > max(df$index)) stop("Amount of trials (n) is larger than in the provided simulation dataframe!")
+  df.new <- subset(df, index <= n)
+  cat("Recalculating BF:\n")
+  df.new$density.bf <- unlist(pbapply::pbtapply(df.new$bf, df.new$simid, .fftcreatefull, simplify = T))
+  if(rw == T) {
+    cat("Recalculating RW:\n")
+    df.new$density.rw <- unlist(pbapply::pbtapply(df.new$rw, df.new$simid, .fftcreatefull, simplify = T))
+  }
+  df.new
 }
