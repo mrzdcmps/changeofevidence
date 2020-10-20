@@ -31,6 +31,13 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
     setTxtProgressBar(pb,b)
   }
   close(pb)
+  
+  if(is.null(nullInterval)) txt.alternative = "two.sided"
+  if(0 %in% nullInterval) txt.alternative = "greater"
+  if(1 %in% nullInterval) txt.alternative = "less"
+  orthodoxtest <- binom.test(sum(data),length(data),p = p, alternative = txt.alternative)
+  
+  cat("Final Bayes Factor: ",tail(bf,n=1)," (probability of success=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")",sep="")
   return(bf)
 }
 
@@ -135,5 +142,9 @@ bfcor <- function(x, y, nullInterval = 0, prior.r = 0.1, nstart = 5){
     setTxtProgressBar(pb,b)
   }
   close(pb)
+  
+  orthodoxtest <- cor(x, y, use = "complete.obs")
+  
+  cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest,")",sep="")
   return(bf)
 }
