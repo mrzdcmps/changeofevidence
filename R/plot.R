@@ -181,7 +181,8 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
 
 # Plot FFT
 # Data for 95-CI ribbon FFT
-plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50, color = "black", coordy = c(0,sort(data,partial=length(data)-1)[length(data)-1])){
+plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50, color = "black", coordy = c(0,secondhighestval)){
+  secondhighestval <- sort(data,partial=length(data)-1)[length(data)-1]
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
@@ -196,6 +197,9 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
     for (sindex in 1:n.hz){
       simci.fft[sindex] <- sort(sims.df[sims.df$index == sindex,sims.df.col])[max(sims.df$simid)*0.95]
     }
+    
+    secondhighestval <- max(secondhighestval,simci.fft[1])
+
     p <- p+
       ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)+
       ggplot2::geom_line(data=as.data.frame(simci.fft), aes(x=as.numeric(1:n.hz), y=simci.fft), linetype="dotted", size=1)
