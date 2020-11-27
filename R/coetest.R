@@ -88,9 +88,10 @@ energybf <- function(data, sims.df=sims){
 # Create FFT
 fftcreate <- function(data){
   L <- length(data) # Länge
+  L2 <- ceiling(L/2) # Consider only first half, round up
   T <- 1/L # Tastrate
   Y <- fft(data) # Fast Fourier Transformation
-  P <- abs(Y/L)[1:(L/2)]
+  P <- abs(Y/L)[1:L2]
 }
 
 ### Helper-Function: Create FFT without cutting frequencies
@@ -129,6 +130,7 @@ fftcreate <- function(data){
 ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE){
   if(var(data[1:3]) == 0) stop("It seems like you specified a vector containing BFs. Please use fftcreate(bf) to Fourier transform first.")
   if(!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
+  if()
   cat(">> FREQUENCY ANALYSIS << \n")
   u.nsims <- length(unique(sims.df$simid))
   data.df <- data.frame(data = data, H = seq_along(data))
