@@ -10,7 +10,7 @@ plotfft(
   sims.df.col = "density.bf",
   n.hz = 50,
   color = "black",
-  coordy = c(0, sort(data, partial = length(data) - 1)[length(data) - 1])
+  coordy = c(0, secondhighestval)
 )
 }
 \arguments{

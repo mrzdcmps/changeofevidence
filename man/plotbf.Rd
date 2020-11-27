@@ -9,11 +9,13 @@ plotbf(
   sims.df = NULL,
   sims.df.col = "bf",
   color = "black",
-  coordy = c(min(data), 2 * max(data)),
+  coordy = NULL,
   label.x = "N"
 )
 }
 \arguments{
+\item{data}{A vector containing sequential Bayes Factors or a list containing multiple vectors.}
+
 \item{sims.df}{A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.}
 
 \item{sims.df.col}{The name of the column of the simulation dataframe to compare to.}
@@ -23,8 +25,6 @@ plotbf(
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 
 \item{label.x}{A character that is used as label for the x-axis ("N" for sum scores, "Trials" for binomial data).}
-
-\item{df}{A vector containing sequential Bayes Factors.}
 }
 \description{
 This function allows to plot a sequential Bayesian analysis.
@@ -37,6 +37,8 @@ Depending on the amount of simulations, drawing might take a while. It might be 
 \examples{
 p.bf <- plotbf(tbl$bf)
 p.bf
+
+plotbf(list(bf1,bf2))
 
 plotbf(tbl$bf, sims.df = sims)
 

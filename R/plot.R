@@ -68,7 +68,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' BFs above 1 indicate evidence towards H1, BFs below 1 indicate evidence towards H0.
 #' Depending on the amount of simulations, drawing might take a while. It might be wise to chose a smaller simulation set for this purpose.
 #'
-#' @param df A vector containing sequential Bayes Factors.
+#' @param data A vector containing sequential Bayes Factors or a list containing multiple vectors.
 #' @param sims.df A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @param color A color in which the Seq BF-function will be drawn.
@@ -78,6 +78,8 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' p.bf <- plotbf(tbl$bf)
 #' p.bf
 #'
+#' plotbf(list(bf1,bf2))
+#' 
 #' plotbf(tbl$bf, sims.df = sims)
 #'
 #' sims1000 <- subset(sims, simid <= 1000)
@@ -85,10 +87,18 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' @export
 
 # Plot Sequential BF
-plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = c(min(data),2*max(data)), label.x = "N"){
+plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N"){
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
+  
+  # Check if data is list
+  if(is.list(data)){
+    coordy <- c(Reduce(min,data),2*Reduce(max,data))
+  }
+  else {
+    coordy <- c(min(data),2*max(data))
+  }
   
   #Set minimum coordinates to 1/10 and 10
   if(coordy[1] > 1/10) coordy[1] <- 1/10
@@ -143,11 +153,25 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   
   p <- ggplot2::ggplot()
   if(!is.null(sims.df)) p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
-  if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
-  p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
-    ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')+
-    ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
-    ggplot2::labs(x=label.x, y = "Evidence (BF)")+
+  #if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+  p <- p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
+    ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
+  if(is.list(data)){
+    df <- NULL
+    for(i in 1:length(data)){
+      ydat <- data[[i]]
+      ndf <- data.frame(element=paste0("id",i),x=1:length(ydat),y=ydat)
+      df <- rbind(df,ndf)
+    }
+    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y, color=element), size=1)+
+      ggplot2::scale_color_brewer(type="qualitative", palette="Set1")
+      if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(df$x)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+    
+  } else {
+    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)
+      if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+  }
+    p + ggplot2::labs(x=label.x, y = "Evidence (BF)")+
     ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
     #ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+
