@@ -130,7 +130,7 @@ fftcreate <- function(data){
 ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE){
   if(var(data[1:3]) == 0) stop("It seems like you specified a vector containing BFs. Please use fftcreate(bf) to Fourier transform first.")
   if(!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
-  if(ceiling(max(sims.df$index/2)) != length(data)) stop("Lengths of FFT data and sims do not match!")
+  if(ceiling(max(sims.df$index/2)) != length(data)) stop("Lengths of FFT data and sims do not match! Consider using simredo()")
   cat(">> FREQUENCY ANALYSIS << \n")
   u.nsims <- length(unique(sims.df$simid))
   data.df <- data.frame(data = data, H = seq_along(data))
@@ -222,10 +222,10 @@ fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "d
 simredo <- function(df, n, rw = TRUE){
   if(n > max(df$index)) stop("Amount of trials (n) is larger than in the provided simulation dataframe!")
   df.new <- subset(df, index <= n)
-  cat("Recalculating BF:\n")
+  cat("Recalculating BF FFT:\n")
   df.new$density.bf <- unlist(pbapply::pbtapply(df.new$bf, df.new$simid, .fftcreatefull, simplify = T))
   if(rw == T) {
-    cat("Recalculating RW:\n")
+    cat("Recalculating RW FFT:\n")
     df.new$density.rw <- unlist(pbapply::pbtapply(df.new$rw, df.new$simid, .fftcreatefull, simplify = T))
   }
   df.new
