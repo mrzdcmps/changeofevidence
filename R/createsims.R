@@ -27,7 +27,9 @@
 #' sims.pseudo <- simcreate(2000, use.files = FALSE)
 #' @export
 
-simcreate <- function(trials, n.sims = 10000, mean.scores = NULL, use.files = TRUE, filespath = "RandomFiles/", parallel = TRUE, nstart = 5, alternative = c("two.sided", "less", "greater"), prior.loc = 0, prior.r = 0.1, p = 0.5){
+simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRUE, filespath = "RandomFiles/", parallel = TRUE, nstart = 5, alternative = c("two.sided", "less", "greater"), prior.loc = 0, prior.r = 0.1, p = 0.5){
+  if(nstart <= 2) stop("Please use a larger nstart. Testing requires a certain amount of variance in the data.")
+  if(nstart <= 5) warning("Consider using a larger nstart. Data aggregation was repeated until the selected data contained variance. Still, this process is not ideal.")
   require(foreach)
   require(doParallel)
   
