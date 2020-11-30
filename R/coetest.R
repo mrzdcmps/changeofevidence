@@ -217,7 +217,7 @@ fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "d
 #' @param n The amount of trials per simulation. Must be smaller than in the original simulation df.
 #' @param rw boolean. Set to TRUE if you also want to recalculate the density of the Random Walk. Needs the colums 'rw' and 'density.rw'.
 #' @examples
-#' sim.new <- simredo(sims, 200, rw=F)
+#' sim.new <- simredo(sims, length(bf.new), rw=F)
 #' @export
 simredo <- function(df, n, rw = TRUE){
   if(n > max(df$index)) stop("Amount of trials (n) is larger than in the provided simulation dataframe!")
