@@ -78,7 +78,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' p.bf <- plotbf(tbl$bf)
 #' p.bf
 #'
-#' plotbf(list(bf1,bf2))
+#' plotbf(list(test1=bf1,test2=bf2))
 #' 
 #' plotbf(tbl$bf, sims.df = sims)
 #'
@@ -89,23 +89,28 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 # Plot Sequential BF
 plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N"){
   library(ggplot2)
-  #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
-  # Check if data is list
-  if(is.list(data)){
-    coordy <- c(Reduce(min,data),2*Reduce(max,data))
-  }
-  else {
-    coordy <- c(min(data),2*max(data))
+  # Set y coordinates
+  if(is.null(coordy)){
+    if(is.list(data)){
+      coordy <- c(Reduce(min,data),2*Reduce(max,data))
+    }
+    else {
+      coordy <- c(min(data),2*max(data))
+    }
   }
   
   #Set minimum coordinates to 1/10 and 10
   if(coordy[1] > 1/10) coordy[1] <- 1/10
   if(coordy[2] < 10) coordy[2] <- 10
   
+  # Show legend?
+  if(is.list(data)) show.legend <- "bottom"
+  else show.legend <- "none"
+  
   # Specify Text annotations
-  annotation <- c("Decisive ~H[1]","paste(\"Very Strong\",~H[1])","Strong ~H[1]","Substantial ~H[1]","Anecdotal ~H[1]","Anecdotal ~H[0]","Substantial ~H[0]","Strong ~H[0]","paste(\"Very Strong\",~H[0])","Decisive ~H[0]")
+  annotation <- c("Decisive ~H[1]","paste(\"Very Strong\",~H[1])","Strong ~H[1]","Moderate ~H[1]","Anecdotal ~H[1]","Anecdotal ~H[0]","Moderate ~H[0]","Strong ~H[0]","paste(\"Very Strong\",~H[0])","Decisive ~H[0]")
   annobreaks <- exp(c(mean(c(log(300),log(100))),mean(c(log(100),log(30))),mean(c(log(30),log(10))),mean(c(log(10),log(3))),mean(c(log(3),log(1))),mean(c(log(1),log(1/3))),mean(c(log(1/3),log(1/10))),mean(c(log(1/10),log(1/30))),mean(c(log(1/30),log(1/100))),mean(c(log(1/100),log(1/300)))))
   
   if(coordy[2] > 96 && coordy[2] < 125){
@@ -153,18 +158,21 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   
   p <- ggplot2::ggplot()
   if(!is.null(sims.df)) p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
-  #if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
   p <- p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
     ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
   if(is.list(data)){
     df <- NULL
     for(i in 1:length(data)){
       ydat <- data[[i]]
-      ndf <- data.frame(element=paste0("id",i),x=1:length(ydat),y=ydat)
+      if(!is.null(names(data))){
+        ndf <- data.frame(element=names(data)[i],x=1:length(ydat),y=ydat)
+      } else{
+        ndf <- data.frame(element=paste0("data ",i),x=1:length(ydat),y=ydat)
+      }
       df <- rbind(df,ndf)
     }
     p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y, color=element), size=1)+
-      ggplot2::scale_color_brewer(type="qualitative", palette="Set1")
+      ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
       if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(df$x)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
     
   } else {
@@ -173,10 +181,9 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   }
     p + ggplot2::labs(x=label.x, y = "Evidence (BF)")+
     ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
-    #ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_bw(base_size = 14)+
-    ggplot2::theme(legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    ggplot2::theme(legend.position = show.legend, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
   
 }
 

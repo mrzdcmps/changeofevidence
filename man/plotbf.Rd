@@ -38,7 +38,7 @@ Depending on the amount of simulations, drawing might take a while. It might be 
 p.bf <- plotbf(tbl$bf)
 p.bf
 
-plotbf(list(bf1,bf2))
+plotbf(list(test1=bf1,test2=bf2))
 
 plotbf(tbl$bf, sims.df = sims)
 
