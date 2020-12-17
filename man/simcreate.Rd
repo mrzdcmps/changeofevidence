@@ -6,7 +6,7 @@
 \usage{
 simcreate(
   trials,
-  n.sims = 10000,
+  n.sims = 1000,
   mean.scores = NULL,
   use.files = TRUE,
   filespath = "RandomFiles/",

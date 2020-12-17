@@ -20,5 +20,5 @@ This function copies the BFs of an already computated simulation dataframe and r
 Computating BFs for monte-carlo-simulations can take a very long time. You can reuse an already calculated simulation-df and cut off the amount of trials per simulation. This function re-calculates only the densities of BF and RW via the Fast Fourier transformation.
 }
 \examples{
-sim.new <- simredo(sims, 200, rw=F)
+sim.new <- simredo(sims, length(bf.new), rw=F)
 }
