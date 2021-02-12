@@ -10,11 +10,12 @@ plotrw(
   sims.df.col = "rw",
   color = "black",
   coordy = c(-absolutemax, absolutemax),
+  mu = 0,
   pparabel = TRUE
 )
 }
 \arguments{
-\item{data}{A vector containing the random walk to be drawn.}
+\item{data}{A vector containing the random walk to be drawn or a list containing multiple vectors.}
 
 \item{sims.df}{A dataframe containing simulations, including column "simid" and "index". Set to NULL if you don't want to display simulations.}
 
@@ -39,6 +40,8 @@ p.rw <- plotrw(tbl$rw)
 p.rw
 
 plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
+
+plotrw(list(exp = exp$rw, con = con$rw))
 
 sims1000 <- subset(sims, simid <= 1000)
 plotrw(tbl, sims.df = sims1000)

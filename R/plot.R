@@ -8,7 +8,7 @@
 #' A random walk typically goes +1 for every correct choice and -1 for every incorrect one.
 #' Depending on the amount of simulations, drawing might take a while. It might be wise to chose a smaller simulation set for this purpose.
 #'
-#' @param data A vector containing the random walk to be drawn.
+#' @param data A vector containing the random walk to be drawn or a list containing multiple vectors.
 #' @param sims.df A dataframe containing simulations, including column "simid" and "index". Set to NULL if you don't want to display simulations.
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @param color A color in which the Random Walk will be drawn.
@@ -19,25 +19,37 @@
 #' p.rw
 #'
 #' plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
+#' 
+#' plotrw(list(exp = exp$rw, con = con$rw))
 #'
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotrw(tbl, sims.df = sims1000)
 #' @export
 
 # Plot Random Walk
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), pparabel = TRUE){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), mu = 0, pparabel = TRUE){
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
+  # Show legend and decide length for pparabel
+  if(is.list(data)){
+    show.legend <- "bottom"
+    nmax <- max(lengths(data))
+    absolutemax <- max(c(max(unlist(data)),abs(min(unlist(data)))))
+    
+  } else{
+    show.legend <- "none"
+    nmax <- length(data)
+    absolutemax <- max(c(max(data),abs(min(data))))
+  }
+  
   # Data for p-parabel
-  p.s <- data.frame(n = 1:length(data))
+  p.s <- data.frame(n = 1:nmax)
   p.s$p.up <- 1.96*(sqrt(as.numeric(rownames(p.s))))
   p.s$p.dn <- -1.96*(sqrt(as.numeric(rownames(p.s))))
   
   xrow <- as.numeric(row.names(p.s))
-  
-  absolutemax <- max(c(max(data),abs(min(data))))
   
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
@@ -49,13 +61,29 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     p <- p + ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", size=1)+
       ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", size=1)
   }
-  p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, size=1)+
-    ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", size=1)+
+  if(is.list(data)){
+    df <- NULL
+    for(i in 1:length(data)){
+      ydat <- data[[i]]
+      if(!is.null(names(data))){
+        ndf <- data.frame(element=names(data)[i],x=1:length(ydat),y=ydat)
+      } else{
+        ndf <- data.frame(element=paste0("data ",i),x=1:length(ydat),y=ydat)
+      }
+      df <- rbind(df,ndf)
+    }
+    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y, color=element), size=1)+
+      ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
+  } else {
+    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, size=1)
+  }
+  
+  p + ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", size=1)+
     ggplot2::labs(x="Trials", y = "Random Walk")+
     ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_bw(base_size = 14)+
-    ggplot2::theme(legend.position = 'none')
+    ggplot2::theme(legend.position = show.legend)
   
 }
 
