@@ -10,8 +10,7 @@ plotrw(
   sims.df.col = "rw",
   color = "black",
   coordy = c(-absolutemax, absolutemax),
-  mu = 0,
-  pparabel = TRUE
+  mu = NULL
 )
 }
 \arguments{
@@ -25,7 +24,7 @@ plotrw(
 
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 
-\item{pparabel}{logical. Should a p-parabel for binomial data be drawn?}
+\item{mu}{If Random Walk is of summed up bits, indicate the expected sum per step.}
 }
 \description{
 This function allows to plot random walks.
@@ -41,7 +40,7 @@ p.rw
 
 plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
 
-plotrw(list(exp = exp$rw, con = con$rw))
+plotrw(list(exp = exp$rw, con = con$rw), mu = 50)
 
 sims1000 <- subset(sims, simid <= 1000)
 plotrw(tbl, sims.df = sims1000)
