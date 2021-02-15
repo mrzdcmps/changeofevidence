@@ -20,14 +20,14 @@
 #'
 #' plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
 #' 
-#' plotrw(list(exp = exp$rw, con = con$rw))
+#' plotrw(list(exp = exp$rw, con = con$rw), mu = 50)
 #'
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotrw(tbl, sims.df = sims1000)
 #' @export
 
 # Plot Random Walk
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), mu = NULL, pparabel = TRUE){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), mu = NULL){
   library(ggplot2)
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
