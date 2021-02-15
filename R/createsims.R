@@ -29,7 +29,10 @@
 
 simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRUE, filespath = "RandomFiles/", parallel = TRUE, nstart = 5, alternative = c("two.sided", "less", "greater"), prior.loc = 0, prior.r = 0.1, p = 0.5){
   if(nstart <= 2) stop("Please use a larger nstart. Testing requires a certain amount of variance in the data.")
-  if(nstart <= 5) warning("Consider using a larger nstart. Data aggregation was repeated until the selected data contained variance. Still, this process is not ideal.")
+  if(nstart < 5) warning("Consider using a larger nstart. Data aggregation was repeated until the selected data contained variance. Still, this process is not ideal.")
+  if(!is.null(mean.scores)){
+    if((trials/mean.scores) - round(trials/mean.scores) != 0) stop("Mean.scores should be a divisor of trials")
+  }
   require(foreach)
   require(doParallel)
   
