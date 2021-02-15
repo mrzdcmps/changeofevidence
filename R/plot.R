@@ -13,7 +13,7 @@
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @param color A color in which the Random Walk will be drawn.
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
-#' @param pparabel logical. Should a p-parabel for binomial data be drawn?
+#' @param mu If Random Walk is of summed up bits, indicate the expected sum per step.
 #' @examples
 #' p.rw <- plotrw(tbl$rw)
 #' p.rw
@@ -27,9 +27,8 @@
 #' @export
 
 # Plot Random Walk
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), mu = 0, pparabel = TRUE){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), mu = NULL, pparabel = TRUE){
   library(ggplot2)
-  #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
   # Show legend and decide length for pparabel
@@ -46,21 +45,25 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   
   # Data for p-parabel
   p.s <- data.frame(n = 1:nmax)
-  p.s$p.up <- 1.96*(sqrt(as.numeric(rownames(p.s))))
-  p.s$p.dn <- -1.96*(sqrt(as.numeric(rownames(p.s))))
-  
+  if(is.null(mu)){
+    p.s$p.up <- 1.96*(sqrt(as.numeric(rownames(p.s))))
+    p.s$p.dn <- -1.96*(sqrt(as.numeric(rownames(p.s))))
+  } else{
+    p.s$p.up <- 1.96*(sqrt(as.numeric(rownames(p.s))*2*mu))/2
+    p.s$p.dn <- -1.96*(sqrt(as.numeric(rownames(p.s))*2*mu))/2
+  }
   xrow <- as.numeric(row.names(p.s))
   
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
-  p <- ggplot2::ggplot()
+  p <- ggplot2::ggplot()+
+    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", size=1)+
+    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", size=1)
+  
   if (!is.null(sims.df)){
     p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
   }
-  if (pparabel == TRUE){
-    p <- p + ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", size=1)+
-      ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", size=1)
-  }
+  
   if(is.list(data)){
     df <- NULL
     for(i in 1:length(data)){
