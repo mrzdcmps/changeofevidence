@@ -145,6 +145,6 @@ bfcor <- function(x, y, nullInterval = 0, prior.r = 0.1, nstart = 5){
   
   orthodoxtest <- cor.test(x, y, use = "complete.obs")
   
-  cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",erg$p.value,")",sep="")
+  cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")",sep="")
   return(bf)
 }
