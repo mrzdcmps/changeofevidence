@@ -120,7 +120,7 @@ bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "gr
 #'
 #' @param x A vector containing continous data.
 #' @param y A second vector containing continous data.
-#' @param nullIntervall optional vector of length 2 containing lower and upper bounds of an interval hypothesis to test, in correlation units
+#' @param alternative specify the direction of the alternative hypothesis: "greater", "less", "two.sided"
 #' @param prior.r Prior distribution (scaled beta)
 #' @param nstart How many data points should be considered before calculating the first BF (min = 2)
 #' @examples
@@ -129,7 +129,12 @@ bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "gr
 
 
 # Binomial Seq BF
-bfcor <- function(x, y, nullInterval = 0, prior.r = 0.1, nstart = 5){
+bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
+  
+  if(alternative == "greater") nullInterval <- c(-1,0)
+  else if(alternative == "less") nullInterval <- c(0,1)
+  else nullInterval <- 0
+  
   require(BayesFactor)
   if (length(y) != length(x)) 
     stop("Length of y and x must be the same.")
@@ -143,7 +148,7 @@ bfcor <- function(x, y, nullInterval = 0, prior.r = 0.1, nstart = 5){
   }
   close(pb)
   
-  orthodoxtest <- cor.test(x, y, use = "complete.obs")
+  orthodoxtest <- cor.test(x, y, use = "complete.obs", alternative = alternative)
   
   cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")",sep="")
   return(bf)
