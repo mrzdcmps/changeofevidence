@@ -69,7 +69,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     for(i in 1:length(data)){
       ydat <- data[[i]]
       if(!is.null(names(data))){
-        ndf <- data.frame(element=names(data)[i],x=1:length(ydat),y=ydat)
+        ndf <- data.frame(element=as.factor(names(data)[i]),x=1:length(ydat),y=ydat)
       } else{
         ndf <- data.frame(element=paste0("data ",i),x=1:length(ydat),y=ydat)
       }
@@ -196,7 +196,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
     for(i in 1:length(data)){
       ydat <- data[[i]]
       if(!is.null(names(data))){
-        ndf <- data.frame(element=names(data)[i],x=1:length(ydat),y=ydat)
+        ndf <- data.frame(element=as.factor(names(data)[i]),x=1:length(ydat),y=ydat)
       } else{
         ndf <- data.frame(element=paste0("data ",i),x=1:length(ydat),y=ydat)
       }
