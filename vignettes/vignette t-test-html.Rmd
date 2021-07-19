@@ -1,10 +1,19 @@
 ---
 title: "Change of Evidence Vignette t-Test"
-output: github_document
+author: "Moritz C. Dechamps"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
 ```
 
 ## Generate Sample Data
@@ -89,3 +98,4 @@ r.con.fft <- ffttest(fft$con, sims.df = sims)
 plotfft(fft$exp, sims.df = sims)
 plotfft(fft$con, sims.df = sims)
 ```
+
