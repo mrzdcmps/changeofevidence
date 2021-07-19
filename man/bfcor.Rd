@@ -4,18 +4,18 @@
 \alias{bfcor}
 \title{Bayesian Sequential Correlation Test}
 \usage{
-bfcor(x, y, nullInterval = 0, prior.r = 0.1, nstart = 5)
+bfcor(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5)
 }
 \arguments{
 \item{x}{A vector containing continous data.}
 
 \item{y}{A second vector containing continous data.}
 
+\item{alternative}{specify the direction of the alternative hypothesis: "greater", "less", "two.sided"}
+
 \item{prior.r}{Prior distribution (scaled beta)}
 
 \item{nstart}{How many data points should be considered before calculating the first BF (min = 2)}
-
-\item{nullIntervall}{optional vector of length 2 containing lower and upper bounds of an interval hypothesis to test, in correlation units}
 }
 \description{
 This function calculates Bayes Factors for the correlation of datasets.
