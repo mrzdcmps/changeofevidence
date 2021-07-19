@@ -77,11 +77,15 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
         sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
         sim <- tapply(sim[,1], sim$group, FUN = sum)
         if(var(sim[1:nstart]) == 0) repeat{ #repeat reading data until variance is not 0 so t-test will work
-          line.start <- sample.int(nrow(simf)-(u.trials),1)
-          line.stop <- line.start+u.trials-1
-          sim <- data.frame(V1=simf[line.start:line.stop,])
-          sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
-          sim <- tapply(sim[,1], sim$group, FUN = sum)
+          if(use.files == TRUE){
+            line.start <- sample.int(nrow(simf)-(u.trials),1)
+            line.stop <- line.start+u.trials-1
+            sim <- data.frame(V1=simf[line.start:line.stop,])
+            sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
+            sim <- tapply(sim[,1], sim$group, FUN = sum)
+          } else {
+            sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
+          }
           if(var(sim[1:nstart]) != 0) break
         }
         sim <- data.frame(sums=sim)
