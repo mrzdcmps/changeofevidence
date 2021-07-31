@@ -17,8 +17,10 @@
 
 
 bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5){
+  data <- na.omit(data)
   require(BayesFactor)
   bf <- rep(1, (nstart-1))
+  cat("N =",length(data),"\n")
   cat("Calculating Sequential Bayes Factors...\n")
   pb = txtProgressBar(min = 3, max = length(data), initial = 3, style = 3)
   for (b in nstart:length(data)){
@@ -68,9 +70,13 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, paired = FALSE, prior.loc = 0, prior.r = 0.1, nstart = 5){
   # calculate t-scores and BFs
   bf <- t <- list()
+  data <- na.omit(data)
+  cat("N =",length(data),"\n")
   cat("Calculating Sequential Bayes Factors...\n")
   pb = txtProgressBar(min = nstart, max = length(data), style = 3)
   if (!is.null(ydata)){
+    ydata <- na.omit(ydata)
+    if (length(ydata) != length(data)) stop("Data are not the same length!")
     if (paired == TRUE) { # Paired Samples Test
       for (i in nstart:length(data)) {
         t[[i]] <- t.test(data[1:i], ydata[1:i], alternative = alternative, paired = T)
@@ -131,6 +137,9 @@ bfttest <- function(data, ydata = NULL, alternative = c("two.sided", "less", "gr
 # Binomial Seq BF
 bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
   
+  x <- na.omit(x)
+  y <- na.omit(y)
+  
   if(alternative == "greater") nullInterval <- c(-1,0)
   else if(alternative == "less") nullInterval <- c(0,1)
   else nullInterval <- 0
@@ -140,6 +149,7 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
     stop("Length of y and x must be the same.")
   
   bf <- rep(1, (nstart-1))
+  cat("N =",length(data),"\n")
   cat("Calculating Sequential Bayes Factors...\n")
   pb = txtProgressBar(min = nstart, max = length(x), initial = nstart, style = 3)
   for (b in nstart:length(x)){
