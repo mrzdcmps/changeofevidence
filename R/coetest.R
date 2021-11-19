@@ -19,8 +19,8 @@ maxbf <- function(data, sims.df=sims){
   u.nsims <- length(unique(sims.df$simid))
   sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm=TRUE)
   cat("Highest BF:",max(data),"( at N =",which.max(data),") \n")
-  cat("Sims with higher BFs:",(sum(sim.maxbf > max(data))/u.nsims)*100,"% \n")
-  maxbf.out <- list("MaxBF" = max(data), "MaxBF (N)" = which.max(data), "Sims with higher BFs" = (sum(sim.maxbf > max(data))/u.nsims))
+  cat("Sims with this or a higher BFs:",(sum(sim.maxbf >= max(data))/u.nsims)*100,"% \n")
+  maxbf.out <- list("MaxBF" = max(data), "MaxBF (N)" = which.max(data), "Sims with this or higher BFs" = (sum(sim.maxbf >= max(data))/u.nsims))
   return(maxbf.out)
 }
 
@@ -66,8 +66,8 @@ energybf <- function(data, sims.df=sims){
   
   cat("\n Energy of BF of data: ",real.energy,"\n")
   cat("Sims Energy: M =",mean(sim.energy),", SD =",sd(sim.energy),"\n")
-  cat("Sims with higher Energy:",(sum(sim.energy > real.energy)/u.nsims)*100,"% \n")
-  energybf.out <- list("Energy" = real.energy, "Simenergy (M)" = mean(sim.energy), "Simenergy (SD)" = sd(sim.energy), "Sims with more energy" = (sum(sim.energy > real.energy)/u.nsims))
+  cat("Sims with this or higher Energy:",(sum(sim.energy >= real.energy)/u.nsims)*100,"% \n")
+  energybf.out <- list("Energy" = real.energy, "Simenergy (M)" = mean(sim.energy), "Simenergy (SD)" = sd(sim.energy), "Sims with this or higher energy" = (sum(sim.energy >= real.energy)/u.nsims))
   return(energybf.out)
 }
 
@@ -152,11 +152,11 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FAL
   }
   cat("Sum of Amplitudes:",ampsum,"\n")
   cat("Sims Amplitude Sums: M =",mean(simampsum),"SD =",sd(simampsum),"\n")
-  cat("Simulations with higher amplitude sum:",sum(ampsum < simampsum),"(",(sum(ampsum < simampsum)/u.nsims)*100,"% )\n")
+  cat("Simulations with this or higher amplitude sum:",(sum(ampsum <= simampsum)/u.nsims)*100,"% \n")
   if(top5 == TRUE){
   fftbf.out <- list("FFTComparison" = list.HB, "Frequencies above 95% of Sims" = sum(list.HB$LowerSims > 0.95)/length(data), "Amplitude sum" = ampsum, "Sims with higher Ampsum" = sum(ampsum < simampsum)/u.nsims, "Sim Ampsum (M)" = mean(simampsum), "Sim Ampsum (SD)" = sd(simampsum))
   } else {
-  fftbf.out <- list("Amplitude sum" = ampsum, "Sims with higher Ampsum" = sum(ampsum < simampsum)/u.nsims, "Sim Ampsum (M)" = mean(simampsum), "Sim Ampsum (SD)" = sd(simampsum))
+  fftbf.out <- list("Amplitude sum" = ampsum, "Sims with this or higher Ampsum" = sum(ampsum <= simampsum)/u.nsims, "Sim Ampsum (M)" = mean(simampsum), "Sim Ampsum (SD)" = sd(simampsum))
   }  
   return(fftbf.out)
 }
