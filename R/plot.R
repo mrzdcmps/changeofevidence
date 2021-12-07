@@ -141,7 +141,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   else show.legend <- "none"
   
   # Specify Text annotations
-  annotation <- c("Decisive ~H[1]","paste(\"Very Strong\",~H[1])","Strong ~H[1]","Moderate ~H[1]","Anecdotal ~H[1]","Anecdotal ~H[0]","Moderate ~H[0]","Strong ~H[0]","paste(\"Very Strong\",~H[0])","Decisive ~H[0]")
+  annotation <- c("Extreme ~H[1]","paste(\"Very Strong\",~H[1])","Strong ~H[1]","Moderate ~H[1]","Anecdotal ~H[1]","Anecdotal ~H[0]","Moderate ~H[0]","Strong ~H[0]","paste(\"Very Strong\",~H[0])","Extreme ~H[0]")
   annobreaks <- exp(c(mean(c(log(300),log(100))),mean(c(log(100),log(30))),mean(c(log(30),log(10))),mean(c(log(10),log(3))),mean(c(log(3),log(1))),mean(c(log(1),log(1/3))),mean(c(log(1/3),log(1/10))),mean(c(log(1/10),log(1/30))),mean(c(log(1/30),log(1/100))),mean(c(log(1/100),log(1/300)))))
   
   if(coordy[2] > 96 && coordy[2] < 125){
@@ -177,7 +177,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
     breaks = c(1000000,100000,10000,1000,100,10,1,1/10,1/100,1/1000,1/10000,1/100000,1/1000000)
     labels = c("1,000,000","100,000","10,000","1,000","100","10","1","1/10","1/100","1/1,000","1/10,000","1/100,000","1/1,000,000")
     #annotation = annotation[c(1,3,5,6,8,10)]
-    #annobreaks = exp(c(mean(c(log(1000),log(100))),mean(c(log(100),log(10))),mean(c(log(10),log(1))),mean(c(log(1),log(1/10))),mean(c(log(1/10),log(1/100))),mean(c(log(1/100),log(1/1000)))))
+    #annobreaks = exp(c(mean(c(log(300),log(100))),mean(c(log(100),log(30))),mean(c(log(30),log(10))),mean(c(log(10),log(3))),mean(c(log(3),log(1))),mean(c(log(1),log(1/3))),mean(c(log(1/3),log(1/10))),mean(c(log(1/10),log(1/30))),mean(c(log(1/30),log(1/100))),mean(c(log(1/100),log(1/300)))))
   } else {
     breaks = c(1e+12,1e+10,1e+8,1e+6,1e+4,1e+2,1,1/1e+2,1/1e+4,1/1e+6,1/1e+8,1/1e+10,1/1e+12)
     labels = c("1e+12","1e+10","1e+8","1e+6","1e+4","1e+2","1","1/1e+2","1/1e+4","1/1e+6","1/1e+8","1/1e+10","1/1e+12")
