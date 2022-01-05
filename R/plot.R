@@ -55,7 +55,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     p.s$p.up <- 1.96*(sqrt(as.numeric(rownames(p.s))*2*mu))/2
     p.s$p.dn <- -1.96*(sqrt(as.numeric(rownames(p.s))*2*mu))/2
   }
-  xrow <- as.numeric(row.names(p.s))
+  xrow <- as.numeric(p.s$n)
   
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
