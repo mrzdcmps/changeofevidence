@@ -43,8 +43,11 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     absolutemax <- max(c(max(data),abs(min(data))))
   }
   
+  # Add data point "0" at the beginning
+  data <- c(0,data)
+  
   # Data for p-parabel
-  p.s <- data.frame(n = 1:nmax)
+  p.s <- data.frame(n = 0:nmax)
   if(is.null(mu)){
     p.s$p.up <- 1.96*(sqrt(as.numeric(rownames(p.s))))
     p.s$p.dn <- -1.96*(sqrt(as.numeric(rownames(p.s))))
