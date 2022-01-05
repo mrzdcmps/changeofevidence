@@ -19,12 +19,15 @@
 bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5){
   data <- na.omit(data)
   if(length(data) < nstart) stop("Too few observations.")
+  if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
+  if(nstart < 0) stop("nstart must be positive!")
+  if(all.equal(inc, as.integer(inc)) != TRUE) stop("inc must be an integer!")
   
   require(BayesFactor)
   bf <- rep(1, (nstart-1))
   cat("N =",length(data),"\n")
   cat("Calculating Sequential Bayes Factors...\n")
-  pb = txtProgressBar(min = 3, max = length(data), initial = 3, style = 3)
+  pb = txtProgressBar(min = nstart, max = length(data), initial = nstart, style = 3)
   for (b in nstart:length(data)){
     if(!is.null(nullInterval)){
       tmpbfs <- proportionBF(sum(data[1:b]), b, p = p, rscale = prior.r, nullInterval = nullInterval)
@@ -37,8 +40,8 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
   close(pb)
   
   if(is.null(nullInterval)) txt.alternative = "two.sided"
-  if(0 %in% nullInterval) txt.alternative = "greater"
-  if(1 %in% nullInterval) txt.alternative = "less"
+  if(0 %in% nullInterval) txt.alternative = "less"
+  if(1 %in% nullInterval) txt.alternative = "greater"
   orthodoxtest <- binom.test(sum(data),length(data),p = p, alternative = txt.alternative)
   
   cat("Final Bayes Factor: ",tail(bf,n=1)," (probability of success=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")",sep="")
