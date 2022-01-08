@@ -50,8 +50,8 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
     registerDoParallel(cl)
     
     if(use.files == TRUE){ # Use .txt files from folder
-      rfiles <- list.files(filespath, full.names = TRUE)
-      if (length(rfiles) == 0) stop("No random files found! Did you specify the correct folder?")
+      rfiles <- list.files(filespath, full.names = TRUE, pattern="*.txt")
+      if (length(rfiles) == 0) stop("No random files found! Did you specify the correct folder? Did you provide .txt-Files?")
       if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
     }
     
@@ -149,8 +149,8 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
     for(i in 1:n.sims){
       cat("Sim",i,"of",n.sims,"\n")
       if(use.files == TRUE){
-        rfiles <- list.files(filespath, full.names = TRUE)
-        if (length(rfiles) == 0) stop("No random files found! Did you specify the correct folder?")
+        rfiles <- list.files(filespath, full.names = TRUE, pattern="*.txt")
+        if (length(rfiles) == 0) stop("No random files found! Did you specify the correct folder? Did you provide .txt-Files?")
         if (length(rfiles) < n.sims) stop("Number of simulations is larger than amount of random files!")
       
         simf <- read.table(rfiles[i])
