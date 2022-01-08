@@ -19,7 +19,7 @@
 #' @param alternative Set parameter for Bayesian testing (t-Test).
 #' @param prior.loc Set parameter for Bayesian testing (t-Test).
 #' @param prior.r Set parameter for Bayesian testing.
-#' @param p Set parameter for Bayesian testing (Binomial).
+#' @param p Set parameter for Bayesian testing (Binomial) or data generation for probabilities of success other than 0.5.
 #' @return A dataframe with trials*nsims rows containing the columns "simid","index","rw","density.rw","bf" and "density.bf".
 #' @examples
 #' sims <- simcreate(100)
@@ -34,6 +34,8 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
   if(!is.null(mean.scores)){
     if((trials/mean.scores) - round(trials/mean.scores) != 0) stop("Mean.scores should be a divisor of trials")
   }
+  maxbit <- (1/p)-1
+  
   require(foreach)
   require(doParallel)
   
@@ -63,6 +65,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
         
         simf <- read.table(rfiles[i])
         if(trials > nrow(simf)) stop("Number of trials is larger than amount of random bits per file!")
+        if(trials == nrow(simf)) sim <- data.frame(V1=simf)
         if(trials < nrow(simf)){
           line.start <- sample.int(nrow(simf)-(u.trials),1)
           line.stop <- line.start+u.trials-1
@@ -79,24 +82,28 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
           #} else stop("Could not create random bits from QRNG. Is the device connected? Consider using use.quantis = FALSE.")
           stop("Please use parallel = FALSE when generating fresh Quantis numbers.")
         } else { # psuedo RNG
-          sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
+          sim <- data.frame(V1=rbinom(u.trials, 1, p))
         }
         
       }
       
       if(!is.null(mean.scores)){
-        # sum up bits
-        sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
+        # group bits
+        sim$group = rep(1:(nrow(sim)/(mean.scores*(1/p))), each=mean.scores*(1/p))
+        # 0 is winner (1), rest is loser (0) for cases where there are more than 2 bits (p != 0.5)
+        if(p != 0.5) sim[,1] <- ifelse(sim[,1] == 0, 1, 0)
+        #sum up bits
         sim <- tapply(sim[,1], sim$group, FUN = sum)
         if(var(sim[1:nstart]) == 0) repeat{ #repeat reading data until variance is not 0 so t-test will work
           if(use.files == TRUE){
+            if(trials == nrow(simf)) stop("Not enough variance in data. Use larger simfiles.")
             line.start <- sample.int(nrow(simf)-(u.trials),1)
             line.stop <- line.start+u.trials-1
             sim <- data.frame(V1=simf[line.start:line.stop,])
-            sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
+            sim$group = rep(1:(nrow(sim)/(mean.scores*(1/p))), each=mean.scores*(1/p))
             sim <- tapply(sim[,1], sim$group, FUN = sum)
           } else {
-            sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
+            sim <- data.frame(V1=rbinom(u.trials, 1, p))
           }
           if(var(sim[1:nstart]) != 0) break
         }
@@ -148,6 +155,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
       
         simf <- read.table(rfiles[i])
         if(trials > nrow(simf)) stop("Number of trials is larger than amount of random bits per file!")
+        if(trials == nrow(simf)) sim <- data.frame(V1=simf)
         if(trials < nrow(simf)){
           line.start <- sample.int(nrow(simf)-(u.trials),1)
           line.stop <- line.start+u.trials-1
@@ -158,25 +166,28 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
         
         if(use.quantis == TRUE){ # quantis QRNG
           if("tmp.txt" %in% list.files()) unlink("tmp.txt")
-          system(paste0('EasyQuantis -u 0 -n ',u.trials,' --min 0 --max 1 -i "tmp.txt"'))
+          system(paste0('EasyQuantis -u 0 -n ',u.trials,' --min 0 --max ',maxbit,' -i "tmp.txt"'))
           if("tmp.txt" %in% list.files()) {
             sim <- read.table("tmp.txt")
           } else stop("Could not create random bits from QRNG. Is the device connected? Consider using use.quantis = FALSE.")
         } else { # psuedo RNG
-          sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
+          sim <- data.frame(V1=rbinom(u.trials, 1, p))
         }
         
       }
     
       if(!is.null(mean.scores)){
-        # sum up bits
-        sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
-        sim <- tapply(sim[,1], sim$group, FUN = sum)
+        # group bits
+        sim$group = rep(1:(nrow(sim)/(mean.scores*(1/p))), each=mean.scores*(1/p))
+        # 0 is winner (1), rest is loser (0) for cases where there are more than 2 bits (p != 0.5)
+        if(p != 0.5) sim[,1] <- ifelse(sim[,1] == 0, 1, 0)
+        #sum up bits
         if(var(sim[1:nstart]) == 0) repeat{ #repeat reading data until variance is not 0 so t-test will work
+          if(trials == nrow(simf)) stop("Not enough variance in data. Use larger simfiles.")
           line.start <- sample.int(nrow(simf)-(u.trials),1)
           line.stop <- line.start+u.trials-1
           sim <- data.frame(V1=simf[line.start:line.stop,])
-          sim$group = rep(1:(nrow(sim)/(mean.scores*2)), each=mean.scores*2)
+          sim$group = rep(1:(nrow(sim)/(mean.scores*(1/p))), each=mean.scores*(1/p))
           sim <- tapply(sim[,1], sim$group, FUN = sum)
           if(var(sim[1:nstart]) != 0) break
         }

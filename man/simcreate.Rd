@@ -42,7 +42,7 @@ simcreate(
 
 \item{prior.r}{Set parameter for Bayesian testing.}
 
-\item{p}{Set parameter for Bayesian testing (Binomial).}
+\item{p}{Set parameter for Bayesian testing (Binomial) or data generation for probabilities of success other than 0.5.}
 }
 \value{
 A dataframe with trials*nsims rows containing the columns "simid","index","rw","density.rw","bf" and "density.bf".
