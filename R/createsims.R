@@ -72,11 +72,12 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
       } else { # fresh numbers
         
         if(use.quantis == TRUE){ # quantis QRNG
-          if("tmp.txt" %in% list.files()) unlink("tmp.txt")
-          system(paste0('EasyQuantis -u 0 -n ',u.trials,' --min 0 --max 1 -i "tmp.txt"'))
-          if("tmp.txt" %in% list.files()) {
-            sim <- read.table("tmp.txt")
-          } else stop("Could not create random bits from QRNG. Is the device connected? Consider using use.quantis = FALSE.")
+          #if("tmp.txt" %in% list.files()) unlink("tmp.txt")
+          #system(paste0('EasyQuantis -u 0 -n ',u.trials,' --min 0 --max 1 -i "tmp.txt"'))
+          #if("tmp.txt" %in% list.files()) {
+          #  sim <- read.table("tmp.txt")
+          #} else stop("Could not create random bits from QRNG. Is the device connected? Consider using use.quantis = FALSE.")
+          stop("Please use parallel = FALSE when generating fresh Quantis numbers.")
         } else { # psuedo RNG
           sim <- data.frame(V1=rbinom(u.trials, 1, 0.5))
         }
