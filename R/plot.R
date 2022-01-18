@@ -32,19 +32,22 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
   # Show legend and decide length for pparabel
+  # Add data point "0" at the beginning
   if(is.list(data)){
     show.legend <- "bottom"
     nmax <- max(lengths(data))
     absolutemax <- max(c(max(unlist(data)),abs(min(unlist(data)))))
+    for (i in 1:length(data)){
+      data[[i]] <- c(0,data[[i]])
+    }
     
   } else{
     show.legend <- "none"
     nmax <- length(data)
     absolutemax <- max(c(max(data),abs(min(data))))
+    data <- c(0,data)
   }
   
-  # Add data point "0" at the beginning
-  data <- c(0,data)
   
   # Data for p-parabel
   p.s <- data.frame(n = 0:nmax)
@@ -78,10 +81,10 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
       }
       df <- rbind(df,ndf)
     }
-    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y, color=element), size=1)+
+    p <- p + ggplot2::geom_line(data=df, aes(x=x-1, y=y, color=element), size=1)+
       ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
   } else {
-    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, size=1)
+    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow-1, y=data), color=color, size=1)
   }
   
   p + ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", size=1)+
