@@ -84,7 +84,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     p <- p + ggplot2::geom_line(data=df, aes(x=x-1, y=y, color=element), size=1)+
       ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
   } else {
-    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow-1, y=data), color=color, size=1)
+    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, size=1)
   }
   
   p + ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", size=1)+
