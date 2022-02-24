@@ -5,26 +5,29 @@
 \title{Bayesian Sequential t-Test}
 \usage{
 bfttest(
-  data,
-  ydata = NULL,
+  x = NULL,
+  y = NULL,
+  formula = NULL,
+  data = NULL,
   alternative = c("two.sided", "less", "greater"),
   mu = 0,
-  paired = FALSE,
   prior.loc = 0,
   prior.r = 0.1,
   nstart = 5
 )
 }
 \arguments{
-\item{data}{A vector containing data values.}
+\item{x}{A vector containing data values.}
 
-\item{ydata}{A vector containing another set of values for a paired samples test (independent samples are currently not supported). Please indicate with paired = TRUE.}
+\item{y}{A vector containing another set of values for a paired samples test.}
+
+\item{formula}{A formula of the form var ~ group where var is a numeric variable giving the data values and group is indicating which group the data point belongs to (must be 2 levels). Use this for an independent samples t-Test.}
+
+\item{data}{Use with formula. A data frame containing the variables given in the formula. Use this for an independent samples t-Test.}
 
 \item{alternative}{Indicates the direction of the alternative hypothesis: two.sided, less, or greater}
 
 \item{mu}{A number indicating the true value of the mean (or difference in means if you are performing a two sample test).}
-
-\item{paired}{Logical. Set TRUE if you want to perform a paired samples t-Test.}
 
 \item{prior.loc}{Location of the cauchy distributed prior function (use 0 for an uninformed prior).}
 
@@ -42,7 +45,11 @@ The function first calculates t-scores and p-values and subsequently uses the BF
 Returns a list of t-scores ($t-value), p-scores ($p-value), and BF ($BF)
 }
 \examples{
-bflist <- bfttest(sumscores, alternative = "greater")
+bfttest(sumscores, alternative = "greater") # One-sample
 
 tbl$bf <- bfttest(tbl$sums, alternative = "two.sided", mu = 50, nstart = 10, prior.loc = 0.1, prior.r = 0.05)$BF
+
+bfttest(formula = raw~group, data = df) # Independent samples
+
+bfttest(df1$scores, df2$scores) # Paired samples
 }
