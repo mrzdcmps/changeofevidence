@@ -89,7 +89,14 @@ bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative =
   if (!is.null(formula)){ #Independent Samples
     if(!is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     if(is.null(data)) stop("Please specify data.")
-    if(length(unique(data[,deparse(formula[[3]])])) != 2) stop("Group must have 2 levels.")
+    
+    if(is.data.frame(data[,deparse(formula[[3]])])){
+      if(length(unique(unlist(data[,deparse(formula[[3]])], use.names = FALSE))) != 2) stop("Group must have 2 levels.")
+    }
+    else{
+      if(length(unique(data[,deparse(formula[[3]])])) != 2) stop("Group must have 2 levels.")
+    }
+    
     type <- "independent" 
     samplesize <- nrow(data)
     
