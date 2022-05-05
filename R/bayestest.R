@@ -78,6 +78,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 #' @export
 
 bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = 5){
+  if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
   # calculate t-scores and BFs
   bf <- t <- list()
   
@@ -90,22 +91,29 @@ bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative =
     if(!is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     if(is.null(data)) stop("Please specify data.")
     
-    if(is.data.frame(data[,deparse(formula[[3]])])){
-      if(length(unique(unlist(data[,deparse(formula[[3]])], use.names = FALSE))) != 2) stop("Group must have 2 levels.")
-    }
-    else{
-      if(length(unique(data[,deparse(formula[[3]])])) != 2) stop("Group must have 2 levels.")
-    }
+    if(is.data.frame(data[,deparse(formula[[3]])])) testdata <- unlist(data[,deparse(formula[[3]])], use.names = FALSE)
+    else testdata <- data[,deparse(formula[[3]])]
+    
+    if(length(unique(testdata)) != 2) stop("Group must have 2 levels.")
     
     type <- "independent" 
     samplesize <- nrow(data)
     
     cat("Independent Samples test (N = ",nrow(data),")\nCalculating Sequential Bayes Factors...\n",sep="")
+    # Ensure there are 2 groups present when considering nstart observations
+    if(length(unique(testdata[1:nstart])) < 2) repeat{
+      nstart <- nstart+1
+      if(length(unique(testdata[1:nstart])) == 2){
+        cat("First observation with two groups found at N =",nstart)
+        break
+      }
+    }
+    
     pb = txtProgressBar(min = nstart, max = nrow(data), style = 3)
     for (i in nstart:nrow(data)) {
       t[[i]] <- t.test(formula=formula, data=data[1:i,], alternative = alternative, paired=F, var.equal=TRUE)
-      n1 <- table(data[1:i,deparse(formula[[3]])])[1]
-      n2 <- table(data[1:i,deparse(formula[[3]])])[2]
+      n1 <- table(testdata[1:i])[1]
+      n2 <- table(testdata[1:i])[2]
       bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = n1, n2 = n2, independentSamples = T, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
       setTxtProgressBar(pb,i)
     }
