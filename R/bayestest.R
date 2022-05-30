@@ -21,7 +21,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
   if(length(data) < nstart) stop("Too few observations.")
   if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
   if(nstart < 0) stop("nstart must be positive!")
-  if(all.equal(inc, as.integer(inc)) != TRUE) stop("inc must be an integer!")
+  #if(all.equal(inc, as.integer(inc)) != TRUE) stop("inc must be an integer!")
   
   require(BayesFactor)
   bf <- rep(1, (nstart-1))
