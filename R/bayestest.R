@@ -203,7 +203,7 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
     stop("Length of y and x must be the same.")
   
   bf <- rep(1, (nstart-1))
-  cat("N =",length(data),"\n")
+  cat("N =",length(x),"\n")
   cat("Calculating Sequential Bayes Factors...\n")
   pb = txtProgressBar(min = nstart, max = length(x), initial = nstart, style = 3)
   for (b in nstart:length(x)){
@@ -214,6 +214,6 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
   
   orthodoxtest <- cor.test(x, y, use = "complete.obs", alternative = alternative)
   
-  cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")",sep="")
+  cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")\n",sep="")
   return(bf)
 }
