@@ -297,7 +297,7 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
 #' @export
 
 plotrobust <- function(data, color="cornflowerblue"){
-  
+  library(ggplot2)
   ggplot(data=data$BFMatrix)+
     geom_tile(aes(x=prior.loc,y=prior.r,fill=bf))+
     scale_fill_gradient(low = "white", high = "cornflowerblue") +
