@@ -65,7 +65,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 #' @param alternative Indicates the direction of the alternative hypothesis: two.sided, less, or greater
 #' @param mu A number indicating the true value of the mean (or difference in means if you are performing a two sample test).
 #' @param prior.loc Location of the cauchy distributed prior function (use 0 for an uninformed prior).
-#' @param prior.r Scale of thr cauchy distributed prior function.
+#' @param prior.r Scale of the cauchy distributed prior function.
 #' @param nstart How many data points should be considered before calculating the first BF (min = 2).
 #' @examples
 #' bfttest(sumscores, alternative = "greater") # One-sample
@@ -217,3 +217,95 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
   cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")\n",sep="")
   return(bf)
 }
+
+
+#' Robustness Analysis for Bayesian Sequential t-Test
+#'
+#' This function compares Bayes Factors of different priors. Returns a list containing BFMatrix, a data frame comprising the Bayes Factors of all possible combinations of the prior parameters (prior.location and prior.width)
+#' Can be plotted with plotrobust().
+#'
+#'
+#' @param x A vector containing data values.
+#' @param y A vector containing another set of values for a paired samples test.
+#' @param formula A formula of the form var ~ group where var is a numeric variable giving the data values and group is indicating which group the data point belongs to (must be 2 levels). Use this for an independent samples t-Test.
+#' @param data Use with formula. A data frame containing the variables given in the formula. Use this for an independent samples t-Test.
+#' @param alternative Indicates the direction of the alternative hypothesis: two.sided, less, or greater
+#' @param mu A number indicating the true value of the mean (or difference in means if you are performing a two sample test).
+#' @param prior.loc Range of locations of the cauchy distributed prior function.
+#' @param prior.r Range of scales of the cauchy distributed prior function.
+#' @examples
+#' bfttestRobustness(sumscores, alternative = "greater") # One-sample
+#' @export
+
+bfttestRobustness <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = seq(0.05,1,0.05), prior.r = seq(0.05,1,0.05)){
+  
+  if(length(alternative) > 1){
+    warning("No alternative specified. Using a two-sided alternative.")
+    alternative <- alternative[1]
+  }
+  
+  if(alternative == "two.sided") aa <- 1
+  else if(alternative == "greater") aa <- 2
+  else if(alternative == "less") aa <- 3
+  
+  if (!is.null(formula)){ #Independent Samples
+    if(!is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
+    if(is.null(data)) stop("Please specify data.")
+    
+    if(is.data.frame(data[,deparse(formula[[3]])])) testdata <- unlist(data[,deparse(formula[[3]])], use.names = FALSE)
+    else testdata <- data[,deparse(formula[[3]])]
+    
+    if(length(unique(testdata)) != 2) stop("Group must have 2 levels.")
+    
+    type <- "independent" 
+    samplesize <- nrow(data)
+    
+    cat("Independent Samples test (N = ",nrow(data),")\n",sep="")
+    
+    t <- t.test(formula=formula, data=data, alternative = alternative, paired=F, var.equal=TRUE)
+    n1 <- table(testdata)[1]
+    n2 <- table(testdata)[2]
+    
+    grid <- expand.grid(prior.loc, prior.r)
+    grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t[[1]], n1 = n1, n2 = n2, independentSamples = T, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
+    
+  } else {
+    if(is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
+    x <- na.omit(x)
+    
+    if (!is.null(y)){ # Paired Samples Test
+      y <- na.omit(y)
+      if (length(y) != length(x)) stop("Data are not the same length!")
+      type <- "paired"
+      samplesize <- length(x)
+      
+      cat("Paired Samples test (N = ",length(x),")",sep="")
+      
+      t <- t.test(x, y, alternative = alternative, paired = T, var.equal=TRUE)
+      
+      grid <- expand.grid(prior.loc, prior.r)
+      grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t[[1]], n1 = length(x), independentSamples = F, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
+      
+    } else { # One Sample Test
+      #if(var(x[1:nstart]) == 0) stop("Cannot compute t-Test since there is no variance in the data. Please choose a larger nstart!")
+      type <- "one-sample"
+      samplesize <- length(x)
+      
+      cat("One Sample test (N = ",length(x),")",sep="")
+      t <- t.test(x, alternative = alternative, mu = mu)
+      
+      grid <- expand.grid(prior.loc, prior.r)
+      grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t[[1]], n1 = length(x), prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
+    }
+  }
+  
+  names(grid)[1] <- "prior.loc"
+  names(grid)[2] <- "prior.r"
+  
+  bft.out <- list("BFMatrix" = grid, "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
+  cat("Highest BF = ", round(max(grid$bf),2), " with prior: Cauchy(",grid$prior.loc[grid$bf==max(grid$bf)],", ",grid$prior.r[grid$bf==max(grid$bf)],")", sep="")
+  return(bft.out)
+  
+}
+
+

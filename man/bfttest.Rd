@@ -31,7 +31,7 @@ bfttest(
 
 \item{prior.loc}{Location of the cauchy distributed prior function (use 0 for an uninformed prior).}
 
-\item{prior.r}{Scale of thr cauchy distributed prior function.}
+\item{prior.r}{Scale of the cauchy distributed prior function.}
 
 \item{nstart}{How many data points should be considered before calculating the first BF (min = 2).}
 }
