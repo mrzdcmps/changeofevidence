@@ -8,7 +8,7 @@
 #'
 #' @param data A vector containing binary data.
 #' @param p Probability of one result.
-#' @param prior.r The r of the Prior Cauchy distribution.
+#' @param prior.r The r of the prior distribution.
 #' @param nullInterval Optional vector of length 2 containing lower and upper bounds of an interval hypothesis to test, in probability units.
 #' @param nstart How many data points should be considered before calculating the first BF (min = 2)
 #' @examples
@@ -17,14 +17,15 @@
 
 
 bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5){
+  
   data <- na.omit(data)
   if(length(data) < nstart) stop("Too few observations.")
   if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
   if(nstart < 0) stop("nstart must be positive!")
-  #if(all.equal(inc, as.integer(inc)) != TRUE) stop("inc must be an integer!")
   
   require(BayesFactor)
   bf <- rep(1, (nstart-1))
+  
   cat("N =",length(data),"\n")
   cat("Calculating Sequential Bayes Factors...\n")
   pb = txtProgressBar(min = nstart, max = length(data), initial = nstart, style = 3)
@@ -39,13 +40,24 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
   }
   close(pb)
   
-  if(is.null(nullInterval)) txt.alternative = "two.sided"
-  if(0 %in% nullInterval) txt.alternative = "less"
-  if(1 %in% nullInterval) txt.alternative = "greater"
+  if(is.null(nullInterval)) txt.alternative <- "two.sided"
+  if(0 %in% nullInterval) txt.alternative <- "less"
+  if(1 %in% nullInterval) txt.alternative <- "greater"
+  
   orthodoxtest <- binom.test(sum(data),length(data),p = p, alternative = txt.alternative)
   
+  bf.out <- list("probability of success" = orthodoxtest$estimate, 
+                  "p-value" = orthodoxtest$p.value, 
+                  "BF" = bf, 
+                  "test type" = "binomial", 
+                  "prior" = list("Logistic", "prior location" = 0, "prior scale" = prior.r), 
+                  "sample size" = length(data), 
+                  "alternative" = txt.alternative)
+  
   cat("Final Bayes Factor: ",tail(bf,n=1)," (probability of success=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")",sep="")
-  return(bf)
+  
+  class(bf.out) <- "seqbf"
+  return(bf.out)
 }
 
 
@@ -270,7 +282,7 @@ bfRobustness <- function(x = NULL, prior.loc = seq(0.05,1,0.05), prior.r = seq(0
 
   cat("Highest BF = ", round(max(grid$bf),2), " with prior: Cauchy(",grid$prior.loc[grid$bf==max(grid$bf)],", ",grid$prior.r[grid$bf==max(grid$bf)],")", sep="")
   
-  class(bft.out) <- "bfttestRobustness"
+  class(bft.out) <- "bfRobustness"
   return(bft.out)
   
 }
