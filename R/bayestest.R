@@ -17,7 +17,6 @@
 
 
 bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5){
-  
   data <- na.omit(data)
   if(length(data) < nstart) stop("Too few observations.")
   if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")

@@ -11,7 +11,7 @@ bfbinom(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5)
 
 \item{p}{Probability of one result.}
 
-\item{prior.r}{The r of the Prior Cauchy distribution.}
+\item{prior.r}{The r of the prior distribution.}
 
 \item{nullInterval}{Optional vector of length 2 containing lower and upper bounds of an interval hypothesis to test, in probability units.}
 
