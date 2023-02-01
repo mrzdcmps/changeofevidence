@@ -288,7 +288,7 @@ bfRobustness <- function(x = NULL, prior.loc = seq(0.05,1,0.05), prior.r = seq(0
 
 
 #' @export
-#' @method print SeqBF
+#' @method print seqbf
 print.seqbf <- function(x, ...) {
     
     cat(paste0("

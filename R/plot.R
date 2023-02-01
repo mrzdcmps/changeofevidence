@@ -326,6 +326,6 @@ plotrobust <- function(data, color="cornflowerblue"){
 }
 
 #' @export
-plot.bfttestRobustness <- function(data, ...) {
+plot.bfRobustness <- function(data, ...) {
   suppressWarnings(plotrobust(data, ...))
 }
