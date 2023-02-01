@@ -14,7 +14,7 @@ plotbf(
 )
 }
 \arguments{
-\item{data}{A vector containing sequential Bayes Factors or a list containing multiple vectors.}
+\item{data}{A seqbf object or a vector containing sequential Bayes Factors or a list containing multiple vectors.}
 
 \item{sims.df}{A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.}
 
@@ -35,6 +35,9 @@ BFs above 1 indicate evidence towards H1, BFs below 1 indicate evidence towards 
 Depending on the amount of simulations, drawing might take a while. It might be wise to chose a smaller simulation set for this purpose.
 }
 \examples{
+
+plot(seqbf)
+
 p.bf <- plotbf(tbl$bf)
 p.bf
 

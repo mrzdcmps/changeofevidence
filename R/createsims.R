@@ -233,6 +233,6 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
     sim.out <- dplyr::bind_rows(sim.out)
   }
   
-  class(sim.out) <- "COE.simulation"
+  #class(sim.out) <- "COE.simulation"
   return(sim.out)
 }

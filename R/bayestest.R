@@ -97,7 +97,7 @@ bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative =
     if(length(unique(testdata)) != 2) stop("Group must have 2 levels.")
     
     type <- "independent" 
-    samplesize <- nrow(data)
+    samplesize <- c(table(testdata)[1],table(testdata)[2])
     
     cat("Independent Samples test (N = ",nrow(data),")\nCalculating Sequential Bayes Factors...\n",sep="")
     # Ensure there are 2 groups present when considering nstart observations
@@ -166,6 +166,8 @@ bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative =
     bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BF10), "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
   }
   cat("Final Bayes Factor: ",tail(bft.out$BF,n=1)," (t=",tail(bft.out$`t-value`,n=1),"; p=",tail(bft.out$`p-value`,n=1),")\n",sep="")
+  
+  class(bft.out) <- "seqbf"
   return(bft.out)
 }
 
@@ -225,7 +227,7 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
 #' Can be plotted with plotrobust().
 #'
 #'
-#' @param x A vector containing data values.
+#' @param x A seqbf object or a vector containing data values.
 #' @param y A vector containing another set of values for a paired samples test.
 #' @param formula A formula of the form var ~ group where var is a numeric variable giving the data values and group is indicating which group the data point belongs to (must be 2 levels). Use this for an independent samples t-Test.
 #' @param data Use with formula. A data frame containing the variables given in the formula. Use this for an independent samples t-Test.
@@ -234,10 +236,39 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
 #' @param prior.loc Range of locations of the cauchy distributed prior function.
 #' @param prior.r Range of scales of the cauchy distributed prior function.
 #' @examples
+#' bfttestRobustness(seqbf)
 #' bfttestRobustness(sumscores, alternative = "greater") # One-sample
 #' @export
 
 bfttestRobustness <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = seq(0.05,1,0.05), prior.r = seq(0.05,1,0.05)){
+  
+  if(inherits(x,"seqbf") == TRUE){
+    
+    if(x$alternative == "two.sided") aa <- 1
+    else if(x$alternative == "greater") aa <- 2
+    else if(x$alternative == "less") aa <- 3
+    
+    t <- tail(x$`t-value`, n=1)
+    grid <- expand.grid(prior.loc, prior.r)
+    
+    if(x$`test type` == "independent"){
+      
+      n1 <- x$`sample size`[1]
+      n2 <- x$`sample size`[2]
+      grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = n1, n2 = n2, independentSamples = T, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
+      
+    } else if(x$`test type` == "paired"){
+      
+      grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = x$`sample size`, independentSamples = F, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
+      
+    } else if(x$`test type` == "one-sample"){
+      
+      grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = x$`sample size`, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
+      
+    }
+    
+  } else {
+  
   
   if(length(alternative) > 1){
     warning("No alternative specified. Using a two-sided alternative.")
@@ -298,16 +329,37 @@ bfttestRobustness <- function(x = NULL, y = NULL, formula = NULL, data = NULL, a
       grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t[[1]], n1 = length(x), prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
     }
   }
+  }
   
   names(grid)[1] <- "prior.loc"
   names(grid)[2] <- "prior.r"
   
-  bft.out <- list("BFMatrix" = grid, "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
+  if(inherits(x,"seqbf") == TRUE)  bft.out <- list("BFMatrix" = grid, "test type" = x$`test type`, "prior" = list(x$prior[[1]], "prior location" = x$prior[[2]], "prior scale" = x$prior[[3]]), "sample size" = x$`sample size`, "alternative" = x$alternative)
+  else bft.out <- list("BFMatrix" = grid, "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
+  
   cat("Highest BF = ", round(max(grid$bf),2), " with prior: Cauchy(",grid$prior.loc[grid$bf==max(grid$bf)],", ",grid$prior.r[grid$bf==max(grid$bf)],")", sep="")
   
   class(bft.out) <- "bfttestRobustness"
   return(bft.out)
   
+}
+
+
+#' @export
+#' @method print SeqBF
+print.seqbf <- function(x, ...) {
+    
+    cat(paste0("
+  Sequential Bayesian Testing
+  --------------------------------	
+  Test type: ", x$`test type`, "
+  Sample size: ", x$`sample size`, "
+  Final Bayes Factor: BF10=", round(tail(x$BF, n=1), 3), "; BF01=", round(1/tail(x$BF, n=1), 3), "
+  Parameter prior: ", x$prior[[1]],"(",x$prior[[2]],", ",x$prior[[3]],")", "
+  Directionality of H1 analysis prior: ", x$alternative, "
+  Orthodox Test: t=",round(tail(x$`t-value`,n=1), 3),"; p=",round(tail(x$`p-value`,n=1), 3), "
+              \n"
+    ))
 }
 
 
