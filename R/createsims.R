@@ -197,6 +197,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
           }
           if(var(sim[1:nstart]) != 0) break
         }
+        sim <- data.frame(sums=sim)
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
         # BAYES t TEST
