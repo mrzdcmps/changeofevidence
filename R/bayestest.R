@@ -304,6 +304,8 @@ bfttestRobustness <- function(x = NULL, y = NULL, formula = NULL, data = NULL, a
   
   bft.out <- list("BFMatrix" = grid, "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
   cat("Highest BF = ", round(max(grid$bf),2), " with prior: Cauchy(",grid$prior.loc[grid$bf==max(grid$bf)],", ",grid$prior.r[grid$bf==max(grid$bf)],")", sep="")
+  
+  class(bft.out) <- "bfttestRobustness"
   return(bft.out)
   
 }

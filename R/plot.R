@@ -304,3 +304,8 @@ plotrobust <- function(data, color="cornflowerblue"){
     theme_minimal()
   
 }
+
+#' @export
+plot.bfttestRobustness <- function(data, ...) {
+  suppressWarnings(plotrobust(data, ...))
+}
