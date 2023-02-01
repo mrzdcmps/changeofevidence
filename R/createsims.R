@@ -148,6 +148,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
     
     for(i in 1:n.sims){
       cat("Sim",i,"of",n.sims,"\n")
+      
       if(use.files == TRUE){
         rfiles <- list.files(filespath, full.names = TRUE, pattern="*.txt")
         if (length(rfiles) == 0) stop("No random files found! Did you specify the correct folder? Did you provide .txt-Files?")
@@ -162,7 +163,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
           sim <- data.frame(V1=simf[line.start:line.stop,])
         }
       
-      } else {
+      } else { # don't use files
         
         if(use.quantis == TRUE){ # quantis QRNG
           if("tmp.txt" %in% list.files()) unlink("tmp.txt")
@@ -182,16 +183,20 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
         # 0 is winner (1), rest is loser (0) for cases where there are more than 2 bits (p != 0.5)
         if(p != 0.5) sim[,1] <- ifelse(sim[,1] == 0, 1, 0)
         #sum up bits
+        sim <- tapply(sim[,1], sim$group, FUN = sum)
         if(var(sim[1:nstart]) == 0) repeat{ #repeat reading data until variance is not 0 so t-test will work
-          if(trials == nrow(simf)) stop("Not enough variance in data. Use larger simfiles.")
-          line.start <- sample.int(nrow(simf)-(u.trials),1)
-          line.stop <- line.start+u.trials-1
-          sim <- data.frame(V1=simf[line.start:line.stop,])
-          sim$group = rep(1:(nrow(sim)/(mean.scores*(1/p))), each=mean.scores*(1/p))
-          sim <- tapply(sim[,1], sim$group, FUN = sum)
+          if(use.files == TRUE){
+            if(trials == nrow(simf)) stop("Not enough variance in data. Use larger simfiles.")
+            line.start <- sample.int(nrow(simf)-(u.trials),1)
+            line.stop <- line.start+u.trials-1
+            sim <- data.frame(V1=simf[line.start:line.stop,])
+            sim$group = rep(1:(nrow(sim)/(mean.scores*(1/p))), each=mean.scores*(1/p))
+            sim <- tapply(sim[,1], sim$group, FUN = sum)
+          } else {
+            sim <- data.frame(V1=rbinom(u.trials, 1, p))
+          }
           if(var(sim[1:nstart]) != 0) break
         }
-        sim <- data.frame(sums=sim)
         sim$cumsum <- cumsum(sim$sums-mean.scores)
         
         # BAYES t TEST
