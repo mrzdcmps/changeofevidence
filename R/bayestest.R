@@ -201,7 +201,7 @@ bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative =
 #' @export
 
 
-# Binomial Seq BF
+# Correlation Seq BF
 bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
   
   x <- na.omit(x)
@@ -218,6 +218,7 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
   bf <- rep(1, (nstart-1))
   cat("N =",length(x),"\n")
   cat("Calculating Sequential Bayes Factors...\n")
+  
   pb = txtProgressBar(min = nstart, max = length(x), initial = nstart, style = 3)
   for (b in nstart:length(x)){
     bf[b] <- exp(correlationBF(x[1:b], y[1:b], rscale=prior.r, nullInterval = nullInterval)@bayesFactor$bf[2])
@@ -226,9 +227,19 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
   close(pb)
   
   orthodoxtest <- cor.test(x, y, use = "complete.obs", alternative = alternative)
+
+  bf.out <- list("r" = orthodoxtest$estimate, 
+                 "p-value" = orthodoxtest$p.value, 
+                 "BF" = bf, 
+                 "test type" = "correlation", 
+                 "prior" = list("Beta", "prior location" = 0, "prior scale" = prior.r), 
+                 "sample size" = length(x), 
+                 "alternative" = txt.alternative)
   
   cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")\n",sep="")
-  return(bf)
+  
+  class(bf.out) <- "seqbf"
+  return(bf.out)
 }
 
 
