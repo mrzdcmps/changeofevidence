@@ -316,3 +316,24 @@ print.seqbf <- function(x, ...) {
 }
 
 
+#' @export
+#' @method print bfRobustness
+print.bfRobustness <- function(x, ...) {
+  
+  grid <- x$BFMatrix
+  
+  cat(paste0("
+  Prior Robustness Analysis
+  --------------------------------	
+  Test type: ", x$`test type`, "
+  Sample size: ", x$`sample size`, "
+  Tested priors: 
+  -- distribution: ", x$prior[1], "
+  -- location: ", x$prior[2], "
+  -- width: ", x$prior[3], "
+  Highest Bayes Factor: ", round(max(grid$bf),3), " with prior: Cauchy(",grid$prior.loc[grid$bf==max(grid$bf)],", ",grid$prior.r[grid$bf==max(grid$bf)],")
+  Lowest Bayes Factor: ", round(min(grid$bf),3), " with prior: Cauchy(",grid$prior.loc[grid$bf==min(grid$bf)],", ",grid$prior.r[grid$bf==min(grid$bf)],")
+  Median Bayes Factor: ", round(median(grid$bf),3), " 
+              \n"
+  ))
+}

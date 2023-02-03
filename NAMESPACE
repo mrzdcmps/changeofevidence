@@ -2,6 +2,7 @@
 
 S3method(plot,bfRobustness)
 S3method(plot,seqbf)
+S3method(print,bfRobustness)
 S3method(print,seqbf)
 export(bfRobustness)
 export(bfbinom)
