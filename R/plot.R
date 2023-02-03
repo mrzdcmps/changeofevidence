@@ -318,9 +318,15 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
 
 plotrobust <- function(data, color="cornflowerblue"){
   library(ggplot2)
-  ggplot(data=data$BFMatrix)+
-    geom_tile(aes(x=prior.loc,y=prior.r,fill=bf))+
-    scale_fill_gradient(low = "white", high = "cornflowerblue") +
+  
+  min <- subset(data$BFMatrix, bf==min(bf))
+  max <- subset(data$BFMatrix, bf==max(bf))
+  ggplot(data=data$BFMatrix, aes(x=prior.loc, y=prior.r, fill=bf))+
+    geom_tile()+
+    geom_text(data = min, aes(x=prior.loc, y=prior.r, label = round(bf,3)), color = color, size = 3) +
+    geom_text(data = max, aes(x=prior.loc, y=prior.r, label = round(bf,3)), color = "white", size = 3) +
+    scale_fill_gradient(low = "white", high = color) +
+    labs(x="Prior Location", y="Prior Width", fill="BF10")+
     theme_minimal()
   
 }
