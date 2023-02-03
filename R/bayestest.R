@@ -17,7 +17,9 @@
 
 
 bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5){
+  
   data <- na.omit(data)
+  
   if(length(data) < nstart) stop("Too few observations.")
   if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
   if(nstart < 0) stop("nstart must be positive!")
@@ -88,8 +90,11 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 #' bfttest(df1$scores, df2$scores) # Paired samples
 #' @export
 
-bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = 5){
+bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = 5){
+  
   if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
+  if(nstart < 0) stop("nstart must be positive!")
+  
   # calculate t-scores and BFs
   bf <- t <- list()
   
@@ -98,9 +103,14 @@ bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative =
     alternative <- alternative[1]
   }
   
-  if (!is.null(formula)){ #Independent Samples
+  if (!is.null(formula)){
+    
+    # Independent Samples
+    
     if(!is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     if(is.null(data)) stop("Please specify data.")
+    
+    data <- data[complete.cases(data),]
     
     if(is.data.frame(data[,deparse(formula[[3]])])) testdata <- unlist(data[,deparse(formula[[3]])], use.names = FALSE)
     else testdata <- data[,deparse(formula[[3]])]
@@ -129,6 +139,9 @@ bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative =
       setTxtProgressBar(pb,i)
     }
   } else {
+    
+    # Paired Samples
+    
     if(is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     x <- na.omit(x)
     pb = txtProgressBar(min = nstart, max = length(x), style = 3)
@@ -146,7 +159,11 @@ bfttest <- function(x=NULL, y = NULL, formula = NULL, data = NULL, alternative =
         setTxtProgressBar(pb,i)
       }
       
-    } else { # One Sample Test
+    } else { 
+      
+      # One Sample
+      x <- na.omit(x)
+      
       if(var(x[1:nstart]) == 0) stop("Cannot compute t-Test since there is no variance in the data. Please choose a larger nstart!")
       type <- "one-sample"
       samplesize <- length(x)
@@ -257,7 +274,7 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
 #' plot(bfr)
 #' @export
 
-bfRobustness <- function(x = NULL, prior.loc = seq(0.05,1,0.05), prior.r = seq(0.05,1,0.05)){
+bfRobustness <- function(x = NULL, prior.loc = seq(0,1,0.05), prior.r = seq(0.05,1,0.05)){
   
   if(inherits(x,"seqbf") == FALSE) stop("Please provide a seqbf object created with bfttest() or bfbinom() or bfcor()")
     
@@ -306,7 +323,7 @@ print.seqbf <- function(x, ...) {
   Sequential Bayesian Testing
   --------------------------------	
   Test type: ", x$`test type`, "
-  Sample size: ", x$`sample size`, "
+  Sample size: ", paste(x$`sample size`, collapse=", "), "
   Final Bayes Factor: BF10=", round(tail(x$BF, n=1), 3), "; BF01=", round(1/tail(x$BF, n=1), 3), "
   Parameter prior: ", x$prior[[1]],"(",x$prior[[2]],", ",x$prior[[3]],")", "
   Directionality of H1 analysis prior: ", x$alternative, "

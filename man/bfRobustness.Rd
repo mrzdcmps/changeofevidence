@@ -6,7 +6,7 @@
 \usage{
 bfRobustness(
   x = NULL,
-  prior.loc = seq(0.05, 1, 0.05),
+  prior.loc = seq(0, 1, 0.05),
   prior.r = seq(0.05, 1, 0.05)
 )
 }
