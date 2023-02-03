@@ -7,7 +7,7 @@
 plotrobust(data, color = "cornflowerblue")
 }
 \arguments{
-\item{data}{An object generated with bfttestRobustness containing a "BFMatrix" dataframe.}
+\item{data}{An object generated with bfRobustness containing a "BFMatrix" dataframe.}
 }
 \description{
 This function allows to plot a BF robustness analysis (bfttestRobustness())
@@ -16,5 +16,5 @@ This function allows to plot a BF robustness analysis (bfttestRobustness())
 Returns a heatmap showing the the BFs for different prior parameters (location and scale)
 }
 \examples{
-plotrobust(bfttestRobustness(formula=formula = correct ~ condition, data=df, alternative = "less"))
+plotrobust(bfRobustness(seqbf))
 }

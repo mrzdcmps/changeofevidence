@@ -311,9 +311,9 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
 #'
 #' Returns a heatmap showing the the BFs for different prior parameters (location and scale)
 #'
-#' @param data An object generated with bfttestRobustness containing a "BFMatrix" dataframe.
+#' @param data An object generated with bfRobustness containing a "BFMatrix" dataframe.
 #' @examples
-#' plotrobust(bfttestRobustness(formula=formula = correct ~ condition, data=df, alternative = "less"))
+#' plotrobust(bfRobustness(seqbf))
 #' @export
 
 plotrobust <- function(data, color="cornflowerblue"){
