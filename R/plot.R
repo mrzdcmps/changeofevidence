@@ -130,7 +130,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N"){
   
   if(inherits(data,"seqbf") == TRUE){
-    subtitle <- paste("BF =",round(tail(data$BF,n=1),3),"// N =", data$`sample size`)
+    subtitle <- paste("BF =",round(tail(data$BF,n=1),3),"// N =", sum(data$`sample size`))
     caption <- paste0(data$prior[[1]],"(",data$prior[[2]],", ",data$prior[[3]],")")
     data <- data$BF
     showinfo <- TRUE
