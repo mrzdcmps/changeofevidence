@@ -123,7 +123,8 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     type <- "independent" 
     samplesize <- c(table(testdata)[1],table(testdata)[2])
     
-    cat("Independent Samples test (N = ",nrow(data),")\nCalculating Sequential Bayes Factors...\n",sep="")
+    cat("Independent Samples test (N = ",nrow(data), " [",paste(samplesize, collapse = " + "),"])\nCalculating Sequential Bayes Factors...\n",sep="")
+    
     # Ensure there are 2 groups present when considering nstart observations
     if(length(unique(testdata[1:nstart])) < 2) repeat{
       nstart <- nstart+1
