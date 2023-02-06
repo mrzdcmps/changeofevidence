@@ -110,7 +110,10 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     if(!is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     if(is.null(data)) stop("Please specify data.")
     
-    data <- data[complete.cases(data),]
+    # remove rows with NA in critical variables of from data
+    data <- data[complete.cases(data[c(deparse(formula[[3]]), deparse(formula[[2]]))]),]
+    
+    if(nrow(data) == 0) stop("Data has no valid observations.")
     
     if(is.data.frame(data[,deparse(formula[[3]])])) testdata <- unlist(data[,deparse(formula[[3]])], use.names = FALSE)
     else testdata <- data[,deparse(formula[[3]])]
