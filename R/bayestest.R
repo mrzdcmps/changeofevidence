@@ -71,7 +71,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 #' The function first calculates t-scores and p-values and subsequently uses the BFDA package to translate the data into BFs.
 #' Returns a list of t-scores ($t-value), p-scores ($p-value), and BF ($BF)
 #'
-#' @param x A vector containing data values.
+#' @param x A vector containing data values or a formula.
 #' @param y A vector containing another set of values for a paired samples test.
 #' @param formula A formula of the form var ~ group where var is a numeric variable giving the data values and group is indicating which group the data point belongs to (must be 2 levels). Use this for an independent samples t-Test.
 #' @param data Use with formula. A data frame containing the variables given in the formula. Use this for an independent samples t-Test.
@@ -94,6 +94,12 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
   
   if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
   if(nstart < 0) stop("nstart must be positive!")
+  
+  #check if x is a formula
+  if(inherits(x,"formula") == TRUE) {
+    formula <- x
+    x <- NULL
+  }
   
   # calculate t-scores and BFs
   bf <- t <- list()
