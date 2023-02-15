@@ -7,85 +7,113 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Generate Sample Data
+### Generate Sample Data
 
 ```{r}
-df <- data.frame(exp=rbinom(100,20,0.55), con=rbinom(100,20,0.5))
-summary(df)
+set.seed(9878)
+
+exp=rbinom(100,20,0.52)
+con=rbinom(100,20,0.5)
+
+summary(exp)
+summary(con)
+
+df <- data.frame(condition = c(rep("exp", 100), rep("con", 100)),
+                      value = c(exp, con))
 ```
 
-## Load library
+### Load library
 
 ```{r}
 library(changeofevidence)
 ```
 
-## Calculate Sequential Bayes Factors
+## Bayes Factor testing
+### Calculate Sequential Bayes Factors
 
 ```{r}
 # Undirectional one-sample t-tests with broad prior
-bf.exp <- bfttest(df$exp, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707)
-bf.con <- bfttest(df$con, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707)
+bf.exp <- bfttest(exp, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707)
+print(bf.exp)
+
+bf.con <- bfttest(con, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707)
+print(bf.con)
+
+# only the last 5 data points
+bfttest(con, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707, nstart = length(con)-5)
 
 # Directional paired samples t-test with narrow prior
-bf.paired <- bfttest(df$exp, df$con, alternative = "greater", paired = T, prior.loc = 0, prior.r = 0.1)
+bf.paired <- bfttest(exp, con, alternative = "greater", prior.loc = 0, prior.r = 0.1)
+print(bf.paired)
 
-# Append data to df
-df$bf.exp <- bf.exp$BF
-df$bf.con <- bf.con$BF
-df$bf.paired <- bf.paired$BF
+# Independent samples t-test with informed prior
+bf.between <- bfttest(value ~ condition, data = df, alternative = "less", prior.loc = 0.1, prior.r = 0.1)
+print(bf.between)
+
 ```
 
-## Plot Seq BFs
+### Plot Seq BFs
 
 ```{r, echo=FALSE}
-# Plot single BF
-plotbf(df$bf.paired)
+# Plot seqbf object
+plot(bf.paired)
 
 # Plot multiple BFs
-plotbf(list(exp=df$bf.exp, con=df$bf.con))
+plotbf(list(exp=bf.exp$BF, con=bf.con$BF))
 ```
 
-## Create simulations
+### Robustness analyis
 
-```{r, echo=FALSE}
+```{r}
+bf.paired.robust <- bfRobustness(bf.paired)
+print(bf.paired.robust)
+plot(bf.paired.robust)
+```
+
+## Simulations
+### Create simulations
+
+```{r results='hide'}
 # Indicate the amount of trials of one experimental run (e.g. 100 subjects * 20 trials)
 # Specify the same test parameters as the test(s) you want to compare to (in this case the one-sample t-tests.)
 sims <- simcreate(100*20, n.sims = 100, mean.scores = 10, use.files = F, alternative = "two.sided", prior.loc = 0, prior.r = 0.707)
 ```
 
-## Plot BFs with simulation data
-
-```{r, echo=FALSE}
-plotbf(list(exp=df$bf.exp, con=df$bf.con), sims.df = sims)
-```
-
-## CoE 1: Maximum BF
+### Plot BFs with simulation data
 
 ```{r}
-r.exp.maxbf <- maxbf(df$bf.exp, sims.df = sims)
-r.con.maxbf <- maxbf(df$bf.con, sims.df = sims)
+plot(bf.paired, sims.df = sims)
+plotbf(list(exp=bf.exp$BF, con=bf.con$BF), sims.df = sims)
 ```
 
-## CoE 2: BF Energy
+## Change of evidence measures
+### CoE 1: Maximum BF
 
 ```{r}
-r.exp.nrg <- energybf(df$bf.exp, sims.df = sims)
-r.con.nrg <- energybf(df$bf.con, sims.df = sims)
+r.exp.maxbf <- maxbf(bf.exp, sims.df = sims)
+r.con.maxbf <- maxbf(bf.con, sims.df = sims)
 ```
 
-## Coe 3: FFT Amplitude Sum
+### CoE 2: BF Energy
+
+```{r}
+r.exp.nrg <- energybf(bf.exp, sims.df = sims)
+r.con.nrg <- energybf(bf.con, sims.df = sims)
+```
+
+### Coe 3: FFT Amplitude Sum
 
 ```{r}
 # Create Fast Fourier Transforms of Sequential BFs
-fft <- data.frame(exp=fftcreate(bf.exp$BF), con=fftcreate(bf.con$BF))
+fft.exp <- fftcreate(bf.exp)
+fft.con <- fftcreate(bf.con)
 
 # Compare amplitude sums with simulations
-r.exp.fft <- ffttest(fft$exp, sims.df = sims)
-r.con.fft <- ffttest(fft$con, sims.df = sims)
+r.exp.fft <- ffttest(fft.exp, sims.df = sims)
+r.con.fft <- ffttest(fft.con, sims.df = sims)
 
 # Plot FFTs
 # Use parameter "coordy" to ensure a comparable coordinate system
-plotfft(fft$exp, sims.df = sims)
-plotfft(fft$con, sims.df = sims)
+plotfft(fft.exp, sims.df = sims)
+plotfft(fft.con, sims.df = sims)
 ```
