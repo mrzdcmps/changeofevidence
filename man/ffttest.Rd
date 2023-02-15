@@ -25,6 +25,7 @@ This function analyses FFTs and compares the amplitudes of all frequencies to th
 If you want to use the old "Top5-Frequency" method instead of amplitude sums, indicate by setting 'top5 = TRUE'.
 }
 \examples{
+r.fft <- ffttest(fftcreate(seqbf))
 r.fftbf <- ffttest(tblFFT$density.bf)
 r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
 }

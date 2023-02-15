@@ -5,16 +5,23 @@
 #' The highest reached (Maximum) BF of the experimental data is compared to those of all simulations.
 #' An unusual peak can be assumed if less than 5\% of simulations show a higher BF at any time.
 #'
-#' @param data A vector containing Bayes Factors.
+#' @param data A a seqbf object or vector containing Bayes Factors.
 #' @param sims.df A dataframe containing simulations, including columns "simid" and "bf".
 #' @return A list containing the Maximum BF of the experimental data, its position in the temporal order of data points, and the proportion of simulations with higher BFs at any time.
 #' @examples
-#' r.maxbf <- maxbf(tbl$bf)
+#' r.maxbf <- maxbf(seqbf, sims)
 #' r.maxbf <- maxbf(tbl$bf, sims.df = newsims)
 #' @export
 
 # Maximum BF analysis
 maxbf <- function(data, sims.df=sims){
+  
+  if(inherits(data,"seqbf") == TRUE) data <- data$BF
+  
+  simids <- sims.df[seq(1, nrow(sims.df), max(sims.df$index)),]$simid
+  if(!is.numeric(data)) stop("Data must be a numeric vector!")
+  if(length(data) != nrow(sims.df[sims.df$simid == simids[1],])) stop("Data is not the same length as simulations!")
+  
   cat(">> MAXIMUM BF << \n")
   u.nsims <- length(unique(sims.df$simid))
   sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm=TRUE)
@@ -22,7 +29,8 @@ maxbf <- function(data, sims.df=sims){
   cat("Sims with this or a higher BFs:",(sum(sim.maxbf >= max(data))/u.nsims)*100,"% \n")
   maxbf.out <- list("MaxBF" = max(data), "MaxBF (N)" = which.max(data), "Sims with this or higher BFs" = (sum(sim.maxbf >= max(data))/u.nsims))
   return(maxbf.out)
-}
+
+  }
 
 ### Helper function: Calculate Energy
 .energycount <- function(data, nullenergy = nullenergy){
@@ -37,17 +45,18 @@ maxbf <- function(data, sims.df=sims){
 #' Energy is calculated using the trapezoidal integration "trapz" of the pracma-library.
 #' Mean and SD scores of the simulations' energies are provided.
 #'
-#' @param data A vector containing Bayes Factors.
+#' @param data A seqbf object or vector containing Bayes Factors.
 #' @param sims.df A dataframe containing simulations, including columns "simid" and "bf".
 #' @return A list containing the Energy of the experimental data, the mean and SD of the energy values of all simulations, and the proportion of simulations with a higher energy than the experimental data.
 #' @examples
-#' r.energybf <- energybf(tbl$bf)
+#' r.energybf <- energybf(seqbf, sims)
 #' r.energybf <- energybf(tbl$bf, sims.df = newsims)
 #' @export
 
 # Energy of BF
 energybf <- function(data, sims.df=sims){
-  cat(">> BF ENERGY << \n")
+  
+  if(inherits(data,"seqbf") == TRUE) data <- data$BF
   
   simids <- sims.df[seq(1, nrow(sims.df), max(sims.df$index)),]$simid
   u.nsims <- length(simids)
@@ -56,6 +65,7 @@ energybf <- function(data, sims.df=sims){
   if(!is.numeric(data)) stop("Data must be a numeric vector!")
   if(length(data) != nrow(sims.df[sims.df$simid == simids[1],])) stop("Data is not the same length as simulations!")
   
+  cat(">> BF ENERGY << \n")
   cat("Calculating Energy of sims... \n")
   
   nullenergy <- length(data)-1
@@ -79,14 +89,17 @@ energybf <- function(data, sims.df=sims){
 #' The FFT shows the spectral density of the input. It can be understood as a harmonic analysis and indicates the strength of osciallative components comprising the signal.
 #' It can therefore be used to assess the meaning of oscillation as a characteristic. N/2 Frequencies are used as sampling rate.
 #'
-#' @param data A vector to be transformed.
+#' @param data A seqbf object or vector to be transformed.
 #' @examples
-#' density.bf <- fftcreate(tbl$bf)
+#' density.bf <- fftcreate(seqbf)
 #' tblFFT <- data.frame(density.bf = fftcreate(tbl$bf), density.rw = fftcreate(tbl$rw))
 #' @export
 
 # Create FFT
 fftcreate <- function(data){
+  
+  if(inherits(data,"seqbf") == TRUE) data <- data$BF
+  
   L <- length(data) # Länge
   L2 <- ceiling(L/2) # Consider only first half, round up
   T <- 1/L # Tastrate
@@ -123,14 +136,17 @@ fftcreate <- function(data){
 #' @param top5 Logical. If set to TRUE, function will additionally return the Top5-Frequency method. For each frequency the function counts how many simulations show a higher amplitude. If no more than 5 percent of simulations are above the experimental value, it is considered a "Top5-Frequency". The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
 #' @return A list containing a dataframe of all frequencies and the proportion of simulations with a lower amplitude, and information on the sum of amplitudes.
 #' @examples
+#' r.fft <- ffttest(fftcreate(seqbf))
 #' r.fftbf <- ffttest(tblFFT$density.bf)
 #' r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
 #' @export
 
 ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE){
+  
   if(var(data[1:3]) == 0) stop("It seems like you specified a vector containing BFs. Please use fftcreate(bf) to Fourier transform first.")
   if(!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
   if(ceiling(max(sims.df$index/2)) != length(data)) stop("Lengths of FFT data and sims do not match! Consider using simredo()")
+  
   cat(">> FREQUENCY ANALYSIS << \n")
   u.nsims <- length(unique(sims.df$simid))
   data.df <- data.frame(data = data, H = seq_along(data))

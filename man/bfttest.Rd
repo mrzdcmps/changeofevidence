@@ -17,7 +17,7 @@ bfttest(
 )
 }
 \arguments{
-\item{x}{A vector containing data values.}
+\item{x}{A vector containing data values or a formula.}
 
 \item{y}{A vector containing another set of values for a paired samples test.}
 

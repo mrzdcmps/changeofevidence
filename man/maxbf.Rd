@@ -7,7 +7,7 @@
 maxbf(data, sims.df = sims)
 }
 \arguments{
-\item{data}{A vector containing Bayes Factors.}
+\item{data}{A a seqbf object or vector containing Bayes Factors.}
 
 \item{sims.df}{A dataframe containing simulations, including columns "simid" and "bf".}
 }
@@ -22,6 +22,6 @@ The highest reached (Maximum) BF of the experimental data is compared to those o
 An unusual peak can be assumed if less than 5\% of simulations show a higher BF at any time.
 }
 \examples{
-r.maxbf <- maxbf(tbl$bf)
+r.maxbf <- maxbf(seqbf, sims)
 r.maxbf <- maxbf(tbl$bf, sims.df = newsims)
 }

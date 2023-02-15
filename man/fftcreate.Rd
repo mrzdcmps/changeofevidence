@@ -7,7 +7,7 @@
 fftcreate(data)
 }
 \arguments{
-\item{data}{A vector to be transformed.}
+\item{data}{A seqbf object or vector to be transformed.}
 }
 \description{
 This function converts input signals into its Fast Fourier transform (FFT).
@@ -17,6 +17,6 @@ The FFT shows the spectral density of the input. It can be understood as a harmo
 It can therefore be used to assess the meaning of oscillation as a characteristic. N/2 Frequencies are used as sampling rate.
 }
 \examples{
-density.bf <- fftcreate(tbl$bf)
+density.bf <- fftcreate(seqbf)
 tblFFT <- data.frame(density.bf = fftcreate(tbl$bf), density.rw = fftcreate(tbl$rw))
 }
