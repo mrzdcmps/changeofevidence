@@ -261,7 +261,7 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
                  "test type" = "correlation", 
                  "prior" = list("Beta", "prior location" = 0, "prior scale" = prior.r), 
                  "sample size" = length(x), 
-                 "alternative" = txt.alternative)
+                 "alternative" = alternative)
   
   cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")\n",sep="")
   
