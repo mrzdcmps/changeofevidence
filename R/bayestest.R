@@ -159,7 +159,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     x <- na.omit(x)
     
     # Check if data is valid
-    if(nrow(x) == 0) stop("Data has no valid observations.")
+    if(length(x) == 0) stop("Data has no valid observations.")
     if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
     if(sum(is.infinite(y)) > 0) stop("Data must be finite.")
     
