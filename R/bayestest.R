@@ -21,6 +21,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
   data <- na.omit(data)
   
   if(length(data) < nstart) stop("Too few observations.")
+  if(sum(is.infinite(data)) > 0) stop("Data must be finite.")
   if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
   if(nstart < 0) stop("nstart must be positive!")
   
@@ -119,11 +120,13 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     # remove rows with NA in critical variables of from data
     data <- data[complete.cases(data[c(deparse(formula[[3]]), deparse(formula[[2]]))]),]
     
+    # Check if data is valid
     if(nrow(data) == 0) stop("Data has no valid observations.")
     
     if(is.data.frame(data[,deparse(formula[[3]])])) testdata <- unlist(data[,deparse(formula[[3]])], use.names = FALSE)
     else testdata <- data[,deparse(formula[[3]])]
     
+    if(sum(is.infinite(testdata)) > 0) stop("Data must be finite.")
     if(length(unique(testdata)) != 2) stop("Group must have 2 levels.")
     
     type <- "independent" 
@@ -154,6 +157,12 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     
     if(is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     x <- na.omit(x)
+    
+    # Check if data is valid
+    if(nrow(x) == 0) stop("Data has no valid observations.")
+    if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
+    if(sum(is.infinite(y)) > 0) stop("Data must be finite.")
+    
     pb = txtProgressBar(min = nstart, max = length(x), style = 3)
     
     if (!is.null(y)){ # Paired Samples Test
@@ -173,6 +182,10 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
       
       # One Sample
       x <- na.omit(x)
+      
+      # Check if data is valid
+      if(nrow(x) == 0) stop("Data has no valid observations.")
+      if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
       
       if(var(x[1:nstart]) == 0) stop("Cannot compute t-Test since there is no variance in the data. Please choose a larger nstart!")
       type <- "one-sample"
