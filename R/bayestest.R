@@ -126,7 +126,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     if(is.data.frame(data[,deparse(formula[[3]])])) testdata <- unlist(data[,deparse(formula[[3]])], use.names = FALSE)
     else testdata <- data[,deparse(formula[[3]])]
     
-    if(sum(is.infinite(testdata)) > 0) stop("Data must be finite.")
+    if(sum(is.infinite(unlist(data[,deparse(formula[[2]])], use.names = FALSE))) > 0) stop("Data must be finite.")
     if(length(unique(testdata)) != 2) stop("Group must have 2 levels.")
     
     type <- "independent" 
@@ -184,7 +184,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
       x <- na.omit(x)
       
       # Check if data is valid
-      if(nrow(x) == 0) stop("Data has no valid observations.")
+      if(length(x) == 0) stop("Data has no valid observations.")
       if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
       
       if(var(x[1:nstart]) == 0) stop("Cannot compute t-Test since there is no variance in the data. Please choose a larger nstart!")
@@ -247,13 +247,16 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
   x <- na.omit(x)
   y <- na.omit(y)
   
+  # Check if data is valid
+  if(length(x) == 0) stop("Data has no valid observations.")
+  if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
+  if(length(y) != length(x)) stop("Length of y and x must be the same.")
+  
   if(alternative == "greater") nullInterval <- c(-1,0)
   else if(alternative == "less") nullInterval <- c(0,1)
   else nullInterval <- 0
   
   require(BayesFactor)
-  if (length(y) != length(x)) 
-    stop("Length of y and x must be the same.")
   
   bf <- rep(1, (nstart-1))
   cat("N =",length(x),"\n")
