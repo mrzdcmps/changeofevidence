@@ -4,10 +4,12 @@
 \alias{plotrobust}
 \title{Plot BF Robustness Analyses}
 \usage{
-plotrobust(data, color = "cornflowerblue")
+plotrobust(data, limit = 10)
 }
 \arguments{
 \item{data}{An object generated with bfRobustness containing a "BFMatrix" dataframe.}
+
+\item{limit}{A BF limit which is marked in the plot.}
 }
 \description{
 This function allows to plot a BF robustness analysis (bfttestRobustness())

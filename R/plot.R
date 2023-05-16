@@ -312,20 +312,36 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
 #' Returns a heatmap showing the the BFs for different prior parameters (location and scale)
 #'
 #' @param data An object generated with bfRobustness containing a "BFMatrix" dataframe.
+#' @param limit A BF limit which is marked in the plot.
 #' @examples
 #' plotrobust(bfRobustness(seqbf))
 #' @export
 
-plotrobust <- function(data, color="cornflowerblue"){
+plotrobust <- function(data, limit=10){
   library(ggplot2)
   
+  maxvalue <- max(c(10,max(data$BFMatrix$bf)))
+  breaks <- c(0,1,3,6,10,maxvalue)
   min <- subset(data$BFMatrix, bf==min(bf))
   max <- subset(data$BFMatrix, bf==max(bf))
+  
+  data$BFMatrix$col <- ifelse(data$BFMatrix$bf >= limit, TRUE, FALSE)
+  
   ggplot(data=data$BFMatrix, aes(x=prior.loc, y=prior.r, fill=bf))+
-    geom_tile()+
-    geom_text(data = min, aes(x=prior.loc, y=prior.r, label = round(bf,3)), color = color, size = 3) +
-    geom_text(data = max, aes(x=prior.loc, y=prior.r, label = round(bf,3)), color = "white", size = 3) +
-    scale_fill_gradient(low = "white", high = color) +
+    geom_raster()+
+    geom_tile(data=subset(data$BFMatrix, col==TRUE), color="black")+
+    geom_text(data = min, aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
+    geom_text(data = max, aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
+    scale_fill_gradientn(colors = c("cornflowerblue",
+                                    "white",
+                                    "green3",
+                                    "yellow",
+                                    "coral2",
+                                    "darkred"),
+                         breaks = breaks,
+                         labels = scales::label_number(accuracy = 1),
+                         limits = c(0,maxvalue),
+                         values = scales::rescale(breaks))+
     labs(x="Prior Location", y="Prior Width", fill="BF10")+
     theme_minimal()
   
