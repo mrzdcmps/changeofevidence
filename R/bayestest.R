@@ -353,7 +353,7 @@ print.seqbf <- function(x, ...) {
   Final Bayes Factor: BF10=", round(tail(x$BF, n=1), 3), "; BF01=", round(1/tail(x$BF, n=1), 3), "
   Parameter prior: ", x$prior[[1]],"(",x$prior[[2]],", ",x$prior[[3]],")", "
   Directionality of H1 analysis prior: ", x$alternative, "
-  Orthodox Test: t=",round(tail(x$`t-value`,n=1), 3),"; p=",round(tail(x$`p-value`,n=1), 3), "
+  Orthodox Test: ",names(x)[1],"=",round(tail(x[[1]],n=1), 3),"; p=",round(tail(x$`p-value`,n=1), 3), "
               \n"
     ))
 }
