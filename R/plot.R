@@ -142,10 +142,12 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   # Set y coordinates
   if(is.null(coordy)){
     if(is.list(data)){
-      coordy <- c(Reduce(min,data),2*Reduce(max,data))
+      #Reduce(function(x, y) merge(x, y, by = "id", all = T), list(a, b, c))
+      coordy <- c(min(unlist(data), na.rm=T),
+                  2*max(unlist(data), na.rm=T))
     }
     else {
-      coordy <- c(min(data),2*max(data))
+      coordy <- c(min(data, na.rm=T),2*max(data, na.rm=T))
     }
   }
   
@@ -204,8 +206,13 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
+  # Draw plot
   p <- ggplot2::ggplot()
+  
+  # Add simulations
   if(!is.null(sims.df)) p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
+  
+  # Add horizontal lines
   p <- p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
     ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
   
@@ -219,19 +226,23 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
         ndf <- data.frame(element=paste0("data ",i),x=1:length(ydat),y=ydat)
       }
       df <- rbind(df,ndf)
+      df <- df[!is.na(df$y),]
     }
     p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y, color=element), size=1)+
       ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
-      if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(df$x)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(df$x)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
     
   } else {
-    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)
-      if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+    df <- data.frame(y=data, x=as.numeric(1:length(data)))
+    df <- df[!is.na(df$y),]
+    
+    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y), color=color, size=1)
+    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
   }
   
   if(exists("showinfo")) p <- p + ggplot2::labs(subtitle = subtitle, caption = caption)
   
-    p + ggplot2::labs(x=label.x, y = "Evidence (BF)")+
+  p + ggplot2::labs(x=label.x, y = "Evidence (BF)")+
     ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
     ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_bw(base_size = 14)+

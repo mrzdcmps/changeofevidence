@@ -81,6 +81,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 #' @param prior.loc Location of the cauchy distributed prior function (use 0 for an uninformed prior).
 #' @param prior.r Scale of the cauchy distributed prior function.
 #' @param nstart How many data points should be considered before calculating the first BF (min = 2).
+#' @param exact Logical. All data points are being calculated if set to true. Set to FALSE for faster calculations and plotting only.
 #' @examples
 #' bfttest(sumscores, alternative = "greater") # One-sample
 #'
@@ -91,12 +92,12 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 #' bfttest(df1$scores, df2$scores) # Paired samples
 #' @export
 
-bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = 5){
+bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = 5, exact = TRUE){
   
   if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
   if(nstart < 0) stop("nstart must be positive!")
   
-  #check if x is a formula
+  # check if x is a formula
   if(inherits(x,"formula") == TRUE) {
     formula <- x
     x <- NULL
@@ -129,6 +130,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     if(sum(is.infinite(unlist(data[,deparse(formula[[2]])], use.names = FALSE))) > 0) stop("Data must be finite.")
     if(length(unique(testdata)) != 2) stop("Group must have 2 levels.")
     
+    # Set attributes
     type <- "independent" 
     samplesize <- c(table(testdata)[1],table(testdata)[2])
     
@@ -143,17 +145,27 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
       }
     }
     
+    # calculate all points or do it stepwise
+    if(exact == TRUE){
+      steps <- seq(nstart, nrow(data), 1) # all points
+    } else steps <- .seqlast(nstart, nrow(data), .nstep(nrow(data))) #stepwise
+    
+    
+    # progression bar
     pb = txtProgressBar(min = nstart, max = nrow(data), style = 3)
-    for (i in nstart:nrow(data)) {
+    
+    # t-test calculations for multiple points
+    for (i in steps) {
+      
       t[[i]] <- t.test(formula=formula, data=data[1:i,], alternative = alternative, paired=F, var.equal=TRUE)
       n1 <- table(testdata[1:i])[1]
       n2 <- table(testdata[1:i])[2]
       bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = n1, n2 = n2, independentSamples = T, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
+      
       setTxtProgressBar(pb,i)
+      
     }
   } else {
-    
-    # Paired Samples
     
     if(is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     x <- na.omit(x)
@@ -163,16 +175,26 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
     if(sum(is.infinite(y)) > 0) stop("Data must be finite.")
     
+    # calculate all points or do it stepwise
+    if(exact == TRUE){
+      steps <- seq(nstart, length(x), 1) # all points
+    } else steps <- .seqlast(nstart, length(x), .nstep(length(x))) #stepwise
+    
+    
     pb = txtProgressBar(min = nstart, max = length(x), style = 3)
     
     if (!is.null(y)){ # Paired Samples Test
+      
+      # Check data
       y <- na.omit(y)
       if (length(y) != length(x)) stop("Data are not the same length!")
+      
+      # Set attributes
       type <- "paired"
       samplesize <- length(x)
       
       cat("Paired Samples test (N = ",length(x),")\nCalculating Sequential Bayes Factors...\n",sep="")
-      for (i in nstart:length(x)) {
+      for (i in steps) {
         t[[i]] <- t.test(x[1:i], y[1:i], alternative = alternative, paired = T, var.equal=TRUE)
         bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = i, independentSamples = F, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
         setTxtProgressBar(pb,i)
@@ -192,7 +214,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
       samplesize <- length(x)
       
       cat("One Sample test (N = ",length(x),")\nCalculating Sequential Bayes Factors...\n",sep="")
-      for (i in nstart:length(x)) {
+      for (i in steps) {
         t[[i]] <- t.test(x[1:i], alternative = alternative, mu = mu)
         bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = i, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
         setTxtProgressBar(pb,i)
@@ -202,12 +224,21 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
   
   close(pb)
   
-  tlist <- c(rep(NA,(nstart-1)),unlist(lapply(t, `[[`, 1)))
-  plist <- c(rep(NA,(nstart-1)),unlist(lapply(t, `[[`, 3)))
+  # change NULL to NA
   
-  BF10 <- c(rep(1,(nstart-1)),unlist(lapply(bf, `[[`, 1)))
-  BFplus0 <- c(rep(1,(nstart-1)),unlist(lapply(bf, `[[`, 2)))
-  BFmin0 <- c(rep(1,(nstart-1)),unlist(lapply(bf, `[[`, 3)))
+  emptylist <- list(NA, NA, NA)
+  newlist <- rep(list(emptylist), length(bf[sapply(bf, is.null)]))
+  
+  t[sapply(t, is.null)] <- newlist
+  bf[sapply(bf, is.null)] <- newlist
+  
+  
+  tlist <- unlist(lapply(t, `[[`, 1))
+  plist <- unlist(lapply(t, `[[`, 3))
+  
+  BF10 <- unlist(lapply(bf, `[[`, 1))
+  BFplus0 <- unlist(lapply(bf, `[[`, 2))
+  BFmin0 <- unlist(lapply(bf, `[[`, 3))
   
   if (alternative=="less"){
     bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BFmin0), "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
@@ -379,4 +410,20 @@ print.bfRobustness <- function(x, ...) {
   Median Bayes Factor: ", round(median(grid$bf),3), " 
               \n"
   ))
+}
+
+
+# Helper functions
+.seqlast <- function(from, to, by){
+  vec <- do.call(what = seq, args = list(from, to, by))
+  if ( tail(vec, 1) != to ) {
+    return(c(vec, to))
+  } else {
+    return(vec)
+  }
+}
+
+.nstep <- function(size){
+  step <- floor((size-1)/100)+1
+  return(step)
 }
