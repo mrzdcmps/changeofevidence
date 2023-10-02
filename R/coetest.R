@@ -104,7 +104,7 @@ fftcreate <- function(data){
   L2 <- ceiling(L/2) # Consider only first half, round up
   T <- 1/L # Tastrate
   Y <- fft(data) # Fast Fourier Transformation
-  P <- abs(Y/L)[1:L2]
+  abs(Y/L)[1:L2]
 }
 
 ### Helper-Function: Create FFT without cutting frequencies
@@ -112,7 +112,7 @@ fftcreate <- function(data){
   L <- length(data) # Länge
   T <- 1/L # Tastrate
   Y <- fft(data) # Fast Fourier Transformation
-  P <- abs(Y/L)
+  abs(Y/L)
 }
 
 ### Helper-Function: Count Frequencies
