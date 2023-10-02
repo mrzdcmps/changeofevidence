@@ -80,7 +80,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 #' @param mu A number indicating the true value of the mean (or difference in means if you are performing a two sample test).
 #' @param prior.loc Location of the cauchy distributed prior function (use 0 for an uninformed prior).
 #' @param prior.r Scale of the cauchy distributed prior function.
-#' @param nstart How many data points should be considered before calculating the first BF (min = 2).
+#' @param nstart How many data points should be considered before calculating the first BF (min = 2). Set to "auto" to automatically set the earliest data point.
 #' @param exact Logical. All data points are being calculated if set to true. Set to FALSE for faster calculations and plotting only.
 #' @examples
 #' bfttest(sumscores, alternative = "greater") # One-sample
@@ -92,10 +92,13 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 
 #' bfttest(df1$scores, df2$scores) # Paired samples
 #' @export
 
-bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = 5, exact = TRUE){
+bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = "auto", exact = TRUE){
   
-  if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
-  if(nstart < 0) stop("nstart must be positive!")
+  # check nstart
+  if(nstart != "auto"){
+    if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
+    if(nstart < 0) stop("nstart must be positive!")
+  }
   
   # check if x is a formula
   if(inherits(x,"formula") == TRUE) {
@@ -137,12 +140,20 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     cat("Independent Samples test (N = ",nrow(data), " [",paste(samplesize, collapse = " + "),"])\nCalculating Sequential Bayes Factors...\n",sep="")
     
     # Ensure there are 2 groups present when considering nstart observations
+    if(nstart=="auto") nstart <- 2
     if(length(unique(testdata[1:nstart])) < 2) repeat{
       nstart <- nstart+1
       if(length(unique(testdata[1:nstart])) == 2){
         cat("First observation with two groups found at N =",nstart)
         break
       }
+    }
+    
+    # Ensure t-test works with current nstart
+    res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, paired=F, var.equal=TRUE), silent = TRUE)
+    while (class(res) == "try-error") {
+      nstart <- nstart+1
+      res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, paired=F, var.equal=TRUE), silent = TRUE)
     }
     
     # calculate all points or do it stepwise
@@ -165,7 +176,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
       setTxtProgressBar(pb,i)
       
     }
-  } else {
+  } else { # Paired samples or one sample
     
     if(is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     x <- na.omit(x)
@@ -175,15 +186,9 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
     if(sum(is.infinite(y)) > 0) stop("Data must be finite.")
     
-    # calculate all points or do it stepwise
-    if(exact == TRUE){
-      steps <- seq(nstart, length(x), 1) # all points
-    } else steps <- .seqlast(nstart, length(x), .nstep(length(x))) #stepwise
-    
-    
-    pb = txtProgressBar(min = nstart, max = length(x), style = 3)
-    
-    if (!is.null(y)){ # Paired Samples Test
+    if (!is.null(y)){ 
+      
+      # Paired Samples Test
       
       # Check data
       y <- na.omit(y)
@@ -192,6 +197,18 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
       # Set attributes
       type <- "paired"
       samplesize <- length(x)
+      
+      # decide nstart
+      if(nstart=="auto") nstart <- 2
+      while(var(x[1:nstart], y[1:nstart]) == 0) nstart <- nstart+1
+      
+      # calculate all points or do it stepwise
+      if(exact == TRUE){
+        steps <- seq(nstart, length(x), 1) # all points
+      } else steps <- .seqlast(nstart, length(x), .nstep(length(x))) #stepwise
+      
+      
+      pb = txtProgressBar(min = nstart, max = length(x), style = 3)
       
       cat("Paired Samples test (N = ",length(x),")\nCalculating Sequential Bayes Factors...\n",sep="")
       for (i in steps) {
@@ -209,9 +226,22 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
       if(length(x) == 0) stop("Data has no valid observations.")
       if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
       
-      if(var(x[1:nstart]) == 0) stop("Cannot compute t-Test since there is no variance in the data. Please choose a larger nstart!")
+      # Set attributes
       type <- "one-sample"
       samplesize <- length(x)
+      
+      # decide nstart
+      if(nstart=="auto") nstart <- 2
+      while(var(x[1:nstart]) == 0) nstart <- nstart+1
+      
+      # calculate all points or do it stepwise
+      if(exact == TRUE){
+        steps <- seq(nstart, length(x), 1) # all points
+      } else steps <- .seqlast(nstart, length(x), .nstep(length(x))) #stepwise
+      
+      
+      pb = txtProgressBar(min = nstart, max = length(x), style = 3)
+      
       
       cat("One Sample test (N = ",length(x),")\nCalculating Sequential Bayes Factors...\n",sep="")
       for (i in steps) {
