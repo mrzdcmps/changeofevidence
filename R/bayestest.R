@@ -255,14 +255,13 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
   close(pb)
   
   # change NULL to NA
-  
   emptylist <- list(NA, NA, NA)
   newlist <- rep(list(emptylist), length(bf[sapply(bf, is.null)]))
   
   t[sapply(t, is.null)] <- newlist
   bf[sapply(bf, is.null)] <- newlist
   
-  
+  # unlist results
   tlist <- unlist(lapply(t, `[[`, 1))
   plist <- unlist(lapply(t, `[[`, 3))
   
@@ -270,6 +269,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
   BFplus0 <- unlist(lapply(bf, `[[`, 2))
   BFmin0 <- unlist(lapply(bf, `[[`, 3))
   
+  # specify which BF to return
   if (alternative=="less"){
     bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BFmin0), "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
   } else if (alternative=="greater"){
@@ -277,6 +277,11 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
   } else {
     bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BF10), "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
   }
+  
+  # replace first NAs with 1 so that CoE analyses will work
+  bft.out$BF[1:nstart] <- 1
+  
+  # output message
   cat("Final Bayes Factor: ",tail(bft.out$BF,n=1)," (t=",tail(bft.out$`t-value`,n=1),"; p=",tail(bft.out$`p-value`,n=1),")\n",sep="")
   
   class(bft.out) <- "seqbf"
