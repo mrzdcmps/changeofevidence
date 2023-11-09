@@ -281,21 +281,103 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
   
 }
 
-
 #' Plot BF Robustness Analyses
+#'
+#' This function allows to plot a BF robustness analysis (bfttestRobustness())
+#'
+#' Returns an overview showing the the BFs for different prior parameters (location and scale)
+#'
+#' @param data An object generated with the bfRobustness()-function.
+#' @examples
+#' plotrobust(bfRobustness(seqbf))
+#' @export
+plotrobust <- function(data){
+  
+  if(inherits(data,"bfRobustness") == FALSE) stop("Please provide a bfRobustness object")
+  
+  #get min and max
+  min_max_values <- aggregate(data$BFMatrix$bf, by = list(data$BFMatrix$prior.r), FUN = function(x) c(min = min(x), max = max(x)))
+  min_max_values <- data.frame(prior.r = min_max_values$Group.1,
+                               min = min_max_values$x[, "min"],
+                               max = min_max_values$x[, "max"])
+  
+  # Best and Worst BF
+  best <- data$BFMatrix[data$BFMatrix$bf==max(data$BFMatrix$bf),]
+  worst <- data$BFMatrix[data$BFMatrix$bf==min(data$BFMatrix$bf),]
+  
+  # subtitle <- paste("BF =",round(tail(data$BF,n=1),3),"// N =", sum(data$`sample size`))
+  title <- "Bayes Factor Robustness Test"
+  subtitle <- paste0(
+    "Best BF=",round(best$bf,2)," at ",data$prior[[1]],"(",best$prior.loc,",",best$prior.r,")\n",
+    "Worst BF=",round(worst$bf,2)," at ",data$prior[[1]],"(",worst$prior.loc,",",worst$prior.r,")"
+  )
+  caption <- paste0(data$prior[[1]]," (Locations: ",min(data$BFMatrix$prior.loc)," - ",max(data$BFMatrix$prior.loc),")")
+  
+  
+  # plot
+  # Set y coordinates
+  coordy <- c(min(min_max_values$min),2*max(min_max_values$max, na.rm=T))
+  
+  #Set minimum coordinates to 1/10 and 10
+  if(coordy[1] > 1/10) coordy[1] <- 1/10
+  if(coordy[2] < 10) coordy[2] <- 10
+  
+  # Specify Text annotations
+  annotationlist <- .annotations(coordy)
+  
+  annotation <- annotationlist[[1]]
+  annobreaks <- annotationlist[[2]]
+  
+  #Scale y-Axis
+  breaks <- annotationlist[[3]]
+  labels <- annotationlist[[4]]
+  
+  
+  # Draw plot
+  p <- ggplot2::ggplot()
+  
+  # Add horizontal lines
+  p <- p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
+    ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
+  
+  # Ribbon
+  p <- p + ggplot2::geom_ribbon(data=min_max_values, aes(x=prior.r, ymin=min, ymax=max), alpha=0.5)
+  if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(min_max_values$prior.r)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+  
+  # Best and Worst BF
+  p <- p + ggplot2::geom_line(data = subset(data$BFMatrix, prior.loc==best$prior.loc), aes(x=prior.r, y=bf), color="coral2")+
+    ggplot2::geom_line(data = subset(data$BFMatrix, prior.loc==worst$prior.loc), aes(x=prior.r, y=bf), color="cornflowerblue")+
+    ggplot2::geom_point(data = best, aes(x=prior.r, y=bf), color="coral2")+
+    ggplot2::geom_point(data = worst, aes(x=prior.r, y=bf), color="cornflowerblue")+
+    ggplot2::geom_text(data = best, aes(x=prior.r, y=bf, label=round(bf,2)), color="coral2", vjust=-0.5)+
+    ggplot2::geom_text(data = worst, aes(x=prior.r, y=bf, label=round(bf,2)), color="cornflowerblue", vjust=1.5)
+  
+  p <- p + ggplot2::labs(title = title, subtitle = subtitle, caption = caption)
+  
+  p + ggplot2::labs(x="Prior Width", y = "Evidence (BF)")+
+    ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
+    ggplot2::coord_cartesian(ylim = coordy)+
+    ggplot2::theme_bw(base_size = 14)+
+    ggplot2::theme(legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  
+}
+
+
+#' Tile Plot BF Robustness Analyses
 #'
 #' This function allows to plot a BF robustness analysis (bfttestRobustness())
 #'
 #' Returns a heatmap showing the the BFs for different prior parameters (location and scale)
 #'
-#' @param data An object generated with bfRobustness containing a "BFMatrix" dataframe.
+#' @param data An object generated with the bfRobustness()-function.
 #' @param limit A BF limit which is marked in the plot.
 #' @examples
 #' plotrobust(bfRobustness(seqbf))
 #' @export
 
-plotrobust <- function(data, limit=10){
-  library(ggplot2)
+plotrobustTile <- function(data, limit=10){
+  
+  if(inherits(data,"bfRobustness") == FALSE) stop("Please provide a bfRobustness object")
   
   maxvalue <- max(c(10,max(data$BFMatrix$bf)))
   breaks <- c(0,1,3,6,10,maxvalue)
@@ -304,12 +386,12 @@ plotrobust <- function(data, limit=10){
   
   data$BFMatrix$col <- ifelse(data$BFMatrix$bf >= limit, TRUE, FALSE)
   
-  ggplot(data=data$BFMatrix, aes(x=prior.loc, y=prior.r, fill=bf))+
-    geom_raster()+
-    geom_tile(data=subset(data$BFMatrix, col==TRUE), color="black")+
-    geom_text(data = min, aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
-    geom_text(data = max, aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
-    scale_fill_gradientn(colors = c("cornflowerblue",
+  ggplot2::ggplot(data=data$BFMatrix, aes(x=prior.loc, y=prior.r, fill=bf))+
+    ggplot2::geom_raster()+
+    ggplot2::geom_tile(data=subset(data$BFMatrix, col==TRUE), color="black")+
+    ggplot2::geom_text(data = min, aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
+    ggplot2::geom_text(data = max, aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
+    ggplot2::scale_fill_gradientn(colors = c("cornflowerblue",
                                     "white",
                                     "green3",
                                     "yellow",
@@ -319,8 +401,8 @@ plotrobust <- function(data, limit=10){
                          labels = scales::label_number(accuracy = 1),
                          limits = c(0,maxvalue),
                          values = scales::rescale(breaks))+
-    labs(x="Prior Location", y="Prior Width", fill="BF10")+
-    theme_minimal()
+    ggplot2::labs(x="Prior Location", y="Prior Width", fill="BF10")+
+    ggplot2::theme_minimal()
   
 }
 
