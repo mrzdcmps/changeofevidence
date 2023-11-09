@@ -377,7 +377,7 @@ plotrobust <- function(data){
 #' @param data An object generated with the bfRobustness()-function.
 #' @param limit A BF limit which is marked in the plot.
 #' @examples
-#' plotrobust(bfRobustness(seqbf))
+#' plotrobustTile(bfRobustness(seqbf))
 #' @export
 
 plotrobustTile <- function(data, limit=10){
@@ -391,21 +391,21 @@ plotrobustTile <- function(data, limit=10){
   
   data$BFMatrix$col <- ifelse(data$BFMatrix$bf >= limit, TRUE, FALSE)
   
-  ggplot2::ggplot(data=data$BFMatrix, aes(x=prior.loc, y=prior.r, fill=bf))+
+  ggplot2::ggplot(data=data$BFMatrix, ggplot2::aes(x=prior.loc, y=prior.r, fill=bf))+
     ggplot2::geom_raster()+
     ggplot2::geom_tile(data=subset(data$BFMatrix, col==TRUE), color="black")+
-    ggplot2::geom_text(data = min, aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
-    ggplot2::geom_text(data = max, aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
+    ggplot2::geom_text(data = min, ggplot2::aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
+    ggplot2::geom_text(data = max, ggplot2::aes(x=prior.loc, y=prior.r, label = round(bf,2)), color = "black", size = 3) +
     ggplot2::scale_fill_gradientn(colors = c("cornflowerblue",
-                                    "white",
-                                    "green3",
-                                    "yellow",
-                                    "coral2",
-                                    "darkred"),
-                         breaks = breaks,
-                         labels = scales::label_number(accuracy = 1),
-                         limits = c(0,maxvalue),
-                         values = scales::rescale(breaks))+
+                                             "white",
+                                             "green3",
+                                             "yellow",
+                                             "coral2",
+                                             "darkred"),
+                                  breaks = breaks,
+                                  labels = scales::label_number(accuracy = 1),
+                                  limits = c(0,maxvalue),
+                                  values = scales::rescale(breaks))+
     ggplot2::labs(x="Prior Location", y="Prior Width", fill="BF10")+
     ggplot2::theme_minimal()
   
