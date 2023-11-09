@@ -466,7 +466,3 @@ plot.bfRobustness <- function(data, ...) {
        labels)
 }
 
-
-r <- .annotations(c(1/10,10))
-str(r)
-r[[1]]
