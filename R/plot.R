@@ -304,12 +304,14 @@ plotrobust <- function(data){
   # Best and Worst BF
   best <- data$BFMatrix[data$BFMatrix$bf==max(data$BFMatrix$bf),]
   worst <- data$BFMatrix[data$BFMatrix$bf==min(data$BFMatrix$bf),]
+  user <- data$BFMatrix[data$BFMatrix$prior.loc==data$prior[[2]] & data$BFMatrix$prior.r==data$prior[[3]],]
   
   # subtitle <- paste("BF =",round(tail(data$BF,n=1),3),"// N =", sum(data$`sample size`))
   title <- "Bayes Factor Robustness Test"
   subtitle <- paste0(
     "Best BF=",round(best$bf,2)," at ",data$prior[[1]],"(",best$prior.loc,",",best$prior.r,")\n",
-    "Worst BF=",round(worst$bf,2)," at ",data$prior[[1]],"(",worst$prior.loc,",",worst$prior.r,")"
+    "Worst BF=",round(worst$bf,2)," at ",data$prior[[1]],"(",worst$prior.loc,",",worst$prior.r,")\n",
+    "User BF=",round(user$bf,2)," at ",data$prior[[1]],"(",user$prior.loc,",",user$prior.r,")"
   )
   caption <- paste0(data$prior[[1]]," (Locations: ",min(data$BFMatrix$prior.loc)," - ",max(data$BFMatrix$prior.loc),")")
   
@@ -341,16 +343,19 @@ plotrobust <- function(data){
     ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
   
   # Ribbon
-  p <- p + ggplot2::geom_ribbon(data=min_max_values, aes(x=prior.r, ymin=min, ymax=max), alpha=0.5)
+  p <- p + ggplot2::geom_ribbon(data=min_max_values, ggplot2::aes(x=prior.r, ymin=min, ymax=max), alpha=0.4)
   if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(min_max_values$prior.r)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
   
   # Best and Worst BF
-  p <- p + ggplot2::geom_line(data = subset(data$BFMatrix, prior.loc==best$prior.loc), aes(x=prior.r, y=bf), color="coral2")+
-    ggplot2::geom_line(data = subset(data$BFMatrix, prior.loc==worst$prior.loc), aes(x=prior.r, y=bf), color="cornflowerblue")+
-    ggplot2::geom_point(data = best, aes(x=prior.r, y=bf), color="coral2")+
-    ggplot2::geom_point(data = worst, aes(x=prior.r, y=bf), color="cornflowerblue")+
-    ggplot2::geom_text(data = best, aes(x=prior.r, y=bf, label=round(bf,2)), color="coral2", vjust=-0.5)+
-    ggplot2::geom_text(data = worst, aes(x=prior.r, y=bf, label=round(bf,2)), color="cornflowerblue", vjust=1.5)
+  p <- p + ggplot2::geom_line(data = subset(data$BFMatrix, prior.loc==best$prior.loc), ggplot2::aes(x=prior.r, y=bf), color="cornflowerblue", size=1)+
+    ggplot2::geom_line(data = subset(data$BFMatrix, prior.loc==worst$prior.loc), ggplot2::aes(x=prior.r, y=bf), color="coral2", size=1)+
+    #ggplot2::geom_line(data = subset(data$BFMatrix, prior.loc==user$prior.loc), ggplot2::aes(x=prior.r, y=bf), color="chartreuse4", size=1)+
+    ggplot2::geom_point(data = best, ggplot2::aes(x=prior.r, y=bf), color="cornflowerblue")+
+    ggplot2::geom_point(data = worst, ggplot2::aes(x=prior.r, y=bf), color="coral2")+
+    ggplot2::geom_point(data = user, ggplot2::aes(x=prior.r, y=bf), color="chartreuse4", shape=18, size=3)+
+    ggplot2::geom_label(data = best, ggplot2::aes(x=prior.r, y=bf, label=round(bf,2)), color="cornflowerblue", vjust=-0.5)+
+    ggplot2::geom_label(data = worst, ggplot2::aes(x=prior.r, y=bf, label=round(bf,2)), color="coral2", vjust=1.5)+
+    ggplot2::geom_label(data = user, ggplot2::aes(x=prior.r, y=bf, label=round(bf,2)), color="chartreuse4", vjust=1.5)
   
   p <- p + ggplot2::labs(title = title, subtitle = subtitle, caption = caption)
   
@@ -358,7 +363,7 @@ plotrobust <- function(data){
     ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
     ggplot2::coord_cartesian(ylim = coordy)+
     ggplot2::theme_bw(base_size = 14)+
-    ggplot2::theme(legend.position = "none", panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    ggplot2::theme(legend.position = "none", panel.grid.major = ggplot2::element_blank(), panel.grid.minor = ggplot2::element_blank())
   
 }
 
