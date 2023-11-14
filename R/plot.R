@@ -347,9 +347,10 @@ plotrobust <- function(data){
   if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(min_max_values$prior.loc)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
   
   # Best and Worst BF
-  p <- p + ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", size=1)+
-    ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", size=1)+
-    #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==user$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", size=1)+
+  p <- p + 
+    #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", size=1)+
+    #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", size=1)+
+    ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==user$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", size=1)+
     ggplot2::geom_point(data = best, ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue")+
     ggplot2::geom_point(data = worst, ggplot2::aes(x=prior.loc, y=bf), color="coral2")+
     ggplot2::geom_point(data = user, ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", shape=18, size=3)+
