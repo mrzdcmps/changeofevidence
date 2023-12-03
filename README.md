@@ -8,7 +8,7 @@ This package provides functions to test for a change of evidence over time and i
     remotes::install_github("mrzdcmps/changeofevidence")
     
   ## How to use the package
-  * [t-Test vignette](https://mrzdcmps.github.io/vignette-t-test-html.html)
+  * [t-Test vignette](https://mrzdcmps.github.io/changeofevidence/vignette-t-test.html)
   
   ## Random Files
   
