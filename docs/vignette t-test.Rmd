@@ -1,0 +1,124 @@
+---
+title: "Change of Evidence Vignette t-Test"
+output: 
+  html_document:
+    keep_md: true
+    self_contained: true
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Generate Sample Data
+
+```{r}
+set.seed(9878)
+
+exp=rbinom(100,20,0.52)
+con=rbinom(100,20,0.5)
+
+summary(exp)
+summary(con)
+
+df <- data.frame(condition = c(rep("exp", 100), rep("con", 100)),
+                      value = c(exp, con))
+```
+
+### Load library
+
+```{r}
+library(changeofevidence)
+```
+
+## Bayes Factor testing
+### Calculate Sequential Bayes Factors
+
+```{r}
+# Undirectional one-sample t-tests with broad prior
+bf.exp <- bfttest(exp, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707)
+print(bf.exp)
+
+# Use exact=FALSE for a quicker test that doers not calculate every single BF
+bf.con <- bfttest(con, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707, exact=FALSE)
+print(bf.con)
+
+# only the last 5 data points
+bfttest(con, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707, nstart = length(con)-5)
+
+# Directional paired samples t-test with narrow prior
+bf.paired <- bfttest(exp, con, alternative = "greater", prior.loc = 0, prior.r = 0.1)
+print(bf.paired)
+
+# Independent samples t-test with informed prior
+bf.between <- bfttest(value ~ condition, data = df, alternative = "less", prior.loc = 0.1, prior.r = 0.1)
+print(bf.between)
+
+```
+
+### Plot Seq BFs
+
+```{r}
+# Plot seqbf object
+plot(bf.paired)
+
+# Plot multiple BFs
+plotbf(list(exp=bf.exp$BF, con=bf.con$BF))
+```
+
+### Robustness analyis
+
+```{r}
+bf.paired.robust <- bfRobustness(bf.paired)
+print(bf.paired.robust)
+plot(bf.paired.robust)
+```
+
+## Simulations
+### Create simulations
+
+```{r results='hide'}
+# Indicate the amount of trials of one experimental run (e.g. 100 subjects * 20 trials)
+# Specify the same test parameters as the test(s) you want to compare to (in this case the one-sample t-tests.)
+sims <- simcreate(100*20, n.sims = 100, mean.scores = 10, use.files = F, alternative = "two.sided", prior.loc = 0, prior.r = 0.707)
+```
+
+### Plot BFs with simulation data
+
+```{r}
+plot(bf.paired, sims.df = sims)
+plotbf(list(exp=bf.exp$BF, con=bf.con$BF), sims.df = sims)
+```
+
+## Change of evidence measures
+### CoE 1: Maximum BF
+
+```{r}
+r.exp.maxbf <- maxbf(bf.exp, sims.df = sims)
+r.con.maxbf <- maxbf(bf.con, sims.df = sims)
+```
+
+### CoE 2: BF Energy
+
+```{r}
+r.exp.nrg <- energybf(bf.exp, sims.df = sims)
+r.con.nrg <- energybf(bf.con, sims.df = sims)
+```
+
+### Coe 3: FFT Amplitude Sum
+
+```{r}
+# Create Fast Fourier Transforms of Sequential BFs
+fft.exp <- fftcreate(bf.exp)
+fft.con <- fftcreate(bf.con)
+
+# Compare amplitude sums with simulations
+r.exp.fft <- ffttest(fft.exp, sims.df = sims)
+r.con.fft <- ffttest(fft.con, sims.df = sims)
+
+# Plot FFTs
+# Use parameter "coordy" to ensure a comparable coordinate system
+plotfft(fft.exp, sims.df = sims)
+plotfft(fft.con, sims.df = sims)
+```
