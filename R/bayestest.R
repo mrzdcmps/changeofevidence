@@ -358,47 +358,60 @@ bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
 #'
 #'
 #' @param x A seqbf object created with bfttest(), bfbinom(), or bfcor()
+#' @param informed Logical. If you don't want to specify prior locations and scales manually, informed = FALSE will test multiple prior widths and location 0, while informed = TRUE will test different locations and widths.
 #' @param prior.loc Range of locations of the cauchy distributed prior function.
 #' @param prior.r Range of scales of the cauchy distributed prior function.
 #' @examples
-#' bfr <- bfRobustness(seqbf)
-#' print(bfr)
-#' plot(bfr)
+#' bfrInformed <- bfRobustness(seqbf) 
+#' bfrUninformed <- bfRobustness(seqbf, informed = FALSE) 
+#' print(bfrInformed)
+#' plot(bfrInformed)
 #' @export
 
-bfRobustness <- function(x = NULL, prior.loc = seq(0,1,0.05), prior.r = seq(0.05,1,0.05)){
+bfRobustness <- function(x = NULL, informed = TRUE, prior.loc = NULL, prior.r = NULL){
   
   if(inherits(x,"seqbf") == FALSE) stop("Please provide a seqbf object created with bfttest() or bfbinom() or bfcor()")
+  
+  # specify prior parameters if not set by user
+  
+  if (is.null(prior.loc)) {
+    if (informed == TRUE) prior.loc <- seq(0,1,0.05)
+    else prior.loc <- 0
+  }
+  if (is.null(prior.r)) {
+    if (informed == TRUE) prior.r <- seq(0.05, 1, 0.05)
+    else prior.r <- seq(0.01, 1.41, 0.01)
+  }
+  
+  if(x$alternative == "two.sided") aa <- 1
+  else if(x$alternative == "greater") aa <- 2
+  else if(x$alternative == "less") aa <- 3
+  
+  t <- tail(x$`t-value`, n=1)
+  grid <- expand.grid(prior.loc, prior.r)
+  
+  if(x$`test type` == "independent"){
     
-    if(x$alternative == "two.sided") aa <- 1
-    else if(x$alternative == "greater") aa <- 2
-    else if(x$alternative == "less") aa <- 3
+    n1 <- x$`sample size`[1]
+    n2 <- x$`sample size`[2]
+    grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = n1, n2 = n2, independentSamples = T, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
     
-    t <- tail(x$`t-value`, n=1)
-    grid <- expand.grid(prior.loc, prior.r)
+  } else if(x$`test type` == "paired"){
     
-    if(x$`test type` == "independent"){
-      
-      n1 <- x$`sample size`[1]
-      n2 <- x$`sample size`[2]
-      grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = n1, n2 = n2, independentSamples = T, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
-      
-    } else if(x$`test type` == "paired"){
-      
-      grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = x$`sample size`, independentSamples = F, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
-      
-    } else if(x$`test type` == "one-sample"){
-      
-      grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = x$`sample size`, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
-      
-    }
+    grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = x$`sample size`, independentSamples = F, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
     
+  } else if(x$`test type` == "one-sample"){
+    
+    grid$bf <- pbapply::pbapply(grid,1,function(g) bf10_t(t = t, n1 = x$`sample size`, prior.location = g[1], prior.scale = g[2], prior.df = 1)[[aa]])
+    
+  }
+  
   
   names(grid)[1] <- "prior.loc"
   names(grid)[2] <- "prior.r"
   
   bft.out <- list("BFMatrix" = grid, "test type" = x$`test type`, "prior" = list(x$prior[[1]], "prior location" = x$prior[[2]], "prior scale" = x$prior[[3]]), "sample size" = x$`sample size`, "alternative" = x$alternative)
-
+  
   cat("Highest BF = ", round(max(grid$bf),2), " with prior: Cauchy(",grid$prior.loc[grid$bf==max(grid$bf)],", ",grid$prior.r[grid$bf==max(grid$bf)],")", sep="")
   
   class(bft.out) <- "bfRobustness"
