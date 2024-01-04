@@ -307,7 +307,7 @@ plotrobust <- function(data){
   # Best and Worst BF
   best <- data$BFMatrix[data$BFMatrix$bf==max(data$BFMatrix$bf),]
   worst <- data$BFMatrix[data$BFMatrix$bf==min(data$BFMatrix$bf),]
-  user <- data$BFMatrix[data$BFMatrix$prior.loc==data$prior[[2]] & data$BFMatrix$prior.r==data$prior[[3]],]
+  user <- data$BFMatrix[round(data$BFMatrix$prior.loc,2)==data$prior[[2]] & round(data$BFMatrix$prior.r,2)==data$prior[[3]],]
   
   # subtitle <- paste("BF =",round(tail(data$BF,n=1),3),"// N =", sum(data$`sample size`))
   title <- "Bayes Factor Robustness Test"
