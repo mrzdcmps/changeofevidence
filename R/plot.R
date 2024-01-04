@@ -295,6 +295,9 @@ plotrobust <- function(data){
   
   if(inherits(data,"bfRobustness") == FALSE) stop("Please provide a bfRobustness object")
   
+  # one Location or more Locations?
+  robustnessType <- ifelse(length(unique(data$BFMatrix$prior.loc))==1, "uninformed", "informed")
+  
   #get min and max
   min_max_values <- aggregate(data$BFMatrix$bf, by = list(data$BFMatrix$prior.loc), FUN = function(x) c(min = min(x), max = max(x)))
   min_max_values <- data.frame(prior.loc = min_max_values$Group.1,
@@ -313,8 +316,9 @@ plotrobust <- function(data){
     "Worst BF=",round(worst$bf,2)," at ",data$prior[[1]],"(",worst$prior.loc,",",worst$prior.r,")\n",
     "User BF=",round(user$bf,2)," at ",data$prior[[1]],"(",user$prior.loc,",",user$prior.r,")"
   )
-  caption <- paste0(data$prior[[1]]," (Widths: ",min(data$BFMatrix$prior.r)," - ",max(data$BFMatrix$prior.r),")")
   
+  if(robustnessType=="informed") caption <- paste0(data$prior[[1]]," (Widths: ",min(data$BFMatrix$prior.r)," - ",max(data$BFMatrix$prior.r),")")
+  else caption <- paste0(data$prior[[1]]," (Location: ",unique(data$BFMatrix$prior.loc),")")
   
   # plot
   # Set y coordinates
@@ -334,38 +338,69 @@ plotrobust <- function(data){
   breaks <- annotationlist[[3]]
   labels <- annotationlist[[4]]
   
-  
-  # Draw plot
-  p <- ggplot2::ggplot()
-  
-  # Add horizontal lines
-  p <- p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
-    ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
-  
-  # Ribbon
-  p <- p + ggplot2::geom_ribbon(data=min_max_values, ggplot2::aes(x=prior.loc, ymin=min, ymax=max), alpha=0.3)
-  if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(min_max_values$prior.loc)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
-  
-  # Best and Worst BF
-  p <- p + 
-    #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", size=1)+
-    #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", size=1)+
-    ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==user$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", size=1)+
-    ggplot2::geom_point(data = best, ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue")+
-    ggplot2::geom_point(data = worst, ggplot2::aes(x=prior.loc, y=bf), color="coral2")+
-    ggplot2::geom_point(data = user, ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", shape=18, size=3)+
-    ggplot2::geom_label(data = best, ggplot2::aes(x=prior.loc, y=bf, label=round(bf,2)), color="cornflowerblue", vjust=-0.5)+
-    ggplot2::geom_label(data = worst, ggplot2::aes(x=prior.loc, y=bf, label=round(bf,2)), color="coral2", vjust=1.5)+
-    ggplot2::geom_label(data = user, ggplot2::aes(x=prior.loc, y=bf, label=round(bf,2)), color="chartreuse4", vjust=1.5)
-  
-  p <- p + ggplot2::labs(title = title, subtitle = subtitle, caption = caption)
-  
-  p + ggplot2::labs(x="Prior Location", y = "Evidence (BF)")+
-    ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
-    ggplot2::coord_cartesian(ylim = coordy)+
-    ggplot2::theme_bw(base_size = 14)+
-    ggplot2::theme(legend.position = "none", panel.grid.major = ggplot2::element_blank(), panel.grid.minor = ggplot2::element_blank())
-  
+  if(robustnessType=="informed"){
+    # Draw plot
+    p <- ggplot2::ggplot()
+    
+    # Add horizontal lines
+    p <- p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
+      ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
+    
+    # Ribbon
+    p <- p + ggplot2::geom_ribbon(data=min_max_values, ggplot2::aes(x=prior.loc, ymin=min, ymax=max), alpha=0.3)
+    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(min_max_values$prior.loc)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+    
+    # Best and Worst BF
+    p <- p + 
+      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", size=1)+
+      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", size=1)+
+      ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==user$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", size=1)+
+      ggplot2::geom_point(data = best, ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue")+
+      ggplot2::geom_point(data = worst, ggplot2::aes(x=prior.loc, y=bf), color="coral2")+
+      ggplot2::geom_point(data = user, ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", shape=18, size=3)+
+      ggplot2::geom_label(data = best, ggplot2::aes(x=prior.loc, y=bf, label=round(bf,2)), color="cornflowerblue", vjust=-0.5)+
+      ggplot2::geom_label(data = worst, ggplot2::aes(x=prior.loc, y=bf, label=round(bf,2)), color="coral2", vjust=1.5)+
+      ggplot2::geom_label(data = user, ggplot2::aes(x=prior.loc, y=bf, label=round(bf,2)), color="chartreuse4", vjust=1.5)
+    
+    p <- p + ggplot2::labs(title = title, subtitle = subtitle, caption = caption)
+    
+    p + ggplot2::labs(x="Prior Location", y = "Evidence (BF)")+
+      ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
+      ggplot2::coord_cartesian(ylim = coordy)+
+      ggplot2::theme_bw(base_size = 14)+
+      ggplot2::theme(legend.position = "none", panel.grid.major = ggplot2::element_blank(), panel.grid.minor = ggplot2::element_blank())
+    
+  } else {
+    # Draw plot
+    p <- ggplot2::ggplot()
+    
+    # Add horizontal lines
+    p <- p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
+      ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
+    
+    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(data$BFMatrix$prior.r)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+    
+    # Best and Worst BF
+    p <- p + 
+      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", size=1)+
+      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", size=1)+
+      ggplot2::geom_line(data = data$BFMatrix, ggplot2::aes(x=prior.r, y=bf), color="black", size=1)+
+      ggplot2::geom_point(data = best, ggplot2::aes(x=prior.r, y=bf), color="cornflowerblue")+
+      ggplot2::geom_point(data = worst, ggplot2::aes(x=prior.r, y=bf), color="coral2")+
+      ggplot2::geom_point(data = user, ggplot2::aes(x=prior.r, y=bf), color="chartreuse4", shape=18, size=3)+
+      ggplot2::geom_label(data = best, ggplot2::aes(x=prior.r, y=bf, label=round(bf,2)), color="cornflowerblue", vjust=-0.5)+
+      ggplot2::geom_label(data = worst, ggplot2::aes(x=prior.r, y=bf, label=round(bf,2)), color="coral2", vjust=1.5)+
+      ggplot2::geom_label(data = user, ggplot2::aes(x=prior.r, y=bf, label=round(bf,2)), color="chartreuse4", vjust=1.5)
+    
+    p <- p + ggplot2::labs(title = title, subtitle = subtitle, caption = caption)
+    
+    p + ggplot2::labs(x="Prior Width", y = "Evidence (BF)")+
+      ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
+      ggplot2::coord_cartesian(ylim = coordy)+
+      ggplot2::theme_bw(base_size = 14)+
+      ggplot2::theme(legend.position = "none", panel.grid.major = ggplot2::element_blank(), panel.grid.minor = ggplot2::element_blank())
+    
+  }
 }
 
 
