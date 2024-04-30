@@ -120,6 +120,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     
     if(!is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
     if(is.null(data)) stop("Please specify data.")
+    if (!is.data.frame(data)) stop(paste0("'",substitute(data), "' is not a valid dataframe."))
     
     # remove rows with NA in critical variables of from data
     data <- data[complete.cases(data[c(deparse(formula[[3]]), deparse(formula[[2]]))]),]
