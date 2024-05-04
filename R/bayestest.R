@@ -152,9 +152,17 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     
     # Ensure t-test works with current nstart
     res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, var.equal=TRUE), silent = TRUE)
-    while (class(res) == "try-error") {
-      nstart <- nstart+1
+    iterations <- 1
+    
+    while (class(res) == "try-error" && iterations < nrow(data)) {
+      nstart <- nstart + 1
       res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, var.equal=TRUE), silent = TRUE)
+      iterations <- iterations + 1
+    }
+    
+    # Check if the maximum number of iterations was reached
+    if (iterations == nrow(data)) {
+      stop("Could not perform independent samples test. Please check your data.")
     }
     
     # calculate all points or do it stepwise
