@@ -1,3 +1,7 @@
+![GitHub release](https://img.shields.io/github/r-package/v/mrzdcmps/changeofevidence.svg)
+[![GitHub last commit](https://img.shields.io/github/last-commit/mrzdcmps/changeofevidence.svg)](https://github.com/mrzdcmps/changeofevidence/commits/master)
+
+
 # Change of Evidence
 This package provides functions to test for a change of evidence over time and include sequential Bayesian testing methods. It can be used to examine volatile effects.
 
