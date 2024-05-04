@@ -151,10 +151,10 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     }
     
     # Ensure t-test works with current nstart
-    res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, paired=F, var.equal=TRUE), silent = TRUE)
+    res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, var.equal=TRUE), silent = TRUE)
     while (class(res) == "try-error") {
       nstart <- nstart+1
-      res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, paired=F, var.equal=TRUE), silent = TRUE)
+      res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, var.equal=TRUE), silent = TRUE)
     }
     
     # calculate all points or do it stepwise
@@ -169,7 +169,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
     # t-test calculations for multiple points
     for (i in steps) {
       
-      t[[i]] <- t.test(formula=formula, data=data[1:i,], alternative = alternative, paired=F, var.equal=TRUE)
+      t[[i]] <- t.test(formula=formula, data=data[1:i,], alternative = alternative, var.equal=TRUE)
       n1 <- table(testdata[1:i])[1]
       n2 <- table(testdata[1:i])[2]
       bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = n1, n2 = n2, independentSamples = T, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
