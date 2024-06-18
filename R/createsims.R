@@ -118,7 +118,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
         sim$cumsum <- cumsum(sim$qbitmin1)
         
         #(2) BAYES BINOM TEST
-        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)
+        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)$BF
       }
       
       # Run FFT on Random Walk
@@ -209,7 +209,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
         sim$cumsum <- cumsum(sim$qbitmin1)
         
         #(2) BAYES BINOM TEST
-        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)
+        sim$bf <- changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)$BF
       }
       
       # Run FFT on Random Walk
@@ -228,7 +228,6 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
       
       sim.out[[i]] <- tempMatrix
       
-    }
     
     sim.out <- dplyr::bind_rows(sim.out)
   }
