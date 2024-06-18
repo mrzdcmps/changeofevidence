@@ -228,7 +228,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, use.files = TRU
       
       sim.out[[i]] <- tempMatrix
       
-    
+    }
     sim.out <- dplyr::bind_rows(sim.out)
   }
   
