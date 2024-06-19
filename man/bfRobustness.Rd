@@ -4,14 +4,12 @@
 \alias{bfRobustness}
 \title{Robustness Analysis for Bayesian Sequential tests}
 \usage{
-bfRobustness(
-  x = NULL,
-  prior.loc = seq(0, 1, 0.05),
-  prior.r = seq(0.05, 1, 0.05)
-)
+bfRobustness(x = NULL, informed = TRUE, prior.loc = NULL, prior.r = NULL)
 }
 \arguments{
 \item{x}{A seqbf object created with bfttest(), bfbinom(), or bfcor()}
+
+\item{informed}{Logical. If you don't want to specify prior locations and scales manually, informed = FALSE will test multiple prior widths and location 0, while informed = TRUE will test different locations and widths.}
 
 \item{prior.loc}{Range of locations of the cauchy distributed prior function.}
 
@@ -21,7 +19,8 @@ bfRobustness(
 This function compares Bayes Factors of different priors. Returns a list containing BFMatrix, a data frame comprising the Bayes Factors of all possible combinations of the prior parameters (prior.location and prior.width)
 }
 \examples{
-bfr <- bfRobustness(seqbf)
-print(bfr)
-plot(bfr)
+bfrInformed <- bfRobustness(seqbf) 
+bfrUninformed <- bfRobustness(seqbf, informed = FALSE) 
+print(bfrInformed)
+plot(bfrInformed)
 }

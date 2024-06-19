@@ -13,7 +13,8 @@ bfttest(
   mu = 0,
   prior.loc = 0,
   prior.r = 0.1,
-  nstart = 5
+  nstart = "auto",
+  exact = TRUE
 )
 }
 \arguments{
@@ -33,7 +34,9 @@ bfttest(
 
 \item{prior.r}{Scale of the cauchy distributed prior function.}
 
-\item{nstart}{How many data points should be considered before calculating the first BF (min = 2).}
+\item{nstart}{How many data points should be considered before calculating the first BF (min = 2). Set to "auto" to automatically set the earliest data point.}
+
+\item{exact}{Logical. All data points are being calculated if set to true. Set to FALSE for faster calculations and plotting only.}
 }
 \description{
 This function calculates Bayes Factors for every added data point of normally distributed data, e.g. sum scores.

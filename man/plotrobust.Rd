@@ -4,18 +4,16 @@
 \alias{plotrobust}
 \title{Plot BF Robustness Analyses}
 \usage{
-plotrobust(data, limit = 10)
+plotrobust(data)
 }
 \arguments{
-\item{data}{An object generated with bfRobustness containing a "BFMatrix" dataframe.}
-
-\item{limit}{A BF limit which is marked in the plot.}
+\item{data}{An object generated with the bfRobustness()-function.}
 }
 \description{
 This function allows to plot a BF robustness analysis (bfttestRobustness())
 }
 \details{
-Returns a heatmap showing the the BFs for different prior parameters (location and scale)
+Returns an overview showing the the BFs for different prior parameters (location and scale)
 }
 \examples{
 plotrobust(bfRobustness(seqbf))

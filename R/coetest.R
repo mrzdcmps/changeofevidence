@@ -130,7 +130,7 @@ fftcreate <- function(data){
 #'
 #' If you want to use the old "Top5-Frequency" method instead of amplitude sums, indicate by setting 'top5 = TRUE'.
 #'
-#' @param data A vector containing Fourier transformed (spectral density) data (use 'fftcreate' function).
+#' @param data A seqbf-object or a vector containing Fourier transformed (spectral density) data (use `fftcreate` function).
 #' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
 #' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
 #' @param top5 Logical. If set to TRUE, function will additionally return the Top5-Frequency method. For each frequency the function counts how many simulations show a higher amplitude. If no more than 5 percent of simulations are above the experimental value, it is considered a "Top5-Frequency". The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
@@ -142,6 +142,8 @@ fftcreate <- function(data){
 #' @export
 
 ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE){
+  
+  if(inherits(data,"seqbf") == TRUE) data <- changeofevidence::fftcreate(data$BF)
   
   if(var(data[1:3]) == 0) stop("It seems like you specified a vector containing BFs. Please use fftcreate(bf) to Fourier transform first.")
   if(!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")

@@ -7,7 +7,7 @@
 ffttest(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE)
 }
 \arguments{
-\item{data}{A vector containing Fourier transformed (spectral density) data (use 'fftcreate' function).}
+\item{data}{A seqbf-object or a vector containing Fourier transformed (spectral density) data (use `fftcreate` function).}
 
 \item{sims.df}{A dataframe containing simulations, including columns "index" and "simid".}
 
