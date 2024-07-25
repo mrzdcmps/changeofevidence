@@ -46,6 +46,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, method = c("pse
     nstart <- 3
     warning("`nstart` was set to 3, since testing requires a certain amount of variance in the data.")
   }
+  if(length(method) > 1) method <- method[1]
   if (method == "files" && !dir.exists(filespath)) stop("Specified filespath does not exist.")
   if (method == "files" && length(list.files(filespath, pattern = "*.txt")) < n.sims) stop("Number of simulations is larger than amount of random files.")
   if (method == "quantis") {
@@ -59,6 +60,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, method = c("pse
     parallel <- FALSE
   }
   if (!method %in% c("pseudo", "files", "quantis")) stop("Method must be either 'pseudo', 'files' or 'quantis'.")
+
   
   maxbit <- (1 / p) - 1
   
