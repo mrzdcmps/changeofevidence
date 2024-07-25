@@ -30,11 +30,11 @@
 simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, method = c("pseudo", "files", "quantis"), filespath = "RandomFiles/", parallel = TRUE, nstart = 5, alternative = c("two.sided", "less", "greater"), prior.loc = 0, prior.r = 0.1, p = 0.5, use.files = NULL, use.quantis = NULL) {
   
   # Backwards compatibility
-  if (use.files) {
+  if (!is.null(use.files) && use.files == TRUE) {
     message("The argument `use.files` is deprecated. Please use `method = 'files'` instead.")
     method <- "files"
   }
-  if (use.quantis) {
+  if (!is.null(use.quantis) && use.quantis == TRUE) {
     message("The argument `use.quantis` is deprecated. Please use `method = 'quantis'` instead.")
     method <- "quantis"
   }
