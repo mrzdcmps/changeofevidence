@@ -137,7 +137,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, method = c("pse
   if (parallel) {
     cores <- parallel::detectCores() - 1
     cl <- parallel::makeCluster(cores)
-    parallel::clusterExport(cl, ".quiet")
+    parallel::clusterExport(cl, c("generate_simulation", "rfiles", ".quiet", "trials", "mean.scores", "nstart", "alternative", "prior.loc", "prior.r", "p", "method", "maxbit"), envir = environment())
     sim.out <- do.call(rbind, pbapply::pblapply(1:n.sims, function(i) {
       generate_simulation(i)
     }, cl = cl))
