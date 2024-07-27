@@ -29,7 +29,7 @@
 
 simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, method = c("pseudo", "files", "quantis"), filespath = "RandomFiles/", parallel = TRUE, nstart = 5, alternative = c("two.sided", "less", "greater"), prior.loc = 0, prior.r = 0.1, p = 0.5, use.files = NULL, use.quantis = NULL) {
   
-  # Backwards compatibility
+  # Backward compatibility
   if (!is.null(use.files) && use.files == TRUE) {
     message("The argument `use.files` is deprecated. Please use `method = 'files'` instead.")
     method <- "files"
@@ -114,17 +114,11 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, method = c("pse
       
       sim <- data.frame(sums = sim)
       sim$cumsum <- cumsum(sim$sums - mean.scores)
-      sim$bf <- ifelse(parallel,
-                       changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)$BF,
-                       .quiet(changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)$BF)
-      )
+      sim$bf <- .quiet(changeofevidence::bfttest(sim$sums, alternative = alternative, mu = mean.scores, prior.loc = prior.loc, prior.r = prior.r, nstart = nstart)$BF)
     } else {
       sim$qbitmin1 <- ifelse(sim[, 1] == 0, -1, 1)
       sim$cumsum <- cumsum(sim$qbitmin1)
-      sim$bf <- ifelse(parallel,
-                       changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)$BF,
-                       .quiet(changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)$BF)
-      )
+      sim$bf <- .quiet(changeofevidence::bfbinom(sim$V1, p = p, prior.r = prior.r, nstart = nstart)$BF)
     }
     
     # FFT computations
@@ -143,6 +137,7 @@ simcreate <- function(trials, n.sims = 1000, mean.scores = NULL, method = c("pse
   if (parallel) {
     cores <- parallel::detectCores() - 1
     cl <- parallel::makeCluster(cores)
+    parallel::clusterExport(cl, ".quiet")
     sim.out <- do.call(rbind, pbapply::pblapply(1:n.sims, function(i) {
       generate_simulation(i)
     }, cl = cl))
