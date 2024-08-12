@@ -66,8 +66,7 @@ energybf <- function(data, sims.df=sims){
   if(length(data) != nrow(sims.df[sims.df$simid == simids[1],])) stop("Data is not the same length as simulations!")
   
   cat(">> BF ENERGY << \n")
-  cat("Calculating Energy of sims... \n")
-  
+ 
   nullenergy <- length(data)-1
   
   sim.energy <- pbapply::pbtapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
