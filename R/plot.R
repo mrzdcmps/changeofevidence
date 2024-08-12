@@ -247,6 +247,8 @@ plot.seqbf <- function(data, ...) {
 # Plot FFT
 # Data for 95-CI ribbon FFT
 plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50, color = "black", coordy = c(0,secondhighestval)){
+  if(inherits(data,"seqbf") == TRUE) data <- changeofevidence::fftcreate(data$BF)
+  
   secondhighestval <- sort(data,partial=length(data)-1)[length(data)-1]
   library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
