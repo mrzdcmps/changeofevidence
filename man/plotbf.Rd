@@ -24,7 +24,7 @@ plotbf(
 
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 
-\item{label.x}{A character that is used as label for the x-axis ("N" for sum scores, "Trials" for binomial data).}
+\item{label.x}{A character that overrides the label for the x-axis ("N" for sum scores, "Trials" for binomial data).}
 }
 \description{
 This function allows to plot a sequential Bayesian analysis.

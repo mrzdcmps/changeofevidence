@@ -110,7 +110,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @param color A color in which the Seq BF-function will be drawn.
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
-#' @param label.x A character that is used as label for the x-axis ("N" for sum scores, "Trials" for binomial data).
+#' @param label.x A character that overrides the label for the x-axis ("N" for sum scores, "Trials" for binomial data).
 #' @examples
 #' 
 #' plot(seqbf)
@@ -130,8 +130,26 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N"){
   
   if(inherits(data,"seqbf") == TRUE){
-    subtitle <- paste("BF =",round(tail(data$BF,n=1),3),"// N =", sum(data$`sample size`))
-    caption <- paste0(data$prior[[1]],"(",data$prior[[2]],", ",data$prior[[3]],")")
+    if(data$`test type` == "independent") {
+      testtype <- "Independent Samples"
+    } else if(data$`test type` == "paired") {
+      testtype <- "Paired Samples"
+    } else if(data$`test type` == "one-sample") {
+      testtype <- "One-Sample"
+    } else if(data$`test type` == "binomial") {
+      testtype <- "Binomial"
+      label.x <- "Trials"
+    } else if(data$`test type` == "correlation") {
+      testtype <- "Correlation"
+    } else {
+      testtype <- "Unknown"
+    }
+    tails <- ifelse(data$alternative == "two.sided", "two-tailed", "one-tailed")
+    subtitle <- paste0("BF = ",round(tail(data$BF,n=1),3)," (N = ", sum(data$`sample size`),")")
+    caption <- paste0(
+      testtype, " test; ",
+      tails, "; ",
+      data$prior[[1]],"(",data$prior[[2]],", ",data$prior[[3]],")")
     data <- data$BF
     showinfo <- TRUE
   }
@@ -142,7 +160,6 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   # Set y coordinates
   if(is.null(coordy)){
     if(is.list(data)){
-      #Reduce(function(x, y) merge(x, y, by = "id", all = T), list(a, b, c))
       coordy <- c(min(unlist(data), na.rm=T),
                   2*max(unlist(data), na.rm=T))
     }
