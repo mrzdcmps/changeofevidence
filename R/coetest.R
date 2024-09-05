@@ -15,30 +15,24 @@
 
 # Maximum BF analysis
 maxbf <- function(data, sims.df = sims) {
-  
-  # Handle seqbf input
   if (inherits(data, "seqbf")) data <- data$BF
   
-  # Precompute unique simulation IDs and their count
   simids <- unique(sims.df$simid)
   u.nsims <- length(simids)
   
-  # Input validation
   if (!is.numeric(data)) stop("Data must be a numeric vector!")
-  if (length(data) != nrow(sims.df[sims.df$simid == simids[1],])) stop("Data is not the same length as simulations!")
+  if (length(data) != nrow(sims.df[sims.df$simid == simids[1], ])) stop("Data is not the same length as simulations!")
   
-  # Compute maximum BF for both the real data and simulations
   sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm = TRUE)
-  max_bf <- max(data)
-  max_bf_N <- which.max(data)
-  sims_with_higher_bf <- (sum(sim.maxbf >= max_bf) / u.nsims) * 100
+  max_data_bf <- max(data)
+  max_data_bf_n <- which.max(data)
+  sims_with_higher_bf <- (sum(sim.maxbf >= max_data_bf) / u.nsims) * 100  # Percentage
   
-  # Return result as a list and assign the custom class 'coe'
   maxbf.out <- list(
-    MaxBF = max_bf,
-    MaxBF_N = max_bf_N,
-    Sims_with_higher_BF = sims_with_higher_bf,
-    Total_Sims = u.nsims
+    MaxBF = max_data_bf,
+    MaxBF_N = max_data_bf_n,
+    Sims_with_higher_BFs = sims_with_higher_bf,
+    Num_Sims = u.nsims
   )
   
   class(maxbf.out) <- "coe"
@@ -69,31 +63,27 @@ maxbf <- function(data, sims.df = sims) {
 
 # Energy of BF
 energybf <- function(data, sims.df = sims) {
-  
-  # Handle seqbf input
   if (inherits(data, "seqbf")) data <- data$BF
   
-  # Precompute unique simulation IDs and their count
   simids <- unique(sims.df$simid)
   u.nsims <- length(simids)
-  
-  # Input validation
-  if (!is.numeric(data)) stop("Data must be a numeric vector!")
-  if (length(data) != nrow(sims.df[sims.df$simid == simids[1],])) stop("Data is not the same length as simulations!")
-  
-  # Energy calculation for both real data and simulations
   nullenergy <- length(data) - 1
-  sim.energy <- pbapply::pbtapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
-  real.energy <- pracma::trapz(as.numeric(1:length(data)), data) - nullenergy
-  sims_with_higher_energy <- (sum(sim.energy >= real.energy) / u.nsims) * 100
   
-  # Return result as a list and assign the custom class 'coe'
+  if (!is.numeric(data)) stop("Data must be a numeric vector!")
+  if (length(data) != nrow(sims.df[sims.df$simid == simids[1], ])) stop("Data is not the same length as simulations!")
+  
+  #sim.energy <- pbapply::pbtapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
+  sim.energy <- tapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
+  real_energy <- pracma::trapz(as.numeric(1:length(data)), data) - nullenergy
+  
+  sims_with_higher_energy <- (sum(sim.energy >= real_energy) / u.nsims) * 100  # Percentage
+  
   energybf.out <- list(
-    Energy = real.energy,
+    Energy = real_energy,
     Simenergy_M = mean(sim.energy),
     Simenergy_SD = sd(sim.energy),
-    Sims_with_higher_Energy = sims_with_higher_energy,
-    Total_Sims = u.nsims
+    Sims_with_higher_energy = sims_with_higher_energy,
+    Num_Sims = u.nsims
   )
   
   class(energybf.out) <- "coe"
@@ -161,53 +151,41 @@ fftcreate <- function(data){
 #' @export
 
 ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE) {
-  
-  # Handle seqbf input
   if (inherits(data, "seqbf")) data <- changeofevidence::fftcreate(data$BF)
   
-  # Validate inputs
   if (var(data[1:3]) == 0) stop("It seems like you specified a vector containing BFs. Please use fftcreate(bf) to Fourier transform first.")
   if (!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
   if (ceiling(max(sims.df$index / 2)) != length(data)) stop("Lengths of FFT data and sims do not match! Consider using simredo()")
   
-  # Precompute unique simulation IDs and their count
   simids <- unique(sims.df$simid)
   u.nsims <- length(simids)
   
-  # Subset sims.df to match data length
+  data.df <- data.frame(data = data, H = seq_along(data))
+  ampsum <- sum(data.df$data)
+  
   sims.df <- sims.df[sims.df$index <= length(data), ]
-  
-  # Compute the amplitude sum of real data
-  ampsum <- sum(data)
-  
-  # Compute the amplitude sum of simulations
   simampsum <- tapply(sims.df[[sims.df.col]], sims.df$simid, sum)
   
-  # Optionally, analyze top 5 frequencies
-  if (top5) {
-    data.df <- data.frame(data = data, H = seq_along(data))
-    list.HB <- pbapply::pbapply(data.df, 1, .fftcount, sims.df = sims.df, sims.df.col = sims.df.col)
-    list.HB <- dplyr::bind_rows(list.HB)
-    top5_above_95 <- sum(list.HB$LowerSims > 0.95) / length(data)
-  }
+  sims_with_higher_amp <- (sum(ampsum <= simampsum) / u.nsims) * 100  # Percentage
   
-  # Prepare output
   fftbf.out <- list(
     Amplitude_sum = ampsum,
-    Sims_with_higher_Amplitude = sum(ampsum <= simampsum) / u.nsims * 100,
+    Sims_with_higher_Amplitude = sims_with_higher_amp,
     Sim_Ampsum_M = mean(simampsum),
     Sim_Ampsum_SD = sd(simampsum),
-    Total_Sims = u.nsims
+    Num_Sims = u.nsims
   )
   
   if (top5) {
-    fftbf.out$Frequencies_above_95 <- top5_above_95
+    list.HB <- pbapply::pbapply(data.df, 1, .fftcount, sims.df = sims.df, sims.df.col = sims.df.col)
+    list.HB <- dplyr::bind_rows(list.HB)
+    fftbf.out$FFTComparison <- list.HB
+    fftbf.out$Top5_Frequencies_above_95pct <- sum(list.HB$LowerSims > 0.95) / length(data) * 100
   }
   
   class(fftbf.out) <- "coe"
   return(fftbf.out)
 }
-
 
 
 #' Frequency Analysis Likelihood Test
@@ -321,10 +299,31 @@ simredo <- function(df, n, rw = TRUE){
 #' @export
 #' @method print coe
 print.coe <- function(x, ...) {
-  cat("\nChange of Evidence Results \n")
-  for (name in names(x)) {
-    cat(name, ":", x[[name]], "\n")
+  cat("Change of Evidence Results \n")
+  cat("Number of Simulations: ", x$Num_Sims, "\n")
+  
+  if (!is.null(x$MaxBF)) {
+    cat("Maximum Bayes Factor (BF): ", x$MaxBF, " (at N = ", x$MaxBF_N, ")\n", sep = "")
+    cat("Simulations with this or higher BF: ", x$Sims_with_higher_BFs, "%\n")
   }
-  cat("\n")
+  
+  if (!is.null(x$Energy)) {
+    cat("Energy of Bayes Factor (BF): ", x$Energy, "\n")
+    cat("Simulations' Energy: M = ", x$Simenergy_M, ", SD = ", x$Simenergy_SD, "\n")
+    cat("Simulations with this or higher Energy: ", x$Sims_with_higher_energy, "%\n")
+  }
+  
+  if (!is.null(x$Amplitude_sum)) {
+    cat("Sum of Amplitudes: ", x$Amplitude_sum, "\n")
+    cat("Simulations' Amplitude Sum: M = ", x$Sim_Ampsum_M, ", SD = ", x$Sim_Ampsum_SD, "\n")
+    cat("Simulations with this or higher Amplitude Sum: ", x$Sims_with_higher_Amplitude, "%\n")
+  }
+  
+  if (!is.null(x$Top5_Frequencies_above_95pct)) {
+    cat("Top 5 Frequencies above 95% of Simulations: ", x$Top5_Frequencies_above_95pct, "%\n")
+  }
+  
+  invisible(x)
 }
+  
 
