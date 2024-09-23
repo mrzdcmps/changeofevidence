@@ -63,8 +63,8 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
   p <- ggplot2::ggplot()+
-    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", size=1)+
-    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", size=1)
+    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", linewidth=1)+
+    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", linewidth=1)
   
   if (!is.null(sims.df)){
     p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
@@ -81,13 +81,13 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
       }
       df <- rbind(df,ndf)
     }
-    p <- p + ggplot2::geom_line(data=df, aes(x=x-1, y=y, color=element), size=1)+
+    p <- p + ggplot2::geom_line(data=df, aes(x=x-1, y=y, color=element), linewidth=1)+
       ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
   } else {
-    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, size=1)
+    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, linewidth=1)
   }
   
-  p + ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", size=1)+
+  p + ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", linewidth=1)+
     ggplot2::labs(x="Trials", y = "Random Walk")+
     ggplot2::scale_x_continuous(expand = c(0,0))+
     ggplot2::coord_cartesian(ylim = coordy)+
@@ -211,7 +211,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
       df <- rbind(df,ndf)
       df <- df[!is.na(df$y),]
     }
-    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y, color=element), size=1)+
+    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y, color=element), linewidth=1)+
       ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
     if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(df$x)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
     
@@ -219,7 +219,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
     df <- data.frame(y=data, x=as.numeric(1:length(data)))
     df <- df[!is.na(df$y),]
     
-    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y), color=color, size=1)
+    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y), color=color, linewidth=1)
     if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
   }
   
@@ -286,12 +286,12 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
 
     p <- p+
       ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)+
-      ggplot2::geom_line(data=as.data.frame(simci.fft), aes(x=as.numeric(1:n.hz), y=simci.fft), linetype="dotted", size=1)
+      ggplot2::geom_line(data=as.data.frame(simci.fft), aes(x=as.numeric(1:n.hz), y=simci.fft), linetype="dotted", linewidth=1)
   }
   # Plot FFT
   p+
-    ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, size=1)+
-    ggplot2::labs(title=paste0("Fast Fourier Transform"), x="Frequency (No of Cycles)", y = "Amplitude")+
+    ggplot2::geom_line(data=as.data.frame(data), aes(x=as.numeric(1:length(data)), y=data), color=color, linewidth=1)+
+    ggplot2::labs(title=paste0("Fast Fourier Transform"), x=sprintf("Frequency (\u2116 of Cycles)"), y = "Amplitude")+
     ggplot2::coord_cartesian(xlim = c(1,n.hz), ylim = coordy)+
     ggplot2::scale_x_continuous(breaks = seq(0, n.hz, by = (n.hz/(n.hz/2))), expand = c(0,0))+
     #scale_y_continuous(breaks = seq(0, 50, by = 1))+
@@ -371,9 +371,9 @@ plotrobust <- function(data){
     
     # Best and Worst BF
     p <- p + 
-      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", size=1)+
-      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", size=1)+
-      ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==user$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", size=1)+
+      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", linewidth=1)+
+      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", linewidth=1)+
+      ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==user$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", linewidth=1)+
       ggplot2::geom_point(data = best, ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue")+
       ggplot2::geom_point(data = worst, ggplot2::aes(x=prior.loc, y=bf), color="coral2")+
       ggplot2::geom_point(data = user, ggplot2::aes(x=prior.loc, y=bf), color="chartreuse4", shape=18, size=3)+
@@ -401,9 +401,9 @@ plotrobust <- function(data){
     
     # Best and Worst BF
     p <- p + 
-      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", size=1)+
-      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", size=1)+
-      ggplot2::geom_line(data = data$BFMatrix, ggplot2::aes(x=prior.r, y=bf), color="black", size=1)+
+      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==best$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="cornflowerblue", linewidth=1)+
+      #ggplot2::geom_line(data = subset(data$BFMatrix, prior.r==worst$prior.r), ggplot2::aes(x=prior.loc, y=bf), color="coral2", linewidth=1)+
+      ggplot2::geom_line(data = data$BFMatrix, ggplot2::aes(x=prior.r, y=bf), color="black", linewidth=1)+
       ggplot2::geom_point(data = best, ggplot2::aes(x=prior.r, y=bf), color="cornflowerblue")+
       ggplot2::geom_point(data = worst, ggplot2::aes(x=prior.r, y=bf), color="coral2")+
       ggplot2::geom_point(data = user, ggplot2::aes(x=prior.r, y=bf), color="chartreuse4", shape=18, size=3)+
