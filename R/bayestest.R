@@ -291,8 +291,11 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
   bft.out$BF[1:nstart] <- 1
   
   # output message
-  cat("Final Bayes Factor: ",tail(bft.out$BF,n=1)," (t=",tail(bft.out$`t-value`,n=1),"; p=",tail(bft.out$`p-value`,n=1),")\n",sep="")
-  
+  if (tail(bft.out$BF,n=1) > 1) {
+    cat("Final Bayes Factor: BF10=",tail(bft.out$BF,n=1)," (t=",tail(bft.out$`t-value`,n=1),"; p=",tail(bft.out$`p-value`,n=1),")\n",sep="")
+  } else {
+    cat("Final Bayes Factor: BF10=",tail(bft.out$BF,n=1),"; BF01=", round(1/tail(bft.out$BF, n=1), 3), " (t=",tail(bft.out$`t-value`,n=1),"; p=",tail(bft.out$`p-value`,n=1),")\n",sep="")
+  }
   class(bft.out) <- "seqbf"
   return(bft.out)
 }
