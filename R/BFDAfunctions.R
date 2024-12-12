@@ -110,18 +110,31 @@ posterior_t <- Vectorize(posterior_t_tmp, "delta")
 
 cdf_t <- function(x, t, n1, n2 = NULL, independentSamples = FALSE,
                   prior.location, prior.scale, prior.df) {
+  # Define finite bounds for integration
+  lower_bound <- -1e6
+  upper_bound <- min(x, 1e6) # Adjust upper bound based on x
   
-  area <- integrate(posterior_t, lower = -Inf, upper = x, t = t, n1 = n1, n2 = n2,
-                    independentSamples = independentSamples,
-                    prior.location = prior.location, prior.scale = prior.scale,
-                    prior.df = prior.df)$value
+  # Perform integration with error handling
+  result <- tryCatch(
+    integrate(posterior_t, lower = lower_bound, upper = upper_bound,
+              t = t, n1 = n1, n2 = n2, independentSamples = independentSamples,
+              prior.location = prior.location, prior.scale = prior.scale,
+              prior.df = prior.df),
+    error = function(e) {
+      cat("Integration error:", e$message, "\n")
+      return(list(value = NA)) # Return NA if integration fails
+    }
+  )
   
-  if(area > 1)
-    area <- 1
+  # Check for NA result and handle
+  area <- if (!is.na(result$value)) result$value else 0
+  
+  # Ensure area is within [0, 1]
+  area <- min(max(area, 0), 1)
   
   return(area)
-  
 }
+
 
 
 posterior_normal_tmp <- function(delta, t, n1, n2 = NULL,
