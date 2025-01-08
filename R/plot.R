@@ -13,21 +13,21 @@
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to.
 #' @param color A color in which the Random Walk will be drawn.
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
-#' @param mu If Random Walk is of summed up bits, indicate the expected sum per step.
+#' @param p Indicate the probability of success for a single step.
 #' @examples
 #' p.rw <- plotrw(tbl$rw)
 #' p.rw
 #'
 #' plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
 #' 
-#' plotrw(list(exp = exp$rw, con = con$rw), mu = 50)
+#' plotrw(list(exp = exp$rw, con = con$rw), p = 0.2)
 #'
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotrw(tbl, sims.df = sims1000)
 #' @export
 
 # Plot Random Walk
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), mu = NULL){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), p = 0.5){
   library(ggplot2)
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
@@ -50,14 +50,10 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   
   
   # Data for p-parabel
+  z <- 1.96
   p.s <- data.frame(n = 0:nmax)
-  if(is.null(mu)){
-    p.s$p.up <- 1.96*(sqrt(as.numeric(rownames(p.s))))
-    p.s$p.dn <- -1.96*(sqrt(as.numeric(rownames(p.s))))
-  } else{
-    p.s$p.up <- 1.96*(sqrt(as.numeric(rownames(p.s))*2*mu))/2
-    p.s$p.dn <- -1.96*(sqrt(as.numeric(rownames(p.s))*2*mu))/2
-  }
+  p.s$p.up <- z * sqrt(p.s$n * p * (1 - p))
+  p.s$p.dn <- -z * sqrt(p.s$n * p * (1 - p))
   xrow <- as.numeric(p.s$n)
   
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
