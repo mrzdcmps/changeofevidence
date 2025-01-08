@@ -14,83 +14,100 @@
 #' @param color A color in which the Random Walk will be drawn.
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
 #' @param p Indicate the probability of success for a single step.
+#' @param mu If bits are summed up for a single step, this is the mean of the sum.
 #' @examples
 #' p.rw <- plotrw(tbl$rw)
 #' p.rw
 #'
 #' plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
 #' 
-#' plotrw(list(exp = exp$rw, con = con$rw), p = 0.2)
+#' plotrw(list(exp = exp$rw, con = con$rw), mu = 5)
+#' 
+#' df$rw <- cumsum(ifelse(df$correct == TRUE, 1, -1))
+#' plotrw(df$rw, p = 0.2) # 1 in 5 probability of success
 #'
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotrw(tbl, sims.df = sims1000)
 #' @export
 
 # Plot Random Walk
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), p = 0.5){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), mu = NULL, p = 0.5){
   library(ggplot2)
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
-  # Show legend and decide length for pparabel
-  # Add data point "0" at the beginning
-  if(is.list(data)){
-    show.legend <- "bottom"
-    nmax <- max(lengths(data))
-    absolutemax <- max(c(max(unlist(data)),abs(min(unlist(data)))))
-    for (i in 1:length(data)){
-      data[[i]] <- c(0,data[[i]])
+  # Adjust the random walk if p != 0.5
+  adjust_rw <- function(rw, p) {
+    if (p != 0.5) {
+      steps <- ifelse(rw > 0, 1 - p, -p)
+      return(cumsum(steps))
     }
-    
-  } else{
-    show.legend <- "none"
-    nmax <- length(data)
-    absolutemax <- max(c(max(data),abs(min(data))))
-    data <- c(0,data)
+    return(rw)
   }
   
+  # Show legend and decide length for p-parabel
+  if (is.list(data)) {
+    show.legend <- "bottom"
+    nmax <- max(lengths(data))
+    absolutemax <- max(c(max(unlist(data)), abs(min(unlist(data)))))
+    for (i in 1:length(data)) {
+      data[[i]] <- adjust_rw(c(0, data[[i]]), p) # Adjust random walk for each element
+    }
+  } else {
+    show.legend <- "none"
+    nmax <- length(data)
+    absolutemax <- max(c(max(data), abs(min(data))))
+    data <- adjust_rw(c(0, data), p) # Adjust random walk
+  }
   
   # Data for p-parabel
   z <- 1.96
   p.s <- data.frame(n = 0:nmax)
-  p.s$p.up <- z * sqrt(p.s$n * p * (1 - p))
-  p.s$p.dn <- -z * sqrt(p.s$n * p * (1 - p))
+  if(is.null(mu)){
+    p.s$p.up <- z * sqrt(p.s$n * p * (1 - p))
+    p.s$p.dn <- -z * sqrt(p.s$n * p * (1 - p))
+  } else{
+    p.s$p.up <- z * (sqrt(as.numeric(rownames(p.s))*2*mu))/2
+    p.s$p.dn <- -z * (sqrt(as.numeric(rownames(p.s))*2*mu))/2
+  }
+  
   xrow <- as.numeric(p.s$n)
   
-  if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
+  if (!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
-  p <- ggplot2::ggplot()+
-    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.up), color = "grey60", linetype="dotted", linewidth=1)+
-    ggplot2::geom_line(data=p.s, aes(x=xrow, y=p.dn), color = "grey60", linetype="dotted", linewidth=1)
+  # Create the ggplot object
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_line(data = p.s, aes(x = xrow, y = p.up), color = "grey60", linetype = "dotted", linewidth = 1) +
+    ggplot2::geom_line(data = p.s, aes(x = xrow, y = p.dn), color = "grey60", linetype = "dotted", linewidth = 1)
   
-  if (!is.null(sims.df)){
-    p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
+  if (!is.null(sims.df)) {
+    p <- p + ggplot2::geom_line(data = sims.df, aes(x = index, y = .data[[sims.df.col]], group = simid), color = greycol)
   }
   
-  if(is.list(data)){
+  if (is.list(data)) {
     df <- NULL
-    for(i in 1:length(data)){
+    for (i in 1:length(data)) {
       ydat <- data[[i]]
-      if(!is.null(names(data))){
-        ndf <- data.frame(element=as.factor(names(data)[i]),x=1:length(ydat),y=ydat)
-      } else{
-        ndf <- data.frame(element=paste0("data ",i),x=1:length(ydat),y=ydat)
+      if (!is.null(names(data))) {
+        ndf <- data.frame(element = as.factor(names(data)[i]), x = 1:length(ydat), y = ydat)
+      } else {
+        ndf <- data.frame(element = paste0("data ", i), x = 1:length(ydat), y = ydat)
       }
-      df <- rbind(df,ndf)
+      df <- rbind(df, ndf)
     }
-    p <- p + ggplot2::geom_line(data=df, aes(x=x-1, y=y, color=element), linewidth=1)+
-      ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
+    p <- p + ggplot2::geom_line(data = df, aes(x = x - 1, y = y, color = element), linewidth = 1) +
+      ggplot2::scale_color_brewer("Data", type = "qualitative", palette = "Set1")
   } else {
-    p <- p + ggplot2::geom_line(data=as.data.frame(data), aes(x=xrow, y=data), color=color, linewidth=1)
+    p <- p + ggplot2::geom_line(data = as.data.frame(data), aes(x = xrow, y = data), color = color, linewidth = 1)
   }
   
-  p + ggplot2::geom_hline(yintercept = 0, linetype="dashed", color="grey60", linewidth=1)+
-    ggplot2::labs(x="Trials", y = "Random Walk")+
-    ggplot2::scale_x_continuous(expand = c(0,0))+
-    ggplot2::coord_cartesian(ylim = coordy)+
-    ggplot2::theme_bw(base_size = 14)+
+  p + ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "grey60", linewidth = 1) +
+    ggplot2::labs(x = "Trials", y = "Random Walk") +
+    ggplot2::scale_x_continuous(expand = c(0, 0)) +
+    ggplot2::coord_cartesian(ylim = coordy) +
+    ggplot2::theme_bw(base_size = 14) +
     ggplot2::theme(legend.position = show.legend)
-  
 }
+
 
 
 #' Plot Sequential Bayesian Analysis
