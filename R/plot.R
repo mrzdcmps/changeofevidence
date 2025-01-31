@@ -38,7 +38,8 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   # Adjust the random walk if p != 0.5
   adjust_rw <- function(rw, p) {
     if (p != 0.5) {
-      steps <- ifelse(rw > 0, 1 - p, -p)
+      # Correct adjustment: Expected value at each step is 2p-1
+      steps <- rw * (2*p - 1)
       return(cumsum(steps))
     }
     return(rw)
@@ -50,31 +51,33 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     nmax <- max(lengths(data))
     absolutemax <- max(c(max(unlist(data)), abs(min(unlist(data)))))
     for (i in 1:length(data)) {
-      data[[i]] <- adjust_rw(c(0, data[[i]]), p) # Adjust random walk for each element
+      data[[i]] <- adjust_rw(c(0, data[[i]]), p)
     }
   } else {
     show.legend <- "none"
     nmax <- length(data)
     absolutemax <- max(c(max(data), abs(min(data))))
-    data <- adjust_rw(c(0, data), p) # Adjust random walk
+    data <- adjust_rw(c(0, data), p)
   }
   
-  # Data for p-parabel
-  z <- 1.96
+  # Data for confidence bounds (p-parabel)
+  z <- 1.96  # 95% confidence interval
   p.s <- data.frame(n = 0:nmax)
   if(is.null(mu)){
-    p.s$p.up <- z * sqrt(p.s$n * p * (1 - p))
-    p.s$p.dn <- -z * sqrt(p.s$n * p * (1 - p))
-  } else{
-    p.s$p.up <- z * (sqrt(as.numeric(rownames(p.s))*2*mu))/2
-    p.s$p.dn <- -z * (sqrt(as.numeric(rownames(p.s))*2*mu))/2
+    # Corrected variance calculation for random walk
+    # Var(Sn) = 4np(1-p) where Sn is the position after n steps
+    p.s$p.up <- (2*p - 1) * p.s$n + z * sqrt(4 * p.s$n * p * (1-p))
+    p.s$p.dn <- (2*p - 1) * p.s$n - z * sqrt(4 * p.s$n * p * (1-p))
+  } else {
+    # If mu is specified, use it for the drift
+    p.s$p.up <- mu * p.s$n + z * sqrt(2 * p.s$n * mu)
+    p.s$p.dn <- mu * p.s$n - z * sqrt(2 * p.s$n * mu)
   }
   
   xrow <- as.numeric(p.s$n)
   
   if (!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
-  # Create the ggplot object
   p <- ggplot2::ggplot() +
     ggplot2::geom_line(data = p.s, aes(x = xrow, y = p.up), color = "grey60", linetype = "dotted", linewidth = 1) +
     ggplot2::geom_line(data = p.s, aes(x = xrow, y = p.dn), color = "grey60", linetype = "dotted", linewidth = 1)
