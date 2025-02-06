@@ -1,65 +1,142 @@
 #' Bayesian Sequential Binomial Test
 #'
-#' This function calculates Bayes Factors for every added data point of dichotomous data.
+#' Calculates Bayes Factors sequentially for dichotomous data, showing evidence evolution over time.
+#' Uses 'proportionBF' from the BayesFactor package to compute Bayes Factors starting from a minimum
+#' number of observations and updating with each new data point.
 #'
-#' The first BF is calculated for nstart data points. For every subsequent data point a new BF is added.
-#' The resulting BF vector indicates the change of evidence over time.
-#' The function uses "proportionBF" from the BayesFactor package
-#'
-#' @param data A vector containing binary data.
-#' @param p Probability of one result.
-#' @param prior.r The r of the prior distribution.
-#' @param nullInterval Optional vector of length 2 containing lower and upper bounds of an interval hypothesis to test, in probability units.
-#' @param nstart How many data points should be considered before calculating the first BF (min = 2)
+#' @param data A vector containing binary data (0s and 1s)
+#' @param p Probability of success under the null hypothesis (default: 0.5)
+#' @param prior.r Scale parameter for the prior distribution (default: 0.1)
+#' @param alternative Direction of alternative hypothesis: "two.sided", "greater", or "less"
+#' @param nstart Minimum number of data points before first BF calculation (>= 2)
+#' @param exact Logical. If TRUE, calculates BF for all points; if FALSE, uses steps for efficiency
+#' @param nullInterval Optional vector of length 2 for interval hypothesis testing (deprecated)
+#' @return A list of class "seqbf" containing:
+#'   \itemize{
+#'     \item probability of success: estimated probability
+#'     \item p-value: from classical binomial test
+#'     \item BF: vector of sequential Bayes Factors
+#'     \item test type: "binomial"
+#'     \item prior: list with prior distribution details
+#'     \item sample size: total number of observations
+#'     \item alternative: chosen alternative hypothesis
+#'   }
 #' @examples
-#' tbl$bf <- bfbinom(tbl@qbit)
+#' data <- rbinom(100, 1, 0.7)
+#' result <- bfbinom(data)
+#' @importFrom BayesFactor proportionBF
+#' @importFrom stats binom.test na.omit
 #' @export
 
-
-bfbinom <- function(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5){
+bfbinom <- function(data, p = 0.5, prior.r = 0.1, 
+                    alternative = c("two.sided", "greater", "less"), 
+                    nstart = 5, exact = TRUE, nullInterval = NULL) {
+  
+  # Input validation
+  if (!is.numeric(data) || !all(data %in% c(0, 1, NA))) {
+    stop("Data must be binary (0s and 1s)")
+  }
   
   data <- na.omit(data)
+  n_data <- length(data)
   
-  if(length(data) < nstart) stop("Too few observations.")
-  if(sum(is.infinite(data)) > 0) stop("Data must be finite.")
-  if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
-  if(nstart < 0) stop("nstart must be positive!")
-  
-  require(BayesFactor)
-  bf <- rep(1, (nstart-1))
-  
-  cat("N =",length(data),"\n")
-  cat("Calculating Sequential Bayes Factors...\n")
-  pb = txtProgressBar(min = nstart, max = length(data), initial = nstart, style = 3)
-  for (b in nstart:length(data)){
-    if(!is.null(nullInterval)){
-      tmpbfs <- proportionBF(sum(data[1:b]), b, p = p, rscale = prior.r, nullInterval = nullInterval)
-    } else{
-      tmpbfs <- proportionBF(sum(data[1:b]), b, p = p, rscale = prior.r)
-    }
-    bf[b] <- exp(tmpbfs@bayesFactor$bf)[1]
-    setTxtProgressBar(pb,b)
+  # Validate parameters
+  if (n_data < nstart) {
+    stop(sprintf("Too few observations (%d). Need at least %d.", n_data, nstart))
   }
+  if (!is.finite(prior.r) || prior.r <= 0) {
+    stop("prior.r must be positive and finite")
+  }
+  if (!is.numeric(p) || p <= 0 || p >= 1) {
+    stop("p must be between 0 and 1")
+  }
+  if (!(nstart == floor(nstart)) || nstart < 2) {
+    stop("nstart must be an integer >= 2")
+  }
+  
+  # Handle alternative hypothesis
+  alternative <- match.arg(alternative)
+  if (!is.null(nullInterval)) {
+    warning("nullInterval is deprecated. Using 'alternative' parameter instead.")
+  }
+  
+  # Set nullInterval based on alternative
+  nullInterval <- switch(alternative,
+                         "greater" = c(p, 1),
+                         "less" = c(0, p),
+                         "two.sided" = NULL
+  )
+  
+  # Calculate steps for BF computation
+  steps <- if (exact) {
+    seq(nstart, n_data, 1)
+  } else {
+    .seqlast(nstart, n_data, .nstep(n_data)) #stepwise
+  }
+  
+  # Initialize BF vector
+  bf <- c(rep(1, nstart - 1), numeric(length(steps)))
+  
+  # Progress reporting
+  message(sprintf("N = %d", n_data))
+  message("Calculating Sequential Bayes Factors...")
+  
+  pb <- txtProgressBar(min = nstart, max = n_data, initial = nstart, style = 3)
+  
+  # Calculate BFs
+  for (i in seq_along(steps)) {
+    n <- steps[i]
+    successes <- sum(data[1:n])
+    
+    bf_result <- tryCatch({
+      tmpbfs <- proportionBF(successes, n, p = p, rscale = prior.r, 
+                             nullInterval = nullInterval)
+      exp(tmpbfs@bayesFactor$bf)[1]
+    }, error = function(e) {
+      warning(sprintf("Error at step %d: %s", n, e$message))
+      NA
+    })
+    
+    bf[nstart - 1 + i] <- bf_result
+    setTxtProgressBar(pb, n)
+  }
+  
   close(pb)
   
-  if(is.null(nullInterval)) txt.alternative <- "two.sided"
-  if(0 %in% nullInterval) txt.alternative <- "less"
-  if(1 %in% nullInterval) txt.alternative <- "greater"
+  # Compute classical test
+  orthodox_test <- binom.test(sum(data), n_data, p = p, alternative = alternative)
   
-  orthodoxtest <- binom.test(sum(data),length(data),p = p, alternative = txt.alternative)
+  # Prepare output
+  bf_out <- list(
+    "probability of success" = orthodox_test$estimate,
+    "p-value" = orthodox_test$p.value,
+    "BF" = bf,
+    "test type" = "binomial",
+    "prior" = list(
+      "distribution" = "Logistic",
+      "location" = 0,
+      "scale" = prior.r
+    ),
+    "sample size" = n_data,
+    "alternative" = alternative
+  )
   
-  bf.out <- list("probability of success" = orthodoxtest$estimate, 
-                  "p-value" = orthodoxtest$p.value, 
-                  "BF" = bf, 
-                  "test type" = "binomial", 
-                  "prior" = list("Logistic", "prior location" = 0, "prior scale" = prior.r), 
-                  "sample size" = length(data), 
-                  "alternative" = txt.alternative)
+  # Report final results
+  final_bf <- tail(bf, n = 1)
+  if (final_bf > 1) {
+    message(sprintf(
+      "Final Bayes Factor: BF10 = %.3f (probability of success = %.3f; p = %.3f)",
+      final_bf, orthodox_test$estimate, orthodox_test$p.value
+    ))
+  } else {
+    message(sprintf(
+      "Final Bayes Factor: BF10 = %.3f; BF01=%.3f (probability of success = %.3f; p = %.3f)",
+      final_bf, 1/final_bf, orthodox_test$estimate, orthodox_test$p.value
+    ))
+  }
   
-  cat("Final Bayes Factor: ",tail(bf,n=1)," (probability of success=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")",sep="")
-  
-  class(bf.out) <- "seqbf"
-  return(bf.out)
+  class(bf_out) <- "seqbf"
+  return(bf_out)
 }
 
 
