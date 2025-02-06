@@ -380,64 +380,157 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative
 
 #' Bayesian Sequential Correlation Test
 #'
-#' This function calculates Bayes Factors for the correlation of datasets.
+#' Calculates sequential Bayes Factors for correlation between two continuous variables,
+#' showing how evidence evolves as data accumulates. Uses 'correlationBF' from the
+#' BayesFactor package.
 #'
-#' The first BF is calculated for nstart data points. For every subsequent data point a new BF is added.
-#' The resulting BF vector indicates the change of evidence over time.
-#' The function uses "correlationBF" from the BayesFactor package
-#'
-#' @param x A vector containing continous data.
-#' @param y A second vector containing continous data.
-#' @param alternative specify the direction of the alternative hypothesis: "greater", "less", "two.sided"
-#' @param prior.r Prior distribution (scaled beta)
-#' @param nstart How many data points should be considered before calculating the first BF (min = 2)
+#' @param x A vector containing continuous data
+#' @param y A vector containing continuous data
+#' @param alternative Direction of alternative hypothesis: "two.sided", "greater", or "less"
+#' @param prior.r Scale parameter for the prior distribution (default: 0.1)
+#' @param nstart Minimum number of data points before first BF calculation (>= 2)
+#' @param exact Logical. If TRUE, calculates BF for all points; if FALSE, uses steps for efficiency
+#' @return A list of class "seqbf" containing:
+#'   \itemize{
+#'     \item r: Pearson correlation coefficient
+#'     \item p-value: from classical correlation test
+#'     \item BF: vector of sequential Bayes Factors
+#'     \item test type: "correlation"
+#'     \item prior: list with prior distribution details
+#'     \item sample size: total number of observations
+#'     \item alternative: chosen alternative hypothesis
+#'   }
 #' @examples
-#' bfcor(exp$sums, con$sums, nullInterval = c(-1,0))
+#' x <- rnorm(100)
+#' y <- x + rnorm(100, 0, 0.5)  # Correlated data
+#' result <- bfcor(x, y, alternative = "greater")
+#' @importFrom BayesFactor correlationBF
+#' @importFrom stats cor.test na.omit
 #' @export
 
-
-# Correlation Seq BF
-bfcor <- function(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5){
+bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"), 
+                  prior.r = 0.1, nstart = 5, exact = TRUE) {
   
-  x <- na.omit(x)
-  y <- na.omit(y)
+  # Match alternative argument
+  alternative <- match.arg(alternative)
   
-  # Check if data is valid
-  if(length(x) == 0) stop("Data has no valid observations.")
-  if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
-  if(length(y) != length(x)) stop("Length of y and x must be the same.")
+  # Handle missing values
+  complete_cases <- complete.cases(x, y)
+  x <- x[complete_cases]
+  y <- y[complete_cases]
   
-  if(alternative == "greater") nullInterval <- c(-1,0)
-  else if(alternative == "less") nullInterval <- c(0,1)
-  else nullInterval <- 0
-  
-  require(BayesFactor)
-  
-  bf <- rep(1, (nstart-1))
-  cat("N =",length(x),"\n")
-  cat("Calculating Sequential Bayes Factors...\n")
-  
-  pb = txtProgressBar(min = nstart, max = length(x), initial = nstart, style = 3)
-  for (b in nstart:length(x)){
-    bf[b] <- exp(correlationBF(x[1:b], y[1:b], rscale=prior.r, nullInterval = nullInterval)@bayesFactor$bf[2])
-    setTxtProgressBar(pb,b)
+  # Input validation
+  if (length(x) == 0 || length(y) == 0) {
+    stop("Data has no valid observations after removing missing values")
   }
+  if (!is.numeric(x) || !is.numeric(y)) {
+    stop("Both x and y must be numeric vectors")
+  }
+  if (!all(is.finite(x)) || !all(is.finite(y))) {
+    stop("Data must be finite")
+  }
+  if (length(y) != length(x)) {
+    stop("Length of y and x must be the same")
+  }
+  if (!isTRUE(nstart == floor(nstart)) || nstart < 2) {
+    stop("nstart must be an integer >= 2")
+  }
+  if (!is.finite(prior.r) || prior.r <= 0) {
+    stop("prior.r must be positive and finite")
+  }
+  
+  # Set nullInterval based on alternative
+  nullInterval <- switch(alternative,
+                         "greater" = c(-1, 0),   # Null: correlation <= 0
+                         "less" = c(0, 1),       # Null: correlation >= 0
+                         "two.sided" = 0
+  )
+  
+  n_data <- length(x)
+  
+  if (n_data < nstart) {
+    stop(sprintf("Too few observations (%d). Need at least %d.", n_data, nstart))
+  }
+  
+  # Calculate steps for BF computation
+  steps <- if (exact) {
+    seq(nstart, n_data, 1)
+  } else {
+    # Create reasonable steps for larger datasets
+    step_size <- max(1, floor(n_data / 100))
+    seq(nstart, n_data, step_size)
+  }
+  
+  # Initialize BF vector
+  bf <- c(rep(1, nstart - 1), numeric(length(steps)))
+  
+  # Progress reporting
+  message(sprintf("N = %d", n_data))
+  message("Calculating Sequential Bayes Factors...")
+  
+  pb <- txtProgressBar(min = nstart, max = n_data, initial = nstart, style = 3)
+  
+  # Calculate BFs
+  for (i in seq_along(steps)) {
+    n <- steps[i]
+    bf_result <- tryCatch({
+      tmpbfs <- correlationBF(x[1:n], y[1:n], rscale = prior.r, 
+                              nullInterval = nullInterval)
+      exp(tmpbfs@bayesFactor$bf[2])
+    }, error = function(e) {
+      warning(sprintf("Error at step %d: %s", n, e$message))
+      NA
+    })
+    
+    bf[nstart - 1 + i] <- bf_result
+    setTxtProgressBar(pb, n)
+  }
+  
   close(pb)
   
-  orthodoxtest <- cor.test(x, y, use = "complete.obs", alternative = alternative)
-
-  bf.out <- list("r" = orthodoxtest$estimate, 
-                 "p-value" = orthodoxtest$p.value, 
-                 "BF" = bf, 
-                 "test type" = "correlation", 
-                 "prior" = list("Beta", "prior location" = 0, "prior scale" = prior.r), 
-                 "sample size" = length(x), 
-                 "alternative" = alternative)
+  # Compute classical test
+  orthodox_test <- cor.test(x, y, alternative = alternative)
   
-  cat("Final Bayes Factor: ",tail(bf,n=1)," (r=",orthodoxtest$estimate,"; p=",orthodoxtest$p.value,")\n",sep="")
+  # Prepare output
+  bf_out <- list(
+    "r" = orthodox_test$estimate,
+    "p-value" = orthodox_test$p.value,
+    "BF" = bf,
+    "test type" = "correlation",
+    "prior" = list(
+      "distribution" = "Beta",
+      "location" = 0,
+      "scale" = prior.r
+    ),
+    "sample size" = n_data,
+    "alternative" = alternative
+  )
   
-  class(bf.out) <- "seqbf"
-  return(bf.out)
+  # Get final BF
+  final_bf <- tail(bf, n = 1)
+  
+  # Report final results with improved BF interpretation
+  if (is.na(final_bf)) {
+    message("Final Bayes Factor could not be calculated")
+  } else if (final_bf > 1) {
+    message(sprintf(
+      "Final Bayes Factor: BF10 = %.3f (r = %.3f; p = %.3f)",
+      final_bf, orthodox_test$estimate, orthodox_test$p.value
+    ))
+  } else if (final_bf == 1) {
+    message(sprintf(
+      "Final Bayes Factor: BF10 = 1 (no evidence for either hypothesis; r = %.3f; p = %.3f)",
+      orthodox_test$estimate, orthodox_test$p.value
+    ))
+  } else {
+    message(sprintf(
+      "Final Bayes Factor: BF10 = %.3f; BF01 = %.3f (r = %.3f; p = %.3f)",
+      final_bf, 1/final_bf, orthodox_test$estimate, orthodox_test$p.value
+    ))
+  }
+  
+  class(bf_out) <- "seqbf"
+  return(bf_out)
 }
 
 
