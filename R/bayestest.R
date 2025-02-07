@@ -142,239 +142,274 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 
 #' Bayesian Sequential t-Test
 #'
-#' This function calculates Bayes Factors for every added data point of normally distributed data, e.g. sum scores.
+#' Calculates sequential Bayes Factors for t-tests (one-sample, paired, or independent samples),
+#' showing how evidence evolves as data accumulates. Uses the BFDA package for Bayes Factor
+#' calculations.
 #'
-#' The first BF is calculated for Nstart data points. For every subsequent data point a new BF is added.
-#' The resulting BF vector indicates the change of evidence over time.
-#' The function first calculates t-scores and p-values and subsequently uses the BFDA package to translate the data into BFs.
-#' Returns a list of t-scores ($t-value), p-scores ($p-value), and BF ($BF)
-#'
-#' @param x A vector containing data values or a formula.
-#' @param y A vector containing another set of values for a paired samples test.
-#' @param formula A formula of the form var ~ group where var is a numeric variable giving the data values and group is indicating which group the data point belongs to (must be 2 levels). Use this for an independent samples t-Test.
-#' @param data Use with formula. A data frame containing the variables given in the formula. Use this for an independent samples t-Test.
-#' @param alternative Indicates the direction of the alternative hypothesis: two.sided, less, or greater
-#' @param mu A number indicating the true value of the mean (or difference in means if you are performing a two sample test).
-#' @param prior.loc Location of the cauchy distributed prior function (use 0 for an uninformed prior).
-#' @param prior.r Scale of the cauchy distributed prior function.
-#' @param nstart How many data points should be considered before calculating the first BF (min = 2). Set to "auto" to automatically set the earliest data point.
-#' @param exact Logical. All data points are being calculated if set to true. Set to FALSE for faster calculations and plotting only.
+#' @param x A numeric vector of observations or a formula for independent samples test
+#' @param y Optional numeric vector for paired samples test
+#' @param formula Formula of form response ~ group where group has exactly 2 levels
+#' @param data Optional data frame containing the variables in formula
+#' @param alternative Direction of alternative hypothesis: "two.sided", "greater", or "less"
+#' @param mu Null hypothesis value (default = 0)
+#' @param prior.loc Location parameter for Cauchy prior (default = 0)
+#' @param prior.r Scale parameter for Cauchy prior (default = 0.1)
+#' @param nstart Minimum observations before first BF calculation ("auto" or >= 2)
+#' @param exact Logical. If TRUE, calculates BF for all points
+#' @return A list of class "seqbf" containing:
+#'   \itemize{
+#'     \item t-value: Sequential t-statistics
+#'     \item p-value: Sequential p-values
+#'     \item BF: Sequential Bayes Factors
+#'     \item test type: "one-sample", "paired", or "independent"
+#'     \item prior: List with prior distribution details
+#'     \item sample size: Number of observations
+#'     \item alternative: Chosen alternative hypothesis
+#'   }
 #' @examples
-#' bfttest(sumscores, alternative = "greater") # One-sample
+#' # One-sample test
+#' x <- rnorm(30, 0.5, 1)
+#' result1 <- bfttest(x, alternative = "greater")
 #'
-#' tbl$bf <- bfttest(tbl$sums, alternative = "two.sided", mu = 50, nstart = 10, prior.loc = 0.1, prior.r = 0.05)$BF
-#' 
-#' bfttest(formula = raw~group, data = df) # Independent samples
-#' 
-#' bfttest(df1$scores, df2$scores) # Paired samples
+#' # Independent samples test
+#' group <- rep(c("A", "B"), each = 15)
+#' values <- c(rnorm(15), rnorm(15, 0.5))
+#' df <- data.frame(values = values, group = group)
+#' result2 <- bfttest(values ~ group, data = df)
+#'
+#' # Paired samples test
+#' pre <- rnorm(20)
+#' post <- pre + rnorm(20, 0.5)
+#' result3 <- bfttest(pre, post)
+#' @importFrom stats t.test var complete.cases na.omit
 #' @export
 
-bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, alternative = c("two.sided", "less", "greater"), mu = 0, prior.loc = 0, prior.r = 0.1, nstart = "auto", exact = TRUE){
+bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, 
+                    alternative = c("two.sided", "less", "greater"), 
+                    mu = 0, prior.loc = 0, prior.r = 0.1, 
+                    nstart = "auto", exact = TRUE) {
   
-  # check nstart
-  if(nstart != "auto"){
-    if(all.equal(nstart, as.integer(nstart)) != TRUE) stop("nstart must be an integer!")
-    if(nstart < 0) stop("nstart must be positive!")
+  # Match alternative argument
+  alternative <- match.arg(alternative)
+  
+  # Validate nstart
+  if (nstart != "auto") {
+    if (!isTRUE(nstart == floor(nstart))) {
+      stop("nstart must be an integer")
+    }
+    if (nstart < 2) {
+      stop("nstart must be >= 2")
+    }
   }
   
-  # check if x is a formula
-  if(inherits(x,"formula") == TRUE) {
+  # Handle formula input
+  if (inherits(x, "formula")) {
     formula <- x
     x <- NULL
   }
   
-  # calculate t-scores and BFs
-  bf <- t <- list()
-  
-  if(length(alternative) > 1){
-    warning("No alternative specified. Using a two-sided alternative.")
-    alternative <- alternative[1]
+  # Determine test type and validate inputs
+  if (!is.null(formula)) {
+    # Independent samples test
+    if (!is.null(x)) {
+      stop("Use either formula or x/y input, not both")
+    }
+    if (is.null(data)) {
+      stop("Data frame required with formula input")
+    }
+    if (!is.data.frame(data)) {
+      stop("'data' must be a data frame")
+    }
+    
+    # Extract variables from formula
+    vars <- all.vars(formula)
+    if (length(vars) != 2) {
+      stop("Formula must contain exactly two variables")
+    }
+    
+    # Clean data
+    data <- data[complete.cases(data[vars]), ]
+    if (nrow(data) == 0) {
+      stop("No complete cases in data")
+    }
+    
+    response_var <- vars[1]
+    group_var <- vars[2]
+    
+    # Validate group variable
+    groups <- unique(data[[group_var]])
+    if (length(groups) != 2) {
+      stop("Group variable must have exactly 2 levels")
+    }
+    
+    test_type <- "independent"
+    sample_size <- table(data[[group_var]])
+    total_sample_size <- sum(sample_size)
+    
+    # Determine starting point
+    if (nstart == "auto") {
+      nstart <- determine_min_n_independent(data, group_var, vars[1])
+    }
+    
+  } else if (!is.null(y)) {
+    # Paired samples test
+    if (length(x) != length(y)) {
+      stop("x and y must have same length for paired test")
+    }
+    complete_cases <- complete.cases(x, y)
+    x <- x[complete_cases]
+    y <- y[complete_cases]
+    
+    test_type <- "paired"
+    sample_size <- length(x)
+    total_sample_size <- sample_size
+    
+    if (nstart == "auto") {
+      nstart <- determine_min_n_paired(x, y)
+    }
+    
+  } else if (!is.null(x)) {
+    # One sample test
+    x <- na.omit(x)
+    if (length(x) == 0) {
+      stop("No valid observations in x")
+    }
+    
+    test_type <- "one-sample"
+    sample_size <- length(x)
+    total_sample_size <- sample_size
+    
+    if (nstart == "auto") {
+      nstart <- determine_min_n_one_sample(x)
+    }
+    
+  } else {
+    stop("No valid input provided")
   }
   
-  if (!is.null(formula)){
+  # Calculate sequential steps
+  steps <- if (exact) {
+    seq(nstart, total_sample_size, 1)
+  } else {
+    .seqlast(nstart, total_sample_size, .nstep(total_sample_size))  # stepwise
+  }
+  
+  # Initialize vectors for results
+  t_values <- rep(NA, total_sample_size)
+  p_values <- rep(NA, total_sample_size)
+  bf_values <- rep(NA, total_sample_size)
+  
+  # Pre-fill BF values for 1:(nstart-1) with 1
+  if (nstart > 1) {
+    bf_values[1:(nstart - 1)] <- 1
+  }
+  
+  # Progress reporting
+  message(sprintf("%s test (N = %d%s)",
+                  capitalize(test_type),
+                  total_sample_size,
+                  ifelse(test_type == "independent",
+                         sprintf(" [%d + %d]", sample_size[1], sample_size[2]),
+                         "")))
+  message("Calculating Sequential Bayes Factors...")
+  
+  # Calculate sequential BFs
+  pb <- txtProgressBar(min = nstart, max = total_sample_size, initial = nstart, style = 3)
+  
+  for (i in seq_along(steps)) {
+    n <- steps[i]
     
-    # Independent Samples
-    
-    if(!is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
-    if(is.null(data)) stop("Please specify data.")
-    if (!is.data.frame(data)) stop(paste0("'",substitute(data), "' is not a valid dataframe."))
-    
-    # remove rows with NA in critical variables of from data
-    data <- data[complete.cases(data[c(deparse(formula[[3]]), deparse(formula[[2]]))]),]
-    
-    # Check if data is valid
-    if(nrow(data) == 0) stop("Data has no valid observations.")
-    
-    if(is.data.frame(data[,deparse(formula[[3]])])) testdata <- unlist(data[,deparse(formula[[3]])], use.names = FALSE)
-    else testdata <- data[,deparse(formula[[3]])]
-    
-    if(sum(is.infinite(unlist(data[,deparse(formula[[2]])], use.names = FALSE))) > 0) stop("Data must be finite.")
-    if(length(unique(testdata)) != 2) stop("Group must have 2 levels.")
-    
-    # Set attributes
-    type <- "independent" 
-    samplesize <- c(table(testdata)[1],table(testdata)[2])
-    
-    cat("Independent Samples test (N = ",nrow(data), " [",paste(samplesize, collapse = " + "),"])\nCalculating Sequential Bayes Factors...\n",sep="")
-    
-    # Ensure there are 2 groups present when considering nstart observations
-    if(nstart=="auto") nstart <- 2
-    if(length(unique(testdata[1:nstart])) < 2) repeat{
-      nstart <- nstart+1
-      if(length(unique(testdata[1:nstart])) == 2){
-        cat("First observation with two groups found at N =",nstart)
-        break
+    result <- tryCatch({
+      if (test_type == "independent") {
+        subset_data <- data[1:n, ]
+        t_result <- t.test(formula, data = subset_data, 
+                           alternative = alternative, var.equal = TRUE)
+        n1 <- table(subset_data[[group_var]])[1]
+        n2 <- table(subset_data[[group_var]])[2]
+        bf_result <- bf10_t(t = t_result$statistic,
+                            n1 = n1, n2 = n2,
+                            independentSamples = TRUE,
+                            prior.location = prior.loc,
+                            prior.scale = prior.r,
+                            prior.df = 1)
+      } else if (test_type == "paired") {
+        t_result <- t.test(x[1:n], y[1:n],
+                           alternative = alternative,
+                           paired = TRUE)
+        bf_result <- bf10_t(t = t_result$statistic,
+                            n1 = n,
+                            independentSamples = FALSE,
+                            prior.location = prior.loc,
+                            prior.scale = prior.r,
+                            prior.df = 1)
+      } else {
+        t_result <- t.test(x[1:n],
+                           alternative = alternative,
+                           mu = mu)
+        bf_result <- bf10_t(t = t_result$statistic,
+                            n1 = n,
+                            prior.location = prior.loc,
+                            prior.scale = prior.r,
+                            prior.df = 1)
       }
-    }
+      list(t = unname(t_result$statistic),
+           p = t_result$p.value,
+           bf = get_directional_bf(bf_result, alternative))
+    }, error = function(e) {
+      warning(sprintf("Error at step %d: %s", n, e$message))
+      list(t = NA, p = NA, bf = NA)
+    })
     
-    # Ensure t-test works with current nstart
-    res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, var.equal=TRUE), silent = TRUE)
-    iterations <- 1
-    
-    while (class(res) == "try-error" && iterations < nrow(data)) {
-      nstart <- nstart + 1
-      res <- try(t.test(formula=formula, data=data[1:nstart,], alternative = alternative, var.equal=TRUE), silent = TRUE)
-      iterations <- iterations + 1
-    }
-    
-    # Check if the maximum number of iterations was reached
-    if (iterations == nrow(data)) {
-      stop("Could not perform independent samples test. Please check your data.")
-    }
-    
-    # calculate all points or do it stepwise
-    if(exact == TRUE){
-      steps <- seq(nstart, nrow(data), 1) # all points
-    } else steps <- .seqlast(nstart, nrow(data), .nstep(nrow(data))) #stepwise
-    
-    
-    # progression bar
-    pb = txtProgressBar(min = nstart, max = nrow(data), style = 3)
-    
-    # t-test calculations for multiple points
-    for (i in steps) {
-      
-      t[[i]] <- t.test(formula=formula, data=data[1:i,], alternative = alternative, var.equal=TRUE)
-      n1 <- table(testdata[1:i])[1]
-      n2 <- table(testdata[1:i])[2]
-      bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = n1, n2 = n2, independentSamples = T, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
-      
-      setTxtProgressBar(pb,i)
-      
-    }
-  } else { # Paired samples or one sample
-    
-    if(is.null(x)) stop("Please use formula and data for independent and x (and y) for one-sample or paired samples tests.")
-    x <- na.omit(x)
-    
-    # Check if data is valid
-    if(length(x) == 0) stop("Data has no valid observations.")
-    if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
-    if(sum(is.infinite(y)) > 0) stop("Data must be finite.")
-    
-    if (!is.null(y)){ 
-      
-      # Paired Samples Test
-      
-      # Check data
-      y <- na.omit(y)
-      if (length(y) != length(x)) stop("Data are not the same length!")
-      
-      # Set attributes
-      type <- "paired"
-      samplesize <- length(x)
-      
-      # decide nstart
-      if(nstart=="auto") nstart <- 2
-      while(var(x[1:nstart], y[1:nstart]) == 0) nstart <- nstart+1
-      
-      # calculate all points or do it stepwise
-      if(exact == TRUE){
-        steps <- seq(nstart, length(x), 1) # all points
-      } else steps <- .seqlast(nstart, length(x), .nstep(length(x))) #stepwise
-      
-      
-      pb = txtProgressBar(min = nstart, max = length(x), style = 3)
-      
-      cat("Paired Samples test (N = ",length(x),")\nCalculating Sequential Bayes Factors...\n",sep="")
-      for (i in steps) {
-        t[[i]] <- t.test(x[1:i], y[1:i], alternative = alternative, paired = T, var.equal=TRUE)
-        bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = i, independentSamples = F, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
-        setTxtProgressBar(pb,i)
-      }
-      
-    } else { 
-      
-      # One Sample
-      x <- na.omit(x)
-      
-      # Check if data is valid
-      if(length(x) == 0) stop("Data has no valid observations.")
-      if(sum(is.infinite(x)) > 0) stop("Data must be finite.")
-      
-      # Set attributes
-      type <- "one-sample"
-      samplesize <- length(x)
-      
-      # decide nstart
-      if(nstart=="auto") nstart <- 2
-      while(var(x[1:nstart]) == 0) nstart <- nstart+1
-      
-      # calculate all points or do it stepwise
-      if(exact == TRUE){
-        steps <- seq(nstart, length(x), 1) # all points
-      } else steps <- .seqlast(nstart, length(x), .nstep(length(x))) #stepwise
-      
-      
-      pb = txtProgressBar(min = nstart, max = length(x), style = 3)
-      
-      
-      cat("One Sample test (N = ",length(x),")\nCalculating Sequential Bayes Factors...\n",sep="")
-      for (i in steps) {
-        t[[i]] <- t.test(x[1:i], alternative = alternative, mu = mu)
-        bf[[i]] <- bf10_t(t = t[[i]][[1]], n1 = i, prior.location = prior.loc, prior.scale = prior.r, prior.df = 1)
-        setTxtProgressBar(pb,i)
-      }
-    }
+    t_values[n] <- result$t
+    p_values[n] <- result$p
+    bf_values[n] <- result$bf
+    setTxtProgressBar(pb, n)
   }
   
   close(pb)
   
-  # change NULL to NA
-  emptylist <- list(NA, NA, NA)
-  newlist <- rep(list(emptylist), length(bf[sapply(bf, is.null)]))
+  # Prepare output
+  bf_out <- list(
+    "t-value" = t_values,
+    "p-value" = p_values,
+    "BF" = bf_values,
+    "test type" = test_type,
+    "prior" = list(
+      "distribution" = "Cauchy",
+      "location" = prior.loc,
+      "scale" = prior.r
+    ),
+    "sample size" = sample_size,
+    "alternative" = alternative
+  )
   
-  t[sapply(t, is.null)] <- newlist
-  bf[sapply(bf, is.null)] <- newlist
+  # Get final results
+  final_bf <- tail(na.omit(bf_out$BF), n = 1)
+  final_t <- tail(na.omit(bf_out$`t-value`), n = 1)
+  final_p <- tail(na.omit(bf_out$`p-value`), n = 1)
   
-  # unlist results
-  tlist <- unlist(lapply(t, `[[`, 1))
-  plist <- unlist(lapply(t, `[[`, 3))
-  
-  BF10 <- unlist(lapply(bf, `[[`, 1))
-  BFplus0 <- unlist(lapply(bf, `[[`, 2))
-  BFmin0 <- unlist(lapply(bf, `[[`, 3))
-  
-  # specify which BF to return
-  if (alternative=="less"){
-    bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BFmin0), "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
-  } else if (alternative=="greater"){
-    bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BFplus0), "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
+  # Report final results
+  if (is.na(final_bf)) {
+    message("Final Bayes Factor could not be calculated")
+  } else if (final_bf > 1) {
+    message(sprintf(
+      "Final Bayes Factor: BF10 = %.3f (t = %.3f; p = %.3f)",
+      final_bf, final_t, final_p
+    ))
+  } else if (final_bf == 1) {
+    message(sprintf(
+      "Final Bayes Factor: BF10 = 1 (no evidence for either hypothesis; t = %.3f; p = %.3f)",
+      final_t, final_p
+    ))
   } else {
-    bft.out <- list("t-value" = unname(tlist), "p-value" = unname(plist), "BF" = unname(BF10), "test type" = type, "prior" = list("Cauchy", "prior location" = prior.loc, "prior scale" = prior.r), "sample size" = samplesize, "alternative" = alternative)
+    message(sprintf(
+      "Final Bayes Factor: BF10 = %.3f; BF01 = %.3f (t = %.3f; p = %.3f)",
+      final_bf, 1/final_bf, final_t, final_p
+    ))
   }
   
-  # replace first NAs with 1 so that CoE analyses will work
-  bft.out$BF[1:nstart] <- 1
-  
-  # output message
-  if (tail(bft.out$BF,n=1) > 1) {
-    cat("Final Bayes Factor: BF10=",tail(bft.out$BF,n=1)," (t=",tail(bft.out$`t-value`,n=1),"; p=",tail(bft.out$`p-value`,n=1),")\n",sep="")
-  } else {
-    cat("Final Bayes Factor: BF10=",tail(bft.out$BF,n=1),"; BF01=", round(1/tail(bft.out$BF, n=1), 3), " (t=",tail(bft.out$`t-value`,n=1),"; p=",tail(bft.out$`p-value`,n=1),")\n",sep="")
-  }
-  class(bft.out) <- "seqbf"
-  return(bft.out)
+  class(bf_out) <- "seqbf"
+  return(bf_out)
 }
 
 
