@@ -248,7 +248,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     
     # Determine starting point
     if (nstart == "auto") {
-      nstart <- determine_min_n_independent(data, group_var, vars[1])
+      nstart <- .determine_min_n_independent(data, group_var, vars[1])
     }
     
   } else if (!is.null(y)) {
@@ -265,7 +265,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     total_sample_size <- sample_size
     
     if (nstart == "auto") {
-      nstart <- determine_min_n_paired(x, y)
+      nstart <- .determine_min_n_paired(x, y)
     }
     
   } else if (!is.null(x)) {
@@ -280,7 +280,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     total_sample_size <- sample_size
     
     if (nstart == "auto") {
-      nstart <- determine_min_n_one_sample(x)
+      nstart <- .determine_min_n_one_sample(x)
     }
     
   } else {
@@ -354,7 +354,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
       }
       list(t = unname(t_result$statistic),
            p = t_result$p.value,
-           bf = get_directional_bf(bf_result, alternative))
+           bf = .get_directional_bf(bf_result, alternative))
     }, error = function(e) {
       warning(sprintf("Error at step %d: %s", n, e$message))
       list(t = NA, p = NA, bf = NA)
@@ -691,4 +691,55 @@ print.bfRobustness <- function(x, ...) {
 .nstep <- function(size){
   step <- floor((size-1)/100)+1
   return(step)
+}
+
+#' Determine minimum n for independent samples test
+.determine_min_n_independent <- function(data, group_var, response_var) {
+  n <- 2
+  while (n <= nrow(data)) {
+    subset <- data[1:n, ]
+    if (length(unique(subset[[group_var]])) == 2 &&
+        var(subset[[response_var]]) > 0) {
+      return(n)
+    }
+    n <- n + 1
+  }
+  stop("Could not find valid starting point")
+}
+
+#' Determine minimum n for paired samples test
+.determine_min_n_paired <- function(x, y) {
+  n <- 2
+  while (n <= length(x)) {
+    if (var(x[1:n] - y[1:n]) > 0) {
+      return(n)
+    }
+    n <- n + 1
+  }
+  stop("Could not find valid starting point")
+}
+
+#' Determine minimum n for one sample test
+.determine_min_n_one_sample <- function(x) {
+  n <- 2
+  while (n <= length(x)) {
+    if (var(x[1:n]) > 0) {
+      return(n)
+    }
+    n <- n + 1
+  }
+  stop("Could not find valid starting point")
+}
+
+#' Get directional BF based on alternative
+.get_directional_bf <- function(bf_result, alternative) {
+  switch(alternative,
+         "less" = bf_result$BFmin0,
+         "greater" = bf_result$BFplus0,
+         "two.sided" = bf_result$BF10)
+}
+
+#' Capitalize first letter
+.capitalize <- function(x) {
+  paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))
 }
