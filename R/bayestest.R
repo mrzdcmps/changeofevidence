@@ -697,7 +697,7 @@ print.bfRobustness <- function(x, ...) {
 .try_bft_calculation <- function(n, ...) {
   nstart <- n - 1
   tryCatch({
-    invisible(capture.output(suppressMessages(result <- bfttest(..., nstart = nstart, exact = TRUE))))
+    invisible(capture.output(suppressMessages(supressWarnings(result <- bfttest(..., nstart = nstart, exact = TRUE)))))
     # Check if we got valid BF values
     !is.na(tail(result$BF, 1))
   }, error = function(e) {
