@@ -701,7 +701,7 @@ print.bfRobustness <- function(x, ...) {
     # Check if we got valid BF values
     !is.na(tail(result$BF, 1))
   }, error = function(e) {
-    warning(sprintf("Error at step %d: %s", nstart, e$message))
+    #warning(sprintf("Error at step %d: %s", nstart, e$message))
     FALSE
   })
 }
