@@ -4,27 +4,47 @@
 \alias{bfcor}
 \title{Bayesian Sequential Correlation Test}
 \usage{
-bfcor(x, y, alternative = "two.sided", prior.r = 0.1, nstart = 5)
+bfcor(
+  x,
+  y,
+  alternative = c("two.sided", "greater", "less"),
+  prior.r = 0.1,
+  nstart = 5,
+  exact = TRUE
+)
 }
 \arguments{
-\item{x}{A vector containing continous data.}
+\item{x}{A vector containing continuous data}
 
-\item{y}{A second vector containing continous data.}
+\item{y}{A vector containing continuous data}
 
-\item{alternative}{specify the direction of the alternative hypothesis: "greater", "less", "two.sided"}
+\item{alternative}{Direction of alternative hypothesis: "two.sided", "greater", or "less"}
 
-\item{prior.r}{Prior distribution (scaled beta)}
+\item{prior.r}{Scale parameter for the prior distribution (default: 0.1)}
 
-\item{nstart}{How many data points should be considered before calculating the first BF (min = 2)}
+\item{nstart}{Minimum number of data points before first BF calculation (>= 2)}
+
+\item{exact}{Logical. If TRUE, calculates BF for all points; if FALSE, uses steps for efficiency}
+}
+\value{
+A list of class "seqbf" containing:
+  \itemize{
+    \item r: Pearson correlation coefficient
+    \item p-value: from classical correlation test
+    \item BF: vector of sequential Bayes Factors
+    \item test type: "correlation"
+    \item prior: list with prior distribution details
+    \item sample size: total number of observations
+    \item alternative: chosen alternative hypothesis
+  }
 }
 \description{
-This function calculates Bayes Factors for the correlation of datasets.
-}
-\details{
-The first BF is calculated for nstart data points. For every subsequent data point a new BF is added.
-The resulting BF vector indicates the change of evidence over time.
-The function uses "correlationBF" from the BayesFactor package
+Calculates sequential Bayes Factors for correlation between two continuous variables,
+showing how evidence evolves as data accumulates. Uses 'correlationBF' from the
+BayesFactor package.
 }
 \examples{
-bfcor(exp$sums, con$sums, nullInterval = c(-1,0))
+x <- rnorm(100)
+y <- x + rnorm(100, 0, 0.5)  # Correlated data
+result <- bfcor(x, y, alternative = "greater")
 }

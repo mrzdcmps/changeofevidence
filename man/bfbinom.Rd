@@ -4,27 +4,49 @@
 \alias{bfbinom}
 \title{Bayesian Sequential Binomial Test}
 \usage{
-bfbinom(data, p = 0.5, prior.r = 0.1, nullInterval = NULL, nstart = 5)
+bfbinom(
+  data,
+  p = 0.5,
+  prior.r = 0.1,
+  alternative = c("two.sided", "greater", "less"),
+  nstart = 5,
+  exact = TRUE,
+  nullInterval = NULL
+)
 }
 \arguments{
-\item{data}{A vector containing binary data.}
+\item{data}{A vector containing binary data (0s and 1s)}
 
-\item{p}{Probability of one result.}
+\item{p}{Probability of success under the null hypothesis (default: 0.5)}
 
-\item{prior.r}{The r of the prior distribution.}
+\item{prior.r}{Scale parameter for the prior distribution (default: 0.1)}
 
-\item{nullInterval}{Optional vector of length 2 containing lower and upper bounds of an interval hypothesis to test, in probability units.}
+\item{alternative}{Direction of alternative hypothesis: "two.sided", "greater", or "less"}
 
-\item{nstart}{How many data points should be considered before calculating the first BF (min = 2)}
+\item{nstart}{Minimum number of data points before first BF calculation (>= 2)}
+
+\item{exact}{Logical. If TRUE, calculates BF for all points; if FALSE, uses steps for efficiency}
+
+\item{nullInterval}{Optional vector of length 2 for interval hypothesis testing (deprecated)}
+}
+\value{
+A list of class "seqbf" containing:
+  \itemize{
+    \item probability of success: estimated probability
+    \item p-value: from classical binomial test
+    \item BF: vector of sequential Bayes Factors
+    \item test type: "binomial"
+    \item prior: list with prior distribution details
+    \item sample size: total number of observations
+    \item alternative: chosen alternative hypothesis
+  }
 }
 \description{
-This function calculates Bayes Factors for every added data point of dichotomous data.
-}
-\details{
-The first BF is calculated for nstart data points. For every subsequent data point a new BF is added.
-The resulting BF vector indicates the change of evidence over time.
-The function uses "proportionBF" from the BayesFactor package
+Calculates Bayes Factors sequentially for dichotomous data, showing evidence evolution over time.
+Uses 'proportionBF' from the BayesFactor package to compute Bayes Factors starting from a minimum
+number of observations and updating with each new data point.
 }
 \examples{
-tbl$bf <- bfbinom(tbl@qbit)
+data <- rbinom(100, 1, 0.7)
+result <- bfbinom(data)
 }

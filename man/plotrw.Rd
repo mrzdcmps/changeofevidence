@@ -10,7 +10,8 @@ plotrw(
   sims.df.col = "rw",
   color = "black",
   coordy = c(-absolutemax, absolutemax),
-  mu = NULL
+  mu = NULL,
+  p = 0.5
 )
 }
 \arguments{
@@ -24,7 +25,9 @@ plotrw(
 
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 
-\item{mu}{If Random Walk is of summed up bits, indicate the expected sum per step.}
+\item{mu}{If bits are summed up for a single step, this is the mean of the sum.}
+
+\item{p}{Indicate the probability of success for a single step.}
 }
 \description{
 This function allows to plot random walks.
@@ -40,7 +43,10 @@ p.rw
 
 plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
 
-plotrw(list(exp = exp$rw, con = con$rw), mu = 50)
+plotrw(list(exp = exp$rw, con = con$rw), mu = 5)
+
+df$rw <- cumsum(ifelse(df$correct == TRUE, 1, -1))
+plotrw(df$rw, p = 0.2) # 1 in 5 probability of success
 
 sims1000 <- subset(sims, simid <= 1000)
 plotrw(tbl, sims.df = sims1000)

@@ -248,7 +248,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     
     # Determine starting point
     if (nstart == "auto") {
-      nstart <- .determine_min_n_independent(data, group_var, vars[1])
+      nstart <- .determine_min_n_independent(data, group_var, vars[1], alternative, prior.loc, prior.r)
     }
     
   } else if (!is.null(y)) {
@@ -265,7 +265,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     total_sample_size <- sample_size
     
     if (nstart == "auto") {
-      nstart <- .determine_min_n_paired(x, y)
+      nstart <- .determine_min_n_paired(x, y, alternative, prior.loc, prior.r)
     }
     
   } else if (!is.null(x)) {
@@ -280,7 +280,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     total_sample_size <- sample_size
     
     if (nstart == "auto") {
-      nstart <- .determine_min_n_one_sample(x)
+      nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r)
     }
     
   } else {
@@ -306,7 +306,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   
   # Progress reporting
   message(sprintf("%s test (N = %d%s)",
-                  capitalize(test_type),
+                  .capitalize(test_type),
                   total_sample_size,
                   ifelse(test_type == "independent",
                          sprintf(" [%d + %d]", sample_size[1], sample_size[2]),
@@ -693,45 +693,92 @@ print.bfRobustness <- function(x, ...) {
   return(step)
 }
 
-#' Determine minimum n for independent samples test
-.determine_min_n_independent <- function(data, group_var, response_var) {
-  n <- 2
+# Try running bfttest with specific n
+.try_bft_calculation <- function(n, ...) {
+  nstart <- n - 1
+  tryCatch({
+    invisible(capture.output(suppressMessages(result <- bfttest(..., nstart = nstart, exact = TRUE))))
+    # Check if we got valid BF values
+    !is.na(tail(result$BF, 1))
+  }, error = function(e) {
+    warning(sprintf("Error at step %d: %s", nstart, e$message))
+    FALSE
+  })
+}
+
+# Determine minimum n for independent samples test
+.determine_min_n_independent <- function(data, group_var, response_var, 
+                                         alternative = "two.sided", prior.loc = 0, prior.r = 0.1) {
+  n <- 3
+  nstart <- n - 1
   while (n <= nrow(data)) {
     subset <- data[1:n, ]
-    if (length(unique(subset[[group_var]])) == 2 &&
-        var(subset[[response_var]]) > 0) {
-      return(n)
+    subsetstart <- data[1:nstart, ]
+    # Check basic conditions first
+    if (length(unique(subsetstart[[group_var]])) == 2 &&
+        var(subsetstart[[response_var]]) > 0) {
+      # Create formula for the test
+      formula <- as.formula(paste(response_var, "~", group_var))
+      # Try running bfttest
+      if (.try_bft_calculation(n, 
+                               formula = formula, 
+                               data = subset,
+                               alternative = alternative,
+                               prior.loc = prior.loc,
+                               prior.r = prior.r)) {
+        return(nstart)
+      }
     }
     n <- n + 1
+    nstart <- n - 1
   }
-  stop("Could not find valid starting point")
+  stop("Could not find valid starting point for Bayes Factor calculation")
 }
 
-#' Determine minimum n for paired samples test
-.determine_min_n_paired <- function(x, y) {
-  n <- 2
+# Determine minimum n for paired samples test
+.determine_min_n_paired <- function(x, y, alternative = "two.sided", prior.loc = 0, prior.r = 0.1) {
+  n <- 3
+  nstart <- n - 1
   while (n <= length(x)) {
-    if (var(x[1:n] - y[1:n]) > 0) {
-      return(n)
+    if (var(x[1:nstart] - y[1:nstart]) > 0) {
+      # Try running bfttest
+      if (.try_bft_calculation(n,
+                               x = x[1:n],
+                               y = y[1:n],
+                               alternative = alternative,
+                               prior.loc = prior.loc,
+                               prior.r = prior.r)) {
+        return(nstart)
+      }
     }
     n <- n + 1
+    nstart <- n - 1
   }
-  stop("Could not find valid starting point")
+  stop("Could not find valid starting point for Bayes Factor calculation")
 }
 
-#' Determine minimum n for one sample test
-.determine_min_n_one_sample <- function(x) {
-  n <- 2
+# Determine minimum n for one sample test
+.determine_min_n_one_sample <- function(x, alternative = "two.sided", prior.loc = 0, prior.r = 0.1) {
+  n <- 3
+  nstart <- n - 1
   while (n <= length(x)) {
-    if (var(x[1:n]) > 0) {
-      return(n)
+    if (var(x[1:nstart]) > 0) {
+      # Try running bfttest
+      if (.try_bft_calculation(n,
+                               x = x[1:n],
+                               alternative = alternative,
+                               prior.loc = prior.loc,
+                               prior.r = prior.r)) {
+        return(nstart)
+      }
     }
     n <- n + 1
+    nstart <- n - 1
   }
-  stop("Could not find valid starting point")
+  stop("Could not find valid starting point for Bayes Factor calculation")
 }
 
-#' Get directional BF based on alternative
+# Get directional BF based on alternative
 .get_directional_bf <- function(bf_result, alternative) {
   switch(alternative,
          "less" = bf_result$BFmin0,
@@ -739,7 +786,7 @@ print.bfRobustness <- function(x, ...) {
          "two.sided" = bf_result$BF10)
 }
 
-#' Capitalize first letter
+# Capitalize first letter
 .capitalize <- function(x) {
   paste0(toupper(substr(x, 1, 1)), substr(x, 2, nchar(x)))
 }

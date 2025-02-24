@@ -18,41 +18,56 @@ bfttest(
 )
 }
 \arguments{
-\item{x}{A vector containing data values or a formula.}
+\item{x}{A numeric vector of observations or a formula for independent samples test}
 
-\item{y}{A vector containing another set of values for a paired samples test.}
+\item{y}{Optional numeric vector for paired samples test}
 
-\item{formula}{A formula of the form var ~ group where var is a numeric variable giving the data values and group is indicating which group the data point belongs to (must be 2 levels). Use this for an independent samples t-Test.}
+\item{formula}{Formula of form response ~ group where group has exactly 2 levels}
 
-\item{data}{Use with formula. A data frame containing the variables given in the formula. Use this for an independent samples t-Test.}
+\item{data}{Optional data frame containing the variables in formula}
 
-\item{alternative}{Indicates the direction of the alternative hypothesis: two.sided, less, or greater}
+\item{alternative}{Direction of alternative hypothesis: "two.sided", "greater", or "less"}
 
-\item{mu}{A number indicating the true value of the mean (or difference in means if you are performing a two sample test).}
+\item{mu}{Null hypothesis value (default = 0)}
 
-\item{prior.loc}{Location of the cauchy distributed prior function (use 0 for an uninformed prior).}
+\item{prior.loc}{Location parameter for Cauchy prior (default = 0)}
 
-\item{prior.r}{Scale of the cauchy distributed prior function.}
+\item{prior.r}{Scale parameter for Cauchy prior (default = 0.1)}
 
-\item{nstart}{How many data points should be considered before calculating the first BF (min = 2). Set to "auto" to automatically set the earliest data point.}
+\item{nstart}{Minimum observations before first BF calculation ("auto" or >= 2)}
 
-\item{exact}{Logical. All data points are being calculated if set to true. Set to FALSE for faster calculations and plotting only.}
+\item{exact}{Logical. If TRUE, calculates BF for all points}
+}
+\value{
+A list of class "seqbf" containing:
+  \itemize{
+    \item t-value: Sequential t-statistics
+    \item p-value: Sequential p-values
+    \item BF: Sequential Bayes Factors
+    \item test type: "one-sample", "paired", or "independent"
+    \item prior: List with prior distribution details
+    \item sample size: Number of observations
+    \item alternative: Chosen alternative hypothesis
+  }
 }
 \description{
-This function calculates Bayes Factors for every added data point of normally distributed data, e.g. sum scores.
-}
-\details{
-The first BF is calculated for Nstart data points. For every subsequent data point a new BF is added.
-The resulting BF vector indicates the change of evidence over time.
-The function first calculates t-scores and p-values and subsequently uses the BFDA package to translate the data into BFs.
-Returns a list of t-scores ($t-value), p-scores ($p-value), and BF ($BF)
+Calculates sequential Bayes Factors for t-tests (one-sample, paired, or independent samples),
+showing how evidence evolves as data accumulates. Uses the BFDA package for Bayes Factor
+calculations.
 }
 \examples{
-bfttest(sumscores, alternative = "greater") # One-sample
+# One-sample test
+x <- rnorm(30, 0.5, 1)
+result1 <- bfttest(x, alternative = "greater")
 
-tbl$bf <- bfttest(tbl$sums, alternative = "two.sided", mu = 50, nstart = 10, prior.loc = 0.1, prior.r = 0.05)$BF
+# Independent samples test
+group <- rep(c("A", "B"), each = 15)
+values <- c(rnorm(15), rnorm(15, 0.5))
+df <- data.frame(values = values, group = group)
+result2 <- bfttest(values ~ group, data = df)
 
-bfttest(formula = raw~group, data = df) # Independent samples
-
-bfttest(df1$scores, df2$scores) # Paired samples
+# Paired samples test
+pre <- rnorm(20)
+post <- pre + rnorm(20, 0.5)
+result3 <- bfttest(pre, post)
 }
