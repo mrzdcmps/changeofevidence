@@ -32,7 +32,8 @@ maxbf <- function(data, sims.df = sims) {
     MaxBF = max_data_bf,
     MaxBF_N = max_data_bf_n,
     Sims_with_higher_BFs = sims_with_higher_bf,
-    Num_Sims = u.nsims
+    Num_Sims = u.nsims,
+    data = data
   )
   
   class(maxbf.out) <- "coe"
@@ -83,7 +84,8 @@ energybf <- function(data, sims.df = sims) {
     Simenergy_M = mean(sim.energy),
     Simenergy_SD = sd(sim.energy),
     Sims_with_higher_energy = sims_with_higher_energy,
-    Num_Sims = u.nsims
+    Num_Sims = u.nsims,
+    data = data
   )
   
   class(energybf.out) <- "coe"
@@ -173,7 +175,8 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FAL
     Sims_with_higher_Amplitude = sims_with_higher_amp,
     Sim_Ampsum_M = mean(simampsum),
     Sim_Ampsum_SD = sd(simampsum),
-    Num_Sims = u.nsims
+    Num_Sims = u.nsims,
+    data = data
   )
   
   if (top5) {
@@ -259,71 +262,229 @@ simredo <- function(df, n, rw = TRUE){
 }
 
 
-# # Print Method for COE tests
-# print.coe <- function(x, ...) {
-#   if (!inherits(x, "coe")) stop("Object is not of class 'coe'")
-#   
-#   # Print Maximum BF Output
-#   if (!is.null(x$MaxBF)) {
-#     cat("COE: Maximum BF test\n")
-#     cat("Highest BF:", x$MaxBF, "(at N =", x$MaxBF_N, ")\n")
-#     cat("Sims with this or higher BFs:", x$Sims_with_higher_BFs, "%\n")
-#     cat("Number of simulations used:", x$n_sims, "\n")
-#   }
-#   
-#   # Print Energy BF Output
-#   if (!is.null(x$Energy)) {
-#     cat("COE: BF Energy test\n")
-#     cat("Energy of BF of data:", x$Energy, "\n")
-#     cat("Sims Energy: M =", x$SimEnergy_M, ", SD =", x$SimEnergy_SD, "\n")
-#     cat("Sims with this or higher Energy:", x$Sims_with_higher_energy, "%\n")
-#     cat("Number of simulations used:", x$n_sims, "\n")
-#   }
-#   
-#   # Print FFT Test Output
-#   if (!is.null(x$Amplitude_sum)) {
-#     cat("COE: FFT Amplitude Sum test\n")
-#     cat("Sum of Amplitudes:", x$Amplitude_sum, "\n")
-#     cat("Sims Amplitude Sums: M =", x$Sim_Ampsum_M, ", SD =", x$Sim_Ampsum_SD, "\n")
-#     cat("Simulations with this or higher amplitude sum:", x$Sims_with_higher_Ampsum, "%\n")
-#     if (!is.null(x$FFTComparison)) {
-#       cat("Frequencies above 95% of Simulations:", x$Frequencies_above_95 * 100, "%\n")
-#     }
-#     cat("Number of simulations used:", x$n_sims, "\n")
-#   }
-#   
-#   invisible(x)
-# }
+#' Change of Evidence Analysis
+#'
+#' This function performs a comprehensive analysis of Bayesian evidence over time by 
+#' combining Maximum BF, Energy BF, and FFT analyses.
+#'
+#' The function validates that simulation data matches the experimental data length,
+#' automatically adjusting simulations if they are longer than needed, and performs
+#' all three core analyses: maximum BF evaluation, energy calculation, and frequency
+#' analysis via FFT.
+#'
+#' @param data A seqbf object or vector containing Bayes Factors.
+#' @param sims.df A dataframe containing simulations, must include column "simid".
+#' @return A list containing results from maxbf, energybf, and ffttest analyses.
+#' @examples
+#' result <- coe(seqbf, sims)
+#' result <- coe(bf_vector, sims.df = newsims)
+#' @export
 
-# Custom print method for 'coe' objects
+coe <- function(data, sims.df) {
+  # Step 1: Handle seqbf objects
+  if (inherits(data, "seqbf")) {
+    data <- data$BF
+  }
+  
+  # Validate inputs
+  if (!is.numeric(data)) {
+    stop("data must be a numeric vector or seqbf object")
+  }
+  
+  if (!is.data.frame(sims.df)) {
+    stop("sims.df must be a dataframe")
+  }
+  
+  if (!"simid" %in% names(sims.df)) {
+    stop("sims.df must contain a 'simid' column")
+  }
+  
+  # Step 2: Check if sims.df matches the data length
+  data_length <- length(data)
+  
+  # Get the number of rows for a single simulation
+  sim_ids <- unique(sims.df$simid)
+  if (length(sim_ids) == 0) {
+    stop("No simulations found in sims.df")
+  }
+  
+  # Check the length of the first simulation
+  first_sim_length <- sum(sims.df$simid == sim_ids[1])
+  
+  # Validate all simulations have the same length
+  sim_lengths <- sapply(sim_ids, function(id) sum(sims.df$simid == id))
+  if (!all(sim_lengths == first_sim_length)) {
+    stop("Not all simulations have the same length")
+  }
+  
+  sim_length <- first_sim_length
+  
+  # Step 2a: If simulation is shorter than data, stop
+  if (sim_length < data_length) {
+    stop(paste("Simulation length (", sim_length, ") is shorter than data length (", 
+               data_length, "). Cannot proceed.", sep = ""))
+  }
+  
+  # Step 2b: If simulation is longer than data, use simredo
+  if (sim_length > data_length) {
+    message(paste("Simulation length (", sim_length, ") is longer than data length (", 
+                  data_length, "). Adjusting simulations using simredo.", sep = ""))
+    sims.df <- simredo(sims.df, data_length, rw = FALSE)
+  }
+  
+  # Step 3: Perform all three analyses
+  tryCatch({
+    # Maximum BF analysis
+    maxbf_result <- maxbf(data, sims.df)
+    
+    # Energy BF analysis  
+    energybf_result <- energybf(data, sims.df)
+    
+    # FFT analysis
+    fftdata <- fftcreate(data)
+    ffttest_result <- ffttest(fftdata, sims.df)
+    
+    # Step 4: Store all results in a list
+    results <- list(
+      Data_Length = data_length,
+      Num_Sims = length(sim_ids),
+      maxbf = maxbf_result,
+      energybf = energybf_result,
+      ffttest = ffttest_result
+    )
+    
+    # Add class for potential future methods
+    class(results) <- c("coe", "list")
+    
+    return(results)
+    
+  }, error = function(e) {
+    stop(paste("Error during analysis:", e$message))
+  })
+}
+
+
 #' @export
 #' @method print coe
-print.coe <- function(x, ...) {
-  cat("Change of Evidence Results \n")
-  cat("Number of Simulations: ", x$Num_Sims, "\n")
+print.coe <- function(x, ..., header = TRUE) {
+  # Only top-level prints the header
+  if (header) {
+    cat("*** Change of Evidence Results ***\n\n")
+    if (!is.null(x$Num_Sims)) {
+      cat("Number of Simulations:", x$Num_Sims, "\n")
+    }
+    cat("-----------------------------------\n")
+  }
   
+  # Print MaxBF info
   if (!is.null(x$MaxBF)) {
-    cat("Maximum Bayes Factor (BF): ", x$MaxBF, " (at N = ", x$MaxBF_N, ")\n", sep = "")
-    cat("Simulations with this or higher BF: ", x$Sims_with_higher_BFs, "%\n")
+    cat("Max BF:", round(x$MaxBF, 3), "at N =", x$MaxBF_N, "\n")
+    cat("Sims with ≥ this BF:", x$Sims_with_higher_BFs, "%\n")
   }
   
+  # Print Energy info
   if (!is.null(x$Energy)) {
-    cat("Energy of Bayes Factor (BF): ", x$Energy, "\n")
-    cat("Simulations' Energy: M = ", x$Simenergy_M, ", SD = ", x$Simenergy_SD, "\n")
-    cat("Simulations with this or higher Energy: ", x$Sims_with_higher_energy, "%\n")
+    cat("Energy:", round(x$Energy, 3), "\n")
+    cat("Simulated Energy: M =", round(x$Simenergy_M, 3), ", SD =", round(x$Simenergy_SD, 3), "\n")
+    cat("Sims with ≥ this Energy:", x$Sims_with_higher_energy, "%\n")
   }
   
+  # Print FFT info
   if (!is.null(x$Amplitude_sum)) {
-    cat("Sum of Amplitudes: ", x$Amplitude_sum, "\n")
-    cat("Simulations' Amplitude Sum: M = ", x$Sim_Ampsum_M, ", SD = ", x$Sim_Ampsum_SD, "\n")
-    cat("Simulations with this or higher Amplitude Sum: ", x$Sims_with_higher_Amplitude, "%\n")
+    cat("Amplitude Sum:", round(x$Amplitude_sum, 3), "\n")
+    cat("Simulated Amplitude Sum: M =", round(x$Sim_Ampsum_M, 3), ", SD =", round(x$Sim_Ampsum_SD, 3), "\n")
+    cat("Sims with ≥ this Amplitude:", x$Sims_with_higher_Amplitude, "%\n")
+    if (!is.null(x$Top5_Frequencies_above_95pct)) {
+      cat("Top 5 Frequencies > 95% of Simulations:", x$Top5_Frequencies_above_95pct, "%\n")
+    }
   }
   
-  if (!is.null(x$Top5_Frequencies_above_95pct)) {
-    cat("Top 5 Frequencies above 95% of Simulations: ", x$Top5_Frequencies_above_95pct, "%\n")
+  # Composite object — call sub-prints without headers
+  if (!is.null(x$maxbf)) {
+    cat(">>> MaxBF Test <<<\n\n")
+    print(x$maxbf, header = FALSE)
+    cat("-----------------------------------\n")
+  }
+  
+  if (!is.null(x$energybf)) {
+    cat(">>> Energy Test <<<\n\n")
+    print(x$energybf, header = FALSE)
+    cat("-----------------------------------\n")
+  }
+  
+  if (!is.null(x$ffttest)) {
+    cat(">>> FFT Test <<<\n\n")
+    print(x$ffttest, header = FALSE)
+    cat("-----------------------------------\n")
   }
   
   invisible(x)
 }
+
+
+
+#' @export
+#' @method plot coe
+plot.coe <- function(x, sims = NULL, ...) {
+  if (!inherits(x, "coe")) {
+    stop("Object must be of class 'coe' to plot.")
+  }
   
+  # Aggregate coe object — build plots
+  if (!is.null(x$maxbf) || !is.null(x$energybf) || !is.null(x$ffttest)) {
+    plots_row1 <- list()
+    plot_row2 <- NULL
+    
+    common_theme <- ggplot2::theme(text = ggplot2::element_text(size = 10))
+    
+    if (!is.null(x$maxbf)) {
+      p1 <- plotbf(x$maxbf$data, sims) +
+        ggplot2::geom_point(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF), color = "red", size = 3) +
+        ggplot2::geom_text(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF,
+                      label = paste("Max BF:", round(x$maxbf$MaxBF, 2))), vjust = -1) +
+        ggplot2::ggtitle("Maximum BF") +
+        common_theme
+      plots_row1 <- c(plots_row1, list(p1))
+    }
+    
+    if (!is.null(x$energybf)) {
+      p2 <- plotbf(x$energybf$data) +
+        ggplot2::geom_ribbon(
+          aes(x = 1:length(x$energybf$data), ymin = pmin(x$energybf$data, 1), ymax = 1),
+          fill = "red", alpha = 0.3
+        ) +
+        ggplot2::geom_ribbon(
+          aes(x = 1:length(x$energybf$data), ymin = 1, ymax = pmax(x$energybf$data, 1)),
+          fill = "green", alpha = 0.3
+        ) +
+        ggplot2::ggtitle("Energy of BF") +
+        ggplot2::theme(axis.title.y = element_blank()) +  # remove y-axis label
+        common_theme
+      plots_row1 <- c(plots_row1, list(p2))
+    }
+    
+    if (!is.null(x$ffttest)) {
+      p3 <- plotfft(x$ffttest$data, sims) +
+        ggplot2::ggtitle("FFT Test") +
+        common_theme
+      plot_row2 <- p3
+    }
+    
+    # Combine layout
+    if (length(plots_row1) > 0 && !is.null(plot_row2)) {
+      combined <- (patchwork::wrap_plots(plots_row1) / plot_row2)
+    } else if (length(plots_row1) > 0) {
+      combined <- patchwork::wrap_plots(plots_row1)
+    } else if (!is.null(plot_row2)) {
+      combined <- plot_row2
+    } else {
+      stop("No plots available to display.")
+    }
+    
+    print(combined)
+    return(invisible())
+  }
+}
+
+
 

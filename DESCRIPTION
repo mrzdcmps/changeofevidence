@@ -1,13 +1,14 @@
 Package: changeofevidence
 Type: Package
 Title: Change of Evidence
-Version: 1.1.1
+Version: 1.2
 Author: Moritz Dechamps
 Maintainer: Moritz Dechamps <moritz.dechamps@psy.lmu.de>
 Description: This package provides functions to test for a change of evidence over time. It can be used to examine volatile effects.
 Imports:
     BayesFactor,
     ggplot2,
+    patchwork,
     pracma,
     parallel,
     pbapply,
