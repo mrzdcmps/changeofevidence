@@ -10,44 +10,93 @@ plotrw(
   sims.df.col = "rw",
   color = "black",
   coordy = c(-absolutemax, absolutemax),
-  mu = NULL,
-  p = 0.5
+  p = 0.5,
+  n_bits = NULL
 )
 }
 \arguments{
 \item{data}{A vector containing the random walk to be drawn or a list containing multiple vectors.}
 
-\item{sims.df}{A dataframe containing simulations, including column "simid" and "index". Set to NULL if you don't want to display simulations.}
+\item{sims.df}{A dataframe containing simulations, including columns "simid" and "index". Set to NULL if you don't want to display simulations.}
 
-\item{sims.df.col}{The name of the column of the simulation dataframe to compare to.}
+\item{sims.df.col}{The name of the column in the simulation dataframe to compare to.}
 
-\item{color}{A color in which the Random Walk will be drawn.}
+\item{color}{A color in which the Random Walk will be drawn (ignored if data is a list).}
 
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 
-\item{mu}{If bits are summed up for a single step, this is the mean of the sum.}
+\item{p}{Probability of success for binary random walks (0 < p < 1). Default is 0.5.}
 
-\item{p}{Indicate the probability of success for a single step.}
+\item{n_bits}{Number of bits being summed per trial (used with deviation-based walks).}
 }
 \description{
-This function allows to plot random walks.
+This function plots random walks with appropriate confidence intervals.
 }
 \details{
-The Random Walk can be plotted by itself or in comparison to simulated data sets. GGplot2 is used to draw an image.
-A random walk typically goes +1 for every correct choice and -1 for every incorrect one.
-Depending on the amount of simulations, drawing might take a while. It might be wise to chose a smaller simulation set for this purpose.
+The Random Walk can be plotted by itself or in comparison to simulated data sets. 
+The function supports both classic binary random walks (+1/-1 steps) and deviation-based walks (e.g., from summed bits).
+Depending on the amount of simulations, drawing might take a while. It might be wise to choose a smaller simulation set for this purpose.
 }
 \examples{
-p.rw <- plotrw(tbl$rw)
-p.rw
+# Example 1: Classic binary random walk (+1/-1 steps)
+# Generate random correct/incorrect responses
+responses <- sample(c(TRUE, FALSE), 100, replace = TRUE)
+rw_binary <- cumsum(ifelse(responses, 1, -1))
+plotrw(rw_binary)
 
-plotrw(tbl$rw, sims.df = sims, sims.df.col = "rw", coordy = c(-50,50))
+# Example 2: Binary walk with biased probability
+responses_biased <- sample(c(TRUE, FALSE), 100, replace = TRUE, prob = c(0.6, 0.4))
+rw_biased <- cumsum(ifelse(responses_biased, 1, -1))
+plotrw(rw_biased, p = 0.6)
 
-plotrw(list(exp = exp$rw, con = con$rw), mu = 5)
+# Example 3: Deviation-based walk from summed bits (10 bits per trial)
+bit_sums <- rbinom(100, 10, 0.5)  # Sum of 10 fair coin flips per trial
+rw_deviation <- cumsum(bit_sums - 5)  # Subtract chance level (5)
+plotrw(rw_deviation, n_bits = 10)
 
-df$rw <- cumsum(ifelse(df$correct == TRUE, 1, -1))
-plotrw(df$rw, p = 0.2) # 1 in 5 probability of success
+# Example 4: Multiple random walks comparison
+# Generate data for two conditions
+condition_a <- rbinom(80, 10, 0.5)
+condition_b <- rbinom(80, 10, 0.55)  # Slightly above chance
+rw_list <- list(
+  control = cumsum(condition_a - 5),
+  experimental = cumsum(condition_b - 5)
+)
+plotrw(rw_list, n_bits = 10)
 
-sims1000 <- subset(sims, simid <= 1000)
-plotrw(tbl, sims.df = sims1000)
+# Example 5: With custom y-axis limits
+plotrw(rw_deviation, n_bits = 10, coordy = c(-20, 20))
+
+# Example 6: With simulation data for comparison
+# First create simulation data
+n_sims <- 1000
+n_trials <- 100
+sims_data <- data.frame()
+for(i in 1:n_sims) {
+  sim_bits <- rbinom(n_trials, 10, 0.5)
+  sim_rw <- cumsum(sim_bits - 5)
+  sim_df <- data.frame(
+    simid = i,
+    index = 1:n_trials,
+    rw = sim_rw
+  )
+  sims_data <- rbind(sims_data, sim_df)
+}
+
+# Plot with simulations (use subset for faster rendering)
+sims_subset <- subset(sims_data, simid <= 100)
+plotrw(rw_deviation, sims.df = sims_subset, sims.df.col = "rw", n_bits = 10)
+
+# Example 7: Different bit sizes
+# For 20 bits per trial
+bit_sums_20 <- rbinom(100, 20, 0.5)
+rw_20bits <- cumsum(bit_sums_20 - 10)  # Subtract chance level (10)
+plotrw(rw_20bits, n_bits = 20)
+
+# Example 8: From real experimental data structure
+# Assuming you have a dataframe 'experiment_data' with column 'score'
+# where score represents the sum of bits per trial
+# experiment_data$rw <- cumsum(experiment_data$score - 5)
+# plotrw(experiment_data$rw, n_bits = 10)
+
 }
