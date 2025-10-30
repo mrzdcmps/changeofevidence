@@ -15,7 +15,7 @@ bfttest(
   prior.loc = 0,
   prior.r = 0.1,
   nstart = "auto",
-  nsamples = 1000,
+  nsamples = "auto",
   exact = TRUE
 )
 }

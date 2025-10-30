@@ -198,7 +198,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                     prior.loc = 0, 
                     prior.r = 0.1,
                     nstart = "auto", 
-                    nsamples = 1000,
+                    nsamples = "auto",
                     exact = TRUE) {
   
   # Match alternative argument
@@ -343,7 +343,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
       stop("nsamples must be a positive integer or 'auto'")
     }
   } else {
-    nsamples <- .adaptive_nsamples(n, nsamples)
+    nsamples <- .adaptive_nsamples(total_sample_size, nsamples)
   }
   
   # Initialize vectors for results
