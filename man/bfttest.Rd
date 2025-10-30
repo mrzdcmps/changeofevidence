@@ -40,7 +40,7 @@ bfttest(
 
 \item{nstart}{Minimum observations before first BF calculation ("auto" or >= 2)}
 
-\item{nsamples}{Number of MCMC samples for non-parametric tests (default = 1000)}
+\item{nsamples}{Number of MCMC samples for non-parametric tests (default = adaptive sampling based on N)}
 
 \item{exact}{Logical. If TRUE, calculates BF for all points}
 }
@@ -67,8 +67,7 @@ For parametric tests, uses BFDA package. For non-parametric tests, uses van Door
 latent normal approach with Cauchy priors on effect size.
 }
 \note{
-For non-parametric tests, requires: rankSumGibbsSampler(), signRankGibbsSampler(), 
-  computeBayesFactorOneZero(), and the logspline package
+Adaptive sampling uses 1000 samples for N <= 500, 750 samples for N <= 2000, 500 samples for N <= 5000, and 300 samples for larger N.
 }
 \examples{
 # Parametric one-sample test

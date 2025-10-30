@@ -157,7 +157,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #' @param prior.loc Location parameter for Cauchy prior (default = 0)
 #' @param prior.r Scale parameter for Cauchy prior (default = 0.1). Use sqrt(2)/2 for default JZS prior.
 #' @param nstart Minimum observations before first BF calculation ("auto" or >= 2)
-#' @param nsamples Number of MCMC samples for non-parametric tests (default = 1000)
+#' @param nsamples Number of MCMC samples for non-parametric tests (default = adaptive sampling based on N)
 #' @param exact Logical. If TRUE, calculates BF for all points
 #' @return A list of class "seqbf" containing:
 #'   \itemize{
@@ -173,8 +173,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #'     \item sample size: Number of observations
 #'     \item alternative: Chosen alternative hypothesis
 #'   }
-#' @note For non-parametric tests, requires: rankSumGibbsSampler(), signRankGibbsSampler(), 
-#'   computeBayesFactorOneZero(), and the logspline package
+#' @note Adaptive sampling uses 1000 samples for N <= 500, 750 samples for N <= 2000, 500 samples for N <= 5000, and 300 samples for larger N.
 #' @examples
 #' # Parametric one-sample test
 #' x <- rnorm(30, 0.5, 1)
@@ -204,11 +203,6 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   
   # Match alternative argument
   alternative <- match.arg(alternative)
-  
-  # Set default prior.r based on test type
-  # if (is.null(prior.r)) {
-  #   prior.r <- if (parametric) 0.1 else 1/sqrt(2)  # JZS default for non-parametric
-  # }
   
   # Validate nstart
   if (nstart != "auto") {
@@ -343,6 +337,15 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     .seqlast(nstart, total_sample_size, .nstep(total_sample_size))
   }
   
+  # Adaptive sampling
+  if (nsamples != "auto") {
+    if (!isTRUE(nsamples == floor(nsamples)) || nsamples <= 0) {
+      stop("nsamples must be a positive integer or 'auto'")
+    }
+  } else {
+    nsamples <- .adaptive_nsamples(n, nsamples)
+  }
+  
   # Initialize vectors for results
   stat_values <- rep(NA, total_sample_size)
   p_values <- rep(NA, total_sample_size)
@@ -373,10 +376,16 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                   ifelse(test_type == "independent",
                          sprintf(" [%d + %d]", sample_size[1], sample_size[2]),
                          "")))
+  
+  # Display MCMC samples for non-parametric tests
+  if (!parametric) {
+    message(sprintf("MCMC samples: %d", nsamples))
+  }
+  
   message("Calculating Sequential Bayes Factors...")
   
   # Calculate sequential BFs
-  pb <- txtProgressBar(min = nstart, max = total_sample_size, initial = nstart, style = 3)
+  pb <- txtProgressBar(min = 0, max = length(steps), initial = 0, style = 3)
   
   for (i in seq_along(steps)) {
     n <- steps[i]
@@ -535,7 +544,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     delta_lower[n] <- result$delta_lower
     delta_upper[n] <- result$delta_upper
     
-    setTxtProgressBar(pb, n)
+    setTxtProgressBar(pb, i)
   }
   
   close(pb)
@@ -921,6 +930,14 @@ print.bfRobustness <- function(x, ...) {
 .nstep <- function(size){
   step <- floor((size-1)/100)+1
   return(step)
+}
+
+# Adaptive number of samples for non-parametric tests
+.adaptive_nsamples <- function(n, base_samples = 1000) {
+  if (n < 500) return(base_samples)
+  if (n < 2000) return(max(500, base_samples * 0.75))
+  if (n < 5000) return(max(250, base_samples * 0.5))
+  return(max(200, base_samples * 0.3))  # Very large samples
 }
 
 # Try running bfttest with specific n
