@@ -2,7 +2,7 @@
 % Please edit documentation in R/bayestest.R
 \name{bfttest}
 \alias{bfttest}
-\title{Bayesian Sequential t-Test}
+\title{Bayesian Sequential t-Test or Non-Parametric Test}
 \usage{
 bfttest(
   x = NULL,
@@ -11,9 +11,11 @@ bfttest(
   data = NULL,
   alternative = c("two.sided", "less", "greater"),
   mu = 0,
+  parametric = TRUE,
   prior.loc = 0,
   prior.r = 0.1,
   nstart = "auto",
+  nsamples = 1000,
   exact = TRUE
 )
 }
@@ -28,46 +30,59 @@ bfttest(
 
 \item{alternative}{Direction of alternative hypothesis: "two.sided", "greater", or "less"}
 
-\item{mu}{Null hypothesis value (default = 0)}
+\item{mu}{Null hypothesis value (default = 0, only for one-sample parametric test)}
+
+\item{parametric}{Logical. If TRUE (default), uses t-test. If FALSE, uses Wilcoxon/Mann-Whitney}
 
 \item{prior.loc}{Location parameter for Cauchy prior (default = 0)}
 
-\item{prior.r}{Scale parameter for Cauchy prior (default = 0.1)}
+\item{prior.r}{Scale parameter for Cauchy prior (default = 0.1). Use sqrt(2)/2 for default JZS prior.}
 
 \item{nstart}{Minimum observations before first BF calculation ("auto" or >= 2)}
+
+\item{nsamples}{Number of MCMC samples for non-parametric tests (default = 1000)}
 
 \item{exact}{Logical. If TRUE, calculates BF for all points}
 }
 \value{
 A list of class "seqbf" containing:
   \itemize{
-    \item t-value: Sequential t-statistics
+    \item t-value or W-value: Sequential test statistics
     \item p-value: Sequential p-values
     \item BF: Sequential Bayes Factors
+    \item delta: Sequential delta estimates (posterior medians for effect size)
+    \item delta.lower: Lower bounds of 95% credible intervals for delta
+    \item delta.upper: Upper bounds of 95% credible intervals for delta
     \item test type: "one-sample", "paired", or "independent"
+    \item parametric: Logical indicating test type
     \item prior: List with prior distribution details
     \item sample size: Number of observations
     \item alternative: Chosen alternative hypothesis
   }
 }
 \description{
-Calculates sequential Bayes Factors for t-tests (one-sample, paired, or independent samples),
-showing how evidence evolves as data accumulates. Uses the BFDA package for Bayes Factor
-calculations.
+Calculates sequential Bayes Factors for parametric t-tests or non-parametric 
+rank-based tests (Wilcoxon/Mann-Whitney), showing how evidence evolves as data accumulates.
+For parametric tests, uses BFDA package. For non-parametric tests, uses van Doorn et al.'s
+latent normal approach with Cauchy priors on effect size.
+}
+\note{
+For non-parametric tests, requires: rankSumGibbsSampler(), signRankGibbsSampler(), 
+  computeBayesFactorOneZero(), and the logspline package
 }
 \examples{
-# One-sample test
+# Parametric one-sample test
 x <- rnorm(30, 0.5, 1)
 result1 <- bfttest(x, alternative = "greater")
 
-# Independent samples test
+# Non-parametric independent samples test
 group <- rep(c("A", "B"), each = 15)
 values <- c(rnorm(15), rnorm(15, 0.5))
 df <- data.frame(values = values, group = group)
-result2 <- bfttest(values ~ group, data = df)
+result2 <- bfttest(values ~ group, data = df, parametric = FALSE)
 
-# Paired samples test
+# Non-parametric paired samples test
 pre <- rnorm(20)
 post <- pre + rnorm(20, 0.5)
-result3 <- bfttest(pre, post)
+result3 <- bfttest(pre, post, parametric = FALSE)
 }

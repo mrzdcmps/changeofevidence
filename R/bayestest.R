@@ -140,57 +140,75 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 }
 
 
-#' Bayesian Sequential t-Test
+#' Bayesian Sequential t-Test or Non-Parametric Test
 #'
-#' Calculates sequential Bayes Factors for t-tests (one-sample, paired, or independent samples),
-#' showing how evidence evolves as data accumulates. Uses the BFDA package for Bayes Factor
-#' calculations.
+#' Calculates sequential Bayes Factors for parametric t-tests or non-parametric 
+#' rank-based tests (Wilcoxon/Mann-Whitney), showing how evidence evolves as data accumulates.
+#' For parametric tests, uses BFDA package. For non-parametric tests, uses van Doorn et al.'s
+#' latent normal approach with Cauchy priors on effect size.
 #'
 #' @param x A numeric vector of observations or a formula for independent samples test
 #' @param y Optional numeric vector for paired samples test
 #' @param formula Formula of form response ~ group where group has exactly 2 levels
 #' @param data Optional data frame containing the variables in formula
 #' @param alternative Direction of alternative hypothesis: "two.sided", "greater", or "less"
-#' @param mu Null hypothesis value (default = 0)
+#' @param mu Null hypothesis value (default = 0, only for one-sample parametric test)
+#' @param parametric Logical. If TRUE (default), uses t-test. If FALSE, uses Wilcoxon/Mann-Whitney
 #' @param prior.loc Location parameter for Cauchy prior (default = 0)
-#' @param prior.r Scale parameter for Cauchy prior (default = 0.1)
+#' @param prior.r Scale parameter for Cauchy prior (default = 0.1). Use sqrt(2)/2 for default JZS prior.
 #' @param nstart Minimum observations before first BF calculation ("auto" or >= 2)
+#' @param nsamples Number of MCMC samples for non-parametric tests (default = 1000)
 #' @param exact Logical. If TRUE, calculates BF for all points
 #' @return A list of class "seqbf" containing:
 #'   \itemize{
-#'     \item t-value: Sequential t-statistics
+#'     \item t-value or W-value: Sequential test statistics
 #'     \item p-value: Sequential p-values
 #'     \item BF: Sequential Bayes Factors
+#'     \item delta: Sequential delta estimates (posterior medians for effect size)
+#'     \item delta.lower: Lower bounds of 95% credible intervals for delta
+#'     \item delta.upper: Upper bounds of 95% credible intervals for delta
 #'     \item test type: "one-sample", "paired", or "independent"
+#'     \item parametric: Logical indicating test type
 #'     \item prior: List with prior distribution details
 #'     \item sample size: Number of observations
 #'     \item alternative: Chosen alternative hypothesis
 #'   }
+#' @note For non-parametric tests, requires: rankSumGibbsSampler(), signRankGibbsSampler(), 
+#'   computeBayesFactorOneZero(), and the logspline package
 #' @examples
-#' # One-sample test
+#' # Parametric one-sample test
 #' x <- rnorm(30, 0.5, 1)
 #' result1 <- bfttest(x, alternative = "greater")
 #'
-#' # Independent samples test
+#' # Non-parametric independent samples test
 #' group <- rep(c("A", "B"), each = 15)
 #' values <- c(rnorm(15), rnorm(15, 0.5))
 #' df <- data.frame(values = values, group = group)
-#' result2 <- bfttest(values ~ group, data = df)
+#' result2 <- bfttest(values ~ group, data = df, parametric = FALSE)
 #'
-#' # Paired samples test
+#' # Non-parametric paired samples test
 #' pre <- rnorm(20)
 #' post <- pre + rnorm(20, 0.5)
-#' result3 <- bfttest(pre, post)
-#' @importFrom stats t.test var complete.cases na.omit
+#' result3 <- bfttest(pre, post, parametric = FALSE)
+#' @importFrom stats t.test wilcox.test var complete.cases na.omit
 #' @export
 
 bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, 
                     alternative = c("two.sided", "less", "greater"), 
-                    mu = 0, prior.loc = 0, prior.r = 0.1, 
-                    nstart = "auto", exact = TRUE) {
+                    mu = 0, parametric = TRUE,
+                    prior.loc = 0, 
+                    prior.r = 0.1,
+                    nstart = "auto", 
+                    nsamples = 1000,
+                    exact = TRUE) {
   
   # Match alternative argument
   alternative <- match.arg(alternative)
+  
+  # Set default prior.r based on test type
+  # if (is.null(prior.r)) {
+  #   prior.r <- if (parametric) 0.1 else 1/sqrt(2)  # JZS default for non-parametric
+  # }
   
   # Validate nstart
   if (nstart != "auto") {
@@ -248,7 +266,24 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     
     # Determine starting point
     if (nstart == "auto") {
-      nstart <- .determine_min_n_independent(data, group_var, vars[1], alternative, prior.loc, prior.r)
+      if (parametric) {
+        nstart <- .determine_min_n_independent(data, group_var, vars[1], alternative, prior.loc, prior.r)
+      } else {
+        # For non-parametric tests, find the first n where both groups have sufficient data
+        min_per_group <- 5  # Minimum observations per group for stable MCMC
+        
+        for (n in seq_len(total_sample_size)) {
+          group_counts <- table(data[[group_var]][1:n])
+          if (length(group_counts) == 2 && all(group_counts >= min_per_group)) {
+            nstart <- n
+            break
+          }
+        }
+        
+        if (is.character(nstart) && nstart == "auto") {
+          stop("Could not find valid starting point where both groups have sufficient data")
+        }
+      }
     }
     
   } else if (!is.null(y)) {
@@ -265,7 +300,11 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     total_sample_size <- sample_size
     
     if (nstart == "auto") {
-      nstart <- .determine_min_n_paired(x, y, alternative, prior.loc, prior.r)
+      if (parametric) {
+        nstart <- .determine_min_n_paired(x, y, alternative, prior.loc, prior.r)
+      } else {
+        nstart <- 10  # Minimum for stable MCMC
+      }
     }
     
   } else if (!is.null(x)) {
@@ -280,24 +319,37 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     total_sample_size <- sample_size
     
     if (nstart == "auto") {
-      nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r)
+      if (parametric) {
+        nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r)
+      } else {
+        nstart <- 10  # Minimum for stable MCMC
+      }
     }
     
   } else {
     stop("No valid input provided")
   }
   
+  # Validate nstart doesn't exceed sample size
+  if (nstart > total_sample_size) {
+    stop(sprintf("nstart (%d) cannot exceed total sample size (%d)", 
+                 nstart, total_sample_size))
+  }
+  
   # Calculate sequential steps
   steps <- if (exact) {
     seq(nstart, total_sample_size, 1)
   } else {
-    .seqlast(nstart, total_sample_size, .nstep(total_sample_size))  # stepwise
+    .seqlast(nstart, total_sample_size, .nstep(total_sample_size))
   }
   
   # Initialize vectors for results
-  t_values <- rep(NA, total_sample_size)
+  stat_values <- rep(NA, total_sample_size)
   p_values <- rep(NA, total_sample_size)
   bf_values <- rep(NA, total_sample_size)
+  delta_values <- rep(NA, total_sample_size)
+  delta_lower <- rep(NA, total_sample_size)
+  delta_upper <- rep(NA, total_sample_size)
   
   # Pre-fill BF values for 1:(nstart-1) with 1
   if (nstart > 1) {
@@ -305,8 +357,18 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   }
   
   # Progress reporting
-  message(sprintf("%s test (N = %d%s)",
-                  .capitalize(test_type),
+  test_name <- if (parametric) {
+    sprintf("%s t-test", .capitalize(test_type))
+  } else {
+    if (test_type == "independent") {
+      "Mann-Whitney U test"
+    } else {
+      sprintf("%s Wilcoxon signed-rank test", .capitalize(test_type))
+    }
+  }
+  
+  message(sprintf("%s (N = %d%s)",
+                  test_name,
                   total_sample_size,
                   ifelse(test_type == "independent",
                          sprintf(" [%d + %d]", sample_size[1], sample_size[2]),
@@ -320,60 +382,176 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     n <- steps[i]
     
     result <- tryCatch({
-      if (test_type == "independent") {
-        subset_data <- data[1:n, ]
-        t_result <- t.test(formula, data = subset_data, 
-                           alternative = alternative, var.equal = TRUE)
-        n1 <- table(subset_data[[group_var]])[1]
-        n2 <- table(subset_data[[group_var]])[2]
-        bf_result <- bf10_t(t = t_result$statistic,
-                            n1 = n1, n2 = n2,
-                            independentSamples = TRUE,
-                            prior.location = prior.loc,
-                            prior.scale = prior.r,
-                            prior.df = 1)
-      } else if (test_type == "paired") {
-        t_result <- t.test(x[1:n], y[1:n],
-                           alternative = alternative,
-                           paired = TRUE)
-        bf_result <- bf10_t(t = t_result$statistic,
-                            n1 = n,
-                            independentSamples = FALSE,
-                            prior.location = prior.loc,
-                            prior.scale = prior.r,
-                            prior.df = 1)
+      if (parametric) {
+        # PARAMETRIC TESTS
+        if (test_type == "independent") {
+          subset_data <- data[1:n, ]
+          t_result <- t.test(formula, data = subset_data, 
+                             alternative = alternative, var.equal = TRUE)
+          n1 <- table(subset_data[[group_var]])[1]
+          n2 <- table(subset_data[[group_var]])[2]
+          bf_result <- bf10_t(t = t_result$statistic,
+                              n1 = n1, n2 = n2,
+                              independentSamples = TRUE,
+                              prior.location = prior.loc,
+                              prior.scale = prior.r,
+                              prior.df = 1)
+          # Approximate delta from t-statistic
+          delta_est <- unname(t_result$statistic) * sqrt(1/n1 + 1/n2)
+          
+        } else if (test_type == "paired") {
+          t_result <- t.test(x[1:n], y[1:n],
+                             alternative = alternative,
+                             paired = TRUE)
+          bf_result <- bf10_t(t = t_result$statistic,
+                              n1 = n,
+                              independentSamples = FALSE,
+                              prior.location = prior.loc,
+                              prior.scale = prior.r,
+                              prior.df = 1)
+          # Approximate delta from t-statistic
+          delta_est <- unname(t_result$statistic) / sqrt(n)
+          
+        } else {  # one-sample
+          t_result <- t.test(x[1:n],
+                             alternative = alternative,
+                             mu = mu)
+          bf_result <- bf10_t(t = t_result$statistic,
+                              n1 = n,
+                              prior.location = prior.loc,
+                              prior.scale = prior.r,
+                              prior.df = 1)
+          # Approximate delta from t-statistic
+          delta_est <- unname(t_result$statistic) / sqrt(n)
+        }
+        
+        list(
+          stat = unname(t_result$statistic),
+          p = t_result$p.value,
+          bf = .get_directional_bf(bf_result, alternative),
+          delta = delta_est,
+          delta_lower = NA,  # Not available for parametric
+          delta_upper = NA
+        )
+        
       } else {
-        t_result <- t.test(x[1:n],
-                           alternative = alternative,
-                           mu = mu)
-        bf_result <- bf10_t(t = t_result$statistic,
-                            n1 = n,
-                            prior.location = prior.loc,
-                            prior.scale = prior.r,
-                            prior.df = 1)
+        # NON-PARAMETRIC TESTS
+        if (test_type == "independent") {
+          # Mann-Whitney U test
+          subset_data <- data[1:n, ]
+          group1_data <- subset_data[[response_var]][subset_data[[group_var]] == groups[1]]
+          group2_data <- subset_data[[response_var]][subset_data[[group_var]] == groups[2]]
+          
+          # Frequentist test for p-value
+          w_result <- wilcox.test(group1_data, group2_data,
+                                  alternative = alternative,
+                                  exact = FALSE)
+          
+          # Bayesian rank sum test
+          mcmc_result <- rankSumGibbsSampler(
+            xVals = group1_data, 
+            yVals = group2_data,
+            nSamples = nsamples,
+            cauchyPriorParameter = prior.r,
+            progBar = FALSE
+          )
+          
+          # Compute BF
+          bf_result <- .get_bf_nonparametric(
+            mcmc_result$deltaSamples, 
+            alternative,
+            prior.r
+          )
+          
+          # Summarize delta
+          delta_quant <- quantile(mcmc_result$deltaSamples, 
+                                  probs = c(0.025, 0.5, 0.975))
+          
+          list(
+            stat = unname(w_result$statistic),
+            p = w_result$p.value,
+            bf = bf_result,
+            delta = delta_quant[2],
+            delta_lower = delta_quant[1],
+            delta_upper = delta_quant[3]
+          )
+          
+        } else {
+          # Wilcoxon signed-rank test (paired or one-sample)
+          if (test_type == "paired") {
+            diff_data <- x[1:n] - y[1:n]
+            w_result <- wilcox.test(x[1:n], y[1:n],
+                                    alternative = alternative,
+                                    paired = TRUE,
+                                    exact = FALSE)
+          } else {  # one-sample
+            diff_data <- x[1:n] - mu
+            w_result <- wilcox.test(x[1:n],
+                                    alternative = alternative,
+                                    mu = mu,
+                                    exact = FALSE)
+          }
+          
+          # Bayesian signed rank test
+          mcmc_result <- signRankGibbsSampler(
+            xVals = diff_data,
+            yVals = NULL,
+            nSamples = nsamples,
+            cauchyPriorParameter = prior.r,
+            progBar = FALSE
+          )
+          
+          # Compute BF
+          bf_result <- .get_bf_nonparametric(
+            mcmc_result$deltaSamples, 
+            alternative,
+            prior.r
+          )
+          
+          # Summarize delta
+          delta_quant <- quantile(mcmc_result$deltaSamples, 
+                                  probs = c(0.025, 0.5, 0.975))
+          
+          list(
+            stat = unname(w_result$statistic),
+            p = w_result$p.value,
+            bf = bf_result,
+            delta = delta_quant[2],
+            delta_lower = delta_quant[1],
+            delta_upper = delta_quant[3]
+          )
+        }
       }
-      list(t = unname(t_result$statistic),
-           p = t_result$p.value,
-           bf = .get_directional_bf(bf_result, alternative))
     }, error = function(e) {
       warning(sprintf("Error at step %d: %s", n, e$message))
-      list(t = NA, p = NA, bf = NA)
+      list(stat = NA, p = NA, bf = NA, delta = NA, 
+           delta_lower = NA, delta_upper = NA)
     })
     
-    t_values[n] <- result$t
+    stat_values[n] <- result$stat
     p_values[n] <- result$p
     bf_values[n] <- result$bf
+    delta_values[n] <- result$delta
+    delta_lower[n] <- result$delta_lower
+    delta_upper[n] <- result$delta_upper
+    
     setTxtProgressBar(pb, n)
   }
   
   close(pb)
   
   # Prepare output
+  stat_name <- if (parametric) "t-value" else "W-value"
+  
   bf_out <- list(
-    "t-value" = t_values,
+    stat_name = stat_values,
     "p-value" = p_values,
     "BF" = bf_values,
+    "delta" = delta_values,
+    "delta.lower" = delta_lower,
+    "delta.upper" = delta_upper,
     "test type" = test_type,
+    "parametric" = parametric,
     "prior" = list(
       "distribution" = "Cauchy",
       "location" = prior.loc,
@@ -382,29 +560,31 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     "sample size" = sample_size,
     "alternative" = alternative
   )
+  names(bf_out)[1] <- stat_name
   
   # Get final results
   final_bf <- tail(na.omit(bf_out$BF), n = 1)
-  final_t <- tail(na.omit(bf_out$`t-value`), n = 1)
+  final_stat <- tail(na.omit(bf_out[[stat_name]]), n = 1)
   final_p <- tail(na.omit(bf_out$`p-value`), n = 1)
+  final_delta <- tail(na.omit(bf_out$delta), n = 1)
   
   # Report final results
   if (is.na(final_bf)) {
     message("Final Bayes Factor could not be calculated")
   } else if (final_bf > 1) {
     message(sprintf(
-      "Final Bayes Factor: BF10 = %.3f (t = %.3f; p = %.3f)",
-      final_bf, final_t, final_p
+      "Final Bayes Factor: BF10 = %.3f (%s = %.3f; p = %.3f; δ = %.3f)",
+      final_bf, stat_name, final_stat, final_p, final_delta
     ))
   } else if (final_bf == 1) {
     message(sprintf(
-      "Final Bayes Factor: BF10 = 1 (no evidence for either hypothesis; t = %.3f; p = %.3f)",
-      final_t, final_p
+      "Final Bayes Factor: BF10 = 1 (no evidence; %s = %.3f; p = %.3f; δ = %.3f)",
+      stat_name, final_stat, final_p, final_delta
     ))
   } else {
     message(sprintf(
-      "Final Bayes Factor: BF10 = %.3f; BF01 = %.3f (t = %.3f; p = %.3f)",
-      final_bf, 1/final_bf, final_t, final_p
+      "Final Bayes Factor: BF10 = %.3f; BF01 = %.3f (%s = %.3f; p = %.3f; δ = %.3f)",
+      final_bf, 1/final_bf, stat_name, final_stat, final_p, final_delta
     ))
   }
   
@@ -640,18 +820,68 @@ bfRobustness <- function(x = NULL, informed = TRUE, prior.loc = NULL, prior.r = 
 #' @export
 #' @method print seqbf
 print.seqbf <- function(x, ...) {
-    
-    cat(paste0("
+  
+  # Determine test name
+  if (x$parametric) {
+    test_name <- paste(.capitalize(x$`test type`), "t-test")
+  } else {
+    test_name <- if (x$`test type` == "independent") {
+      "Mann-Whitney U test"
+    } else {
+      paste(.capitalize(x$`test type`), "Wilcoxon signed-rank test")
+    }
+  }
+  
+  # Get final values
+  final_bf <- tail(na.omit(x$BF), n = 1)
+  final_stat <- tail(na.omit(x[[1]]), n = 1)
+  final_p <- tail(na.omit(x$`p-value`), n = 1)
+  final_delta <- tail(na.omit(x$delta), n = 1)
+  final_delta_lower <- tail(na.omit(x$delta.lower), n = 1)
+  final_delta_upper <- tail(na.omit(x$delta.upper), n = 1)
+  
+  # Build delta string
+  if (!x$parametric && !is.na(final_delta)) {
+    delta_string <- sprintf(
+      "  Effect size: δ = %.3f, 95%% CI [%.3f, %.3f]",
+      final_delta, final_delta_lower, final_delta_upper
+    )
+  } else if (x$parametric && !is.na(final_delta)) {
+    delta_string <- sprintf(
+      "  Effect size: δ ≈ %.3f (approximation from t-statistic)",
+      final_delta
+    )
+  } else {
+    delta_string <- ""
+  }
+  
+  # Print output
+  cat(sprintf("
   Sequential Bayesian Testing
-  --------------------------------	
-  Test type: ", x$`test type`, "
-  Sample size: ", paste(x$`sample size`, collapse=", "), "
-  Final Bayes Factor: BF10=", round(tail(x$BF, n=1), 3), "; BF01=", round(1/tail(x$BF, n=1), 3), "
-  Parameter prior: ", x$prior[[1]],"(",x$prior[[2]],", ",x$prior[[3]],")", "
-  Directionality of H1 analysis prior: ", x$alternative, "
-  Orthodox Test: ",names(x)[1],"=",round(tail(x[[1]],n=1), 3),"; p=",round(tail(x$`p-value`,n=1), 3), "
-              \n"
-    ))
+  --------------------------------
+  Test: %s%s
+  Sample size: %s
+  Final Bayes Factor: BF10 = %.3f; BF01 = %.3f
+  Prior: %s(%.3f, %.3f)
+  Alternative hypothesis: %s
+  %s: %.3f; p = %.3f%s
+  \n",
+              test_name,
+              ifelse(x$parametric, " (parametric)", " (non-parametric)"),
+              paste(x$`sample size`, collapse = ", "),
+              final_bf,
+              1 / final_bf,
+              x$prior$distribution,
+              x$prior$location,
+              x$prior$scale,
+              x$alternative,
+              names(x)[1],
+              final_stat,
+              final_p,
+              ifelse(delta_string != "", paste0("\n", delta_string), "")
+  ))
+  
+  invisible(x)
 }
 
 
@@ -792,6 +1022,38 @@ print.bfRobustness <- function(x, ...) {
          "less" = bf_result$BFmin0,
          "greater" = bf_result$BFplus0,
          "two.sided" = bf_result$BF10)
+}
+
+# Helper function for computing BF from posterior samples (non-parametric)
+.get_bf_nonparametric <- function(delta_samples, alternative, prior_scale) {
+  
+  if (alternative == "two.sided") {
+    # Two-sided test using Savage-Dickey ratio
+    bf10 <- computeBayesFactorOneZero(
+      posteriorSamples = delta_samples,
+      priorParameter = prior_scale,
+      oneSided = FALSE,
+      whichTest = "Wilcoxon"
+    )
+  } else if (alternative == "greater") {
+    # One-sided test: H1: delta > 0
+    bf10 <- computeBayesFactorOneZero(
+      posteriorSamples = delta_samples,
+      priorParameter = prior_scale,
+      oneSided = "right",
+      whichTest = "Wilcoxon"
+    )
+  } else {  # "less"
+    # One-sided test: H1: delta < 0
+    bf10 <- computeBayesFactorOneZero(
+      posteriorSamples = delta_samples,
+      priorParameter = prior_scale,
+      oneSided = "left",
+      whichTest = "Wilcoxon"
+    )
+  }
+  
+  return(bf10)
 }
 
 # Capitalize first letter

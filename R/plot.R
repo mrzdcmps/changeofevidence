@@ -200,12 +200,26 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N"){
   
   if(inherits(data,"seqbf") == TRUE){
+    
+    # Determine test type and name
     if(data$`test type` == "independent") {
-      testtype <- "Independent Samples"
+      if(!is.null(data$parametric) && !data$parametric) {
+        testtype <- "Mann-Whitney U"
+      } else {
+        testtype <- "Independent Samples t-test"
+      }
     } else if(data$`test type` == "paired") {
-      testtype <- "Paired Samples"
+      if(!is.null(data$parametric) && !data$parametric) {
+        testtype <- "Wilcoxon Signed-Rank (Paired)"
+      } else {
+        testtype <- "Paired Samples t-test"
+      }
     } else if(data$`test type` == "one-sample") {
-      testtype <- "One-Sample"
+      if(!is.null(data$parametric) && !data$parametric) {
+        testtype <- "Wilcoxon Signed-Rank (One-Sample)"
+      } else {
+        testtype <- "One-Sample t-test"
+      }
     } else if(data$`test type` == "binomial") {
       testtype <- "Binomial"
       label.x <- "Trials"
@@ -214,12 +228,36 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
     } else {
       testtype <- "Unknown"
     }
+    
+    # # Add parametric/non-parametric label
+    # if(!is.null(data$parametric)) {
+    #   test_method <- ifelse(data$parametric, "parametric", "non-parametric")
+    # } else {
+    #   test_method <- "parametric"  # Default for backward compatibility
+    # }
+    
+    # Determine tails
     tails <- ifelse(data$alternative == "two.sided", "two-tailed", "one-tailed")
-    subtitle <- paste0("BF = ",round(tail(data$BF,n=1),3)," (N = ", sum(data$`sample size`),")")
+    
+    # Create subtitle with final BF and sample size
+    subtitle <- paste0("BF = ", round(tail(data$BF, n = 1), 3), 
+                       " (N = ", sum(data$`sample size`), ")")
+    
+    # Create caption with test info
     caption <- paste0(
-      testtype, " test; ",
+      #testtype, " (", test_method, "); ",
+      testtype, "; ",
       tails, "; ",
-      data$prior[[1]],"(",data$prior[[2]],", ",data$prior[[3]],")")
+      data$prior$distribution, "(", 
+      round(data$prior$location, 3), ", ", 
+      round(data$prior$scale, 3), ")")
+    
+    # Add delta to caption if available
+    final_delta <- tail(na.omit(data$delta), n = 1)
+    if(length(final_delta) > 0 && !is.na(final_delta)) {
+      caption <- paste0(caption, "; δ = ", round(final_delta, 3))
+    }
+    
     data <- data$BF
     showinfo <- TRUE
   }
@@ -230,15 +268,15 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   # Set y coordinates
   if(is.null(coordy)){
     if(is.list(data)){
-      coordy <- c(min(unlist(data), na.rm=T),
-                  2*max(unlist(data), na.rm=T))
+      coordy <- c(min(unlist(data), na.rm = T),
+                  2 * max(unlist(data), na.rm = T))
     }
     else {
-      coordy <- c(min(data, na.rm=T),2*max(data, na.rm=T))
+      coordy <- c(min(data, na.rm = T), 2 * max(data, na.rm = T))
     }
   }
   
-  #Set minimum coordinates to 1/10 and 10
+  # Set minimum coordinates to 1/10 and 10
   if(coordy[1] > 1/10) coordy[1] <- 1/10
   if(coordy[2] < 10) coordy[2] <- 10
   
@@ -252,7 +290,7 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   annotation <- annotationlist[[1]]
   annobreaks <- annotationlist[[2]]
   
-  #Scale y-Axis
+  # Scale y-Axis
   breaks <- annotationlist[[3]]
   labels <- annotationlist[[4]]
   
@@ -263,42 +301,42 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   p <- ggplot2::ggplot()
   
   # Add simulations
-  if(!is.null(sims.df)) p <- p + ggplot2::geom_line(data=sims.df, aes(x=index, y=.data[[sims.df.col]], group=simid), color=greycol)
+  if(!is.null(sims.df)) p <- p + ggplot2::geom_line(data = sims.df, aes(x = index, y = .data[[sims.df.col]], group = simid), color = greycol)
   
   # Add horizontal lines
-  p <- p + ggplot2::geom_hline(yintercept = 1, color='grey60', linetype = 'solid')+
-    ggplot2::geom_hline(yintercept = breaks, color='grey60', linetype='dotted')
+  p <- p + ggplot2::geom_hline(yintercept = 1, color = 'grey60', linetype = 'solid') +
+    ggplot2::geom_hline(yintercept = breaks, color = 'grey60', linetype = 'dotted')
   
   if(is.list(data)){
     df <- NULL
     for(i in 1:length(data)){
       ydat <- data[[i]]
       if(!is.null(names(data))){
-        ndf <- data.frame(element=as.factor(names(data)[i]),x=1:length(ydat),y=ydat)
+        ndf <- data.frame(element = as.factor(names(data)[i]), x = 1:length(ydat), y = ydat)
       } else{
-        ndf <- data.frame(element=paste0("data ",i),x=1:length(ydat),y=ydat)
+        ndf <- data.frame(element = paste0("data ", i), x = 1:length(ydat), y = ydat)
       }
-      df <- rbind(df,ndf)
-      df <- df[!is.na(df$y),]
+      df <- rbind(df, ndf)
+      df <- df[!is.na(df$y), ]
     }
-    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y, color=element), linewidth=1)+
-      ggplot2::scale_color_brewer("Data", type="qualitative", palette="Set1")
-    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=max(df$x)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+    p <- p + ggplot2::geom_line(data = df, aes(x = x, y = y, color = element), linewidth = 1) +
+      ggplot2::scale_color_brewer("Data", type = "qualitative", palette = "Set1")
+    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x = max(df$x) * 1.2, y = annobreaks, label = annotation, hjust = 1, parse = TRUE)
     
   } else {
-    df <- data.frame(y=data, x=as.numeric(1:length(data)))
-    df <- df[!is.na(df$y),]
+    df <- data.frame(y = data, x = as.numeric(1:length(data)))
+    df <- df[!is.na(df$y), ]
     
-    p <- p + ggplot2::geom_line(data=df, aes(x=x, y=y), color=color, linewidth=1)
-    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x=length(data)*1.2, y=annobreaks, label=annotation, hjust=1, parse = TRUE)
+    p <- p + ggplot2::geom_line(data = df, aes(x = x, y = y), color = color, linewidth = 1)
+    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x = length(data) * 1.2, y = annobreaks, label = annotation, hjust = 1, parse = TRUE)
   }
   
   if(exists("showinfo")) p <- p + ggplot2::labs(subtitle = subtitle, caption = caption)
   
-  p + ggplot2::labs(x=label.x, y = "Evidence (BF)")+
-    ggplot2::scale_y_log10(breaks = breaks, labels = labels)+
-    ggplot2::coord_cartesian(ylim = coordy)+
-    ggplot2::theme_bw(base_size = 14)+
+  p + ggplot2::labs(x = label.x, y = "Evidence (BF)") +
+    ggplot2::scale_y_log10(breaks = breaks, labels = labels) +
+    ggplot2::coord_cartesian(ylim = coordy) +
+    ggplot2::theme_bw(base_size = 14) +
     ggplot2::theme(legend.position = show.legend, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
   
 }
