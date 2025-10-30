@@ -343,7 +343,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
       stop("nsamples must be a positive integer or 'auto'")
     }
   } else {
-    nsamples <- .adaptive_nsamples(total_sample_size, nsamples)
+    nsamples <- .adaptive_nsamples(total_sample_size, 1000)
   }
   
   # Initialize vectors for results
