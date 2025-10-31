@@ -384,8 +384,17 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   
   message("Calculating Sequential Bayes Factors...")
   
-  # Calculate sequential BFs
-  pb <- txtProgressBar(min = 0, max = length(steps), initial = 0, style = 3)
+  # Calculate weights for progress bar (computational cost scales with sample size)
+  if (!parametric) {
+    # Weight by sample size for non-parametric tests (MCMC complexity)
+    step_weights <- steps  # or steps^1.2 for slightly non-linear scaling
+    cumulative_weights <- cumsum(step_weights)
+    total_weight <- sum(step_weights)
+    pb <- txtProgressBar(min = 0, max = total_weight, initial = 0, style = 3)
+  } else {
+    # Equal weights for parametric tests (relatively fast)
+    pb <- txtProgressBar(min = 0, max = length(steps), initial = 0, style = 3)
+  }
   
   for (i in seq_along(steps)) {
     n <- steps[i]
@@ -544,7 +553,12 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     delta_lower[n] <- result$delta_lower
     delta_upper[n] <- result$delta_upper
     
-    setTxtProgressBar(pb, i)
+    # Update progress bar
+    if (!parametric) {
+      setTxtProgressBar(pb, cumulative_weights[i])
+    } else {
+      setTxtProgressBar(pb, i)
+    }
   }
   
   close(pb)
