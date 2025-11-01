@@ -67,7 +67,10 @@ For parametric tests, uses BFDA package. For non-parametric tests, uses van Door
 latent normal approach with Cauchy priors on effect size.
 }
 \note{
-Adaptive sampling uses 1000 samples for N <= 500, 750 samples for N <= 2000, 500 samples for N <= 5000, and 300 samples for larger N.
+Adaptive sampling uses 
+- 250 samples for intermediate steps and 1000 samples for final BF for N <= 500
+- 150 samples for intermediate steps and 750 samples for final BF for 500 < N <= 2000
+- 100 samples for intermediate steps and 500 samples for final BF for N > 2000
 }
 \examples{
 # Parametric one-sample test

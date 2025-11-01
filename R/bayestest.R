@@ -173,7 +173,10 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #'     \item sample size: Number of observations
 #'     \item alternative: Chosen alternative hypothesis
 #'   }
-#' @note Adaptive sampling uses 1000 samples for N <= 500, 750 samples for N <= 2000, 500 samples for N <= 5000, and 300 samples for larger N.
+#' @note Adaptive sampling uses 
+#' - 250 samples for intermediate steps and 1000 samples for final BF for N <= 500
+#' - 150 samples for intermediate steps and 750 samples for final BF for 500 < N <= 2000
+#' - 100 samples for intermediate steps and 500 samples for final BF for N > 2000
 #' @examples
 #' # Parametric one-sample test
 #' x <- rnorm(30, 0.5, 1)
@@ -342,8 +345,6 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     if (!isTRUE(nsamples == floor(nsamples)) || nsamples <= 0) {
       stop("nsamples must be a positive integer or 'auto'")
     }
-  } else {
-    nsamples <- .adaptive_nsamples(total_sample_size, 1000)
   }
   
   # Initialize vectors for results
@@ -398,6 +399,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   
   for (i in seq_along(steps)) {
     n <- steps[i]
+    is_final <- (i == length(steps))
     
     result <- tryCatch({
       if (parametric) {
@@ -465,11 +467,18 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                                   alternative = alternative,
                                   exact = FALSE)
           
+          # Adaptive sampling
+          if (nsamples == "auto") {
+            current_nsamples <- .adaptive_nsamples(total_sample_size, is_final)
+          } else {
+            current_nsamples <- nsamples
+          }
+          
           # Bayesian rank sum test
           mcmc_result <- rankSumGibbsSampler(
             xVals = group1_data, 
             yVals = group2_data,
-            nSamples = nsamples,
+            nSamples = current_nsamples,
             cauchyPriorParameter = prior.r,
             progBar = FALSE
           )
@@ -510,11 +519,18 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                                     exact = FALSE)
           }
           
+          # Adaptive sampling
+          if (nsamples == "auto") {
+            current_nsamples <- .adaptive_nsamples(total_sample_size, is_final)
+          } else {
+            current_nsamples <- nsamples
+          }
+          
           # Bayesian signed rank test
           mcmc_result <- signRankGibbsSampler(
             xVals = diff_data,
             yVals = NULL,
-            nSamples = nsamples,
+            nSamples = current_nsamples,
             cauchyPriorParameter = prior.r,
             progBar = FALSE
           )
@@ -947,11 +963,29 @@ print.bfRobustness <- function(x, ...) {
 }
 
 # Adaptive number of samples for non-parametric tests
-.adaptive_nsamples <- function(n, base_samples = 1000) {
-  if (n < 500) return(base_samples)
-  if (n < 2000) return(max(500, base_samples * 0.75))
-  if (n < 5000) return(max(250, base_samples * 0.5))
-  return(max(200, base_samples * 0.3))  # Very large samples
+.adaptive_nsamples <- function(n, is_final = FALSE) {
+  
+  if (n < 500) {
+    base_samples <- 1000
+  } else if (n < 2000) {
+    base_samples <- 750
+  } else {
+    base_samples <- 500
+  }
+  
+  # Final calculation gets full precision
+  if (is_final) {
+    return(base_samples)
+  }
+  
+  # Intermediate calculations: use reduced samples (but not too low)
+  if (n < 500) {
+    return(max(250, base_samples * 0.25))      # 250 samples
+  } else if (n < 2000) {
+    return(max(150, base_samples * 0.20))      # 150 samples
+  } else {
+    return(max(100, base_samples * 0.20))      # 100 samples (not 75)
+  }
 }
 
 # Try running bfttest with specific n
