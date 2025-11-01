@@ -340,10 +340,24 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     .seqlast(nstart, total_sample_size, .nstep(total_sample_size))
   }
   
-  # Adaptive sampling
-  if (nsamples != "auto") {
-    if (!isTRUE(nsamples == floor(nsamples)) || nsamples <= 0) {
-      stop("nsamples must be a positive integer or 'auto'")
+  # Determine MCMC sampling strategy upfront (for non-parametric tests)
+  use_adaptive_sampling <- FALSE
+  intermediate_samples <- NULL
+  final_samples <- NULL
+  
+  if (!parametric) {
+    if (nsamples == "auto") {
+      use_adaptive_sampling <- TRUE
+      # Get intermediate and final sample counts
+      intermediate_samples <- .adaptive_nsamples(total_sample_size, is_final = FALSE)
+      final_samples <- .adaptive_nsamples(total_sample_size, is_final = TRUE)
+    } else {
+      # Validate nsamples
+      if (!isTRUE(nsamples == floor(nsamples)) || nsamples <= 0) {
+        stop("nsamples must be a positive integer or 'auto'")
+      }
+      intermediate_samples <- nsamples
+      final_samples <- nsamples
     }
   }
   
@@ -378,9 +392,14 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                          sprintf(" [%d + %d]", sample_size[1], sample_size[2]),
                          "")))
   
-  # Display MCMC samples for non-parametric tests
+  # Display MCMC sampling strategy for non-parametric tests
   if (!parametric) {
-    message(sprintf("MCMC samples: %d", nsamples))
+    if (use_adaptive_sampling) {
+      message(sprintf("MCMC samples: %d (intermediate) → %d (final)", 
+                      intermediate_samples, final_samples))
+    } else {
+      message(sprintf("MCMC samples: %d", final_samples))
+    }
   }
   
   message("Calculating Sequential Bayes Factors...")
@@ -388,7 +407,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   # Calculate weights for progress bar (computational cost scales with sample size)
   if (!parametric) {
     # Weight by sample size for non-parametric tests (MCMC complexity)
-    step_weights <- steps  # or steps^1.2 for slightly non-linear scaling
+    step_weights <- steps
     cumulative_weights <- cumsum(step_weights)
     total_weight <- sum(step_weights)
     pb <- txtProgressBar(min = 0, max = total_weight, initial = 0, style = 3)
@@ -397,9 +416,15 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     pb <- txtProgressBar(min = 0, max = length(steps), initial = 0, style = 3)
   }
   
+  # Calculate sequential BFs
   for (i in seq_along(steps)) {
     n <- steps[i]
     is_final <- (i == length(steps))
+    
+    # Determine current sample count for this iteration
+    if (!parametric) {
+      current_nsamples <- if (is_final) final_samples else intermediate_samples
+    }
     
     result <- tryCatch({
       if (parametric) {
@@ -467,13 +492,6 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                                   alternative = alternative,
                                   exact = FALSE)
           
-          # Adaptive sampling
-          if (nsamples == "auto") {
-            current_nsamples <- .adaptive_nsamples(total_sample_size, is_final)
-          } else {
-            current_nsamples <- nsamples
-          }
-          
           # Bayesian rank sum test
           mcmc_result <- rankSumGibbsSampler(
             xVals = group1_data, 
@@ -517,13 +535,6 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                                     alternative = alternative,
                                     mu = mu,
                                     exact = FALSE)
-          }
-          
-          # Adaptive sampling
-          if (nsamples == "auto") {
-            current_nsamples <- .adaptive_nsamples(total_sample_size, is_final)
-          } else {
-            current_nsamples <- nsamples
           }
           
           # Bayesian signed rank test
