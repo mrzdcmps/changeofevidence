@@ -78,7 +78,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
   bf <- c(rep(1, nstart - 1), numeric(length(steps)))
   
   # Progress reporting
-  message(sprintf("N = %d", n_data))
+  message(sprintf("Binomial test (N = %d", n_data, ")"))
   message("Calculating Sequential Bayes Factors...")
   
   pb <- txtProgressBar(min = nstart, max = n_data, initial = nstart, style = 3)
@@ -730,7 +730,7 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
   bf <- c(rep(1, nstart - 1), numeric(length(steps)))
   
   # Progress reporting
-  message(sprintf("N = %d", n_data))
+  message(sprintf("Correlation test (N = %d", n_data, ")"))
   message("Calculating Sequential Bayes Factors...")
   
   pb <- txtProgressBar(min = nstart, max = n_data, initial = nstart, style = 3)
