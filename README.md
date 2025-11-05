@@ -3,7 +3,14 @@
 
 
 # Change of Evidence
-This package provides functions to test for a change of evidence over time and include sequential Bayesian testing methods. It can be used to examine volatile effects.
+This package provides functions to test for a change of Bayesian evidence over time which can be used to examine volatile effects. It includes the following sequential Bayesian testing methods:
+* Bayesian Sequential t-Tests
+* Bayesian Sequential Non-Parametric Tests (Wilcoxon Signed-Rank Test & Mann-Whitney U Test)
+* Bayesian Sequential Binomial Test
+* Bayesian Sequential Correlation Test
+
+Unusual temporal patterns of evidence accumulation can be tested against an empirical null distribution set via creating simulated data sets.
+
 
   ## Installation
     # Install remotes if necessary
@@ -12,7 +19,7 @@ This package provides functions to test for a change of evidence over time and i
     remotes::install_github("mrzdcmps/changeofevidence")
     
   ## How to use the package
-  * [Vignette](https://mrzdcmps.github.io/changeofevidence/vignette.html)
+  [Vignette](https://mrzdcmps.github.io/changeofevidence/vignette.html)
   
   ## Random Files
   
