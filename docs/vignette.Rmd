@@ -1,5 +1,5 @@
 ---
-title: "Change of Evidence Vignette t-Test"
+title: "Change of Evidence Vignette"
 output: 
   html_document:
     keep_md: true
@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
 ```
 
 ### Generate Sample Data
@@ -32,7 +32,13 @@ df <- data.frame(condition = c(rep("exp", 100), rep("con", 100)),
 library(changeofevidence)
 ```
 
-## Bayes Factor testing
+### Plot Random Walk
+```{r}
+rw_20bits <- cumsum(con - 10)  # Subtract chance level (10)
+plotrw(rw_20bits, n_bits = 20)
+```
+
+## Sequential Bayesian Analysis of t-tests
 ### Calculate Sequential Bayes Factors
 
 ```{r}
@@ -57,6 +63,21 @@ print(bf.between)
 
 ```
 
+### Non-parametric Sequential Bayes Factors
+```{r}
+# One-sample Wilcoxon signed-rank test
+bf.onesample.np <- bfttest(exp, mu = 10, alternative = "two.sided", prior.loc = 0, prior.r = 0.707, exact = FALSE, parametric = FALSE)
+print(bf.onesample.np)
+
+# Paired Wilcoxon signed-rank test
+bf.paired.np <- bfttest(exp, con, alternative = "greater", prior.loc = 0, prior.r = 0.1, exact = FALSE, parametric = FALSE)
+print(bf.paired.np)
+
+# Mann-Whitney U test
+bf.between.np <- bfttest(value ~ condition, data = df, alternative = "less", prior.loc = 0.1, prior.r = 0.1, exact = FALSE, parametric = FALSE)
+print(bf.between.np)
+```
+
 ### Plot Seq BFs
 
 ```{r}
@@ -75,8 +96,26 @@ print(bf.paired.robust)
 plot(bf.paired.robust)
 ```
 
+## Additional Sequential Tests
+### Bayesian Sequential Binomial Test
+```{r}
+data <- rbinom(100, 1, 0.6)
+bf.binom <- bfbinom(data, p = 0.5, alternative = "greater")
+print(bf.binom)
+plot(bf.binom)
+```
+
+### Bayesian Sequential Coorelation Test
+```{r}
+x <- rnorm(100)
+y <- x + rnorm(100, 0, 5)  # Correlated data
+bf.cor <- bfcor(x, y, alternative = "greater")
+print(bf.cor)
+plot(bf.cor)
+```
+
 ## Simulations
-### Create simulations
+### Create simulations as empirical null distribution
 
 ```{r results='hide'}
 # Indicate the amount of trials of one experimental run (e.g. 100 subjects * 20 trials)
@@ -91,34 +130,31 @@ plot(bf.paired, sims.df = sims)
 plotbf(list(exp=bf.exp$BF, con=bf.con$BF), sims.df = sims)
 ```
 
-## Change of evidence measures
-### CoE 1: Maximum BF
+## Change of Evidence Measures
+### Calculate All Change of Evidence (CoE) Measures
+```{r}
+coe <- coe(bf.exp, sims)
+print(coe)
+plot(coe)
+```
+
+### Individual Change Of Evidence Measures
 
 ```{r}
+# Max BF
 r.exp.maxbf <- maxbf(bf.exp, sims.df = sims)
 r.con.maxbf <- maxbf(bf.con, sims.df = sims)
-```
 
-### CoE 2: BF Energy
-
-```{r}
+# Energy BF
 r.exp.nrg <- energybf(bf.exp, sims.df = sims)
 r.con.nrg <- energybf(bf.con, sims.df = sims)
-```
 
-### Coe 3: FFT Amplitude Sum
-
-```{r}
-# Create Fast Fourier Transforms of Sequential BFs
+# FFT Amplitude Sum
 fft.exp <- fftcreate(bf.exp)
 fft.con <- fftcreate(bf.con)
 
-# Compare amplitude sums with simulations
 r.exp.fft <- ffttest(fft.exp, sims.df = sims)
 r.con.fft <- ffttest(fft.con, sims.df = sims)
 
-# Plot FFTs
-# Use parameter "coordy" to ensure a comparable coordinate system
 plotfft(fft.exp, sims.df = sims)
-plotfft(fft.con, sims.df = sims)
 ```
