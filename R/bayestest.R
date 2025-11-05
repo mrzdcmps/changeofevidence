@@ -112,6 +112,10 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
     "p-value" = orthodox_test$p.value,
     "BF" = bf,
     "test type" = "binomial",
+    "parametric" = NA,  # Not applicable for binomial
+    "delta" = NA,       # Not applicable for binomial
+    "delta.lower" = NA, # Not applicable for binomial
+    "delta.upper" = NA, # Not applicable for binomial
     "prior" = list(
       "distribution" = "Logistic",
       "location" = 0,
@@ -871,6 +875,38 @@ bfRobustness <- function(x = NULL, informed = TRUE, prior.loc = NULL, prior.r = 
 #' @method print seqbf
 print.seqbf <- function(x, ...) {
   
+  # Handle binomial tests specially
+  if (!is.null(x$`test type`) && x$`test type` == "binomial") {
+    final_bf <- tail(na.omit(x$BF), n = 1)
+    final_prob <- tail(na.omit(x$`probability of success`), n = 1)
+    final_p <- tail(na.omit(x$`p-value`), n = 1)
+    
+    cat(sprintf("
+  Sequential Bayesian Testing
+  --------------------------------
+  Test: Binomial proportion test
+  Sample size: %d
+  Final Bayes Factor: BF10 = %.3f; BF01 = %.3f
+  Prior: %s(%.3f, %.3f)
+  Alternative hypothesis: %s
+  Probability of success: %.3f; p = %.3f
+  \n",
+                x$`sample size`,
+                final_bf,
+                1 / final_bf,
+                x$prior$distribution,
+                x$prior$location,
+                x$prior$scale,
+                x$alternative,
+                final_prob,
+                final_p
+    ))
+    
+    invisible(x)
+    return(invisible(x))
+  }
+  
+  # Original code for t-tests
   # Determine test name
   if (x$parametric) {
     test_name <- paste(.capitalize(x$`test type`), "t-test")
