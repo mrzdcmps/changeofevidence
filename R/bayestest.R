@@ -112,10 +112,6 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
     "p-value" = orthodox_test$p.value,
     "BF" = bf,
     "test type" = "binomial",
-    "parametric" = NA,  # Not applicable for binomial
-    "delta" = NA,       # Not applicable for binomial
-    "delta.lower" = NA, # Not applicable for binomial
-    "delta.upper" = NA, # Not applicable for binomial
     "prior" = list(
       "distribution" = "Logistic",
       "location" = 0,
@@ -875,7 +871,7 @@ bfRobustness <- function(x = NULL, informed = TRUE, prior.loc = NULL, prior.r = 
 #' @method print seqbf
 print.seqbf <- function(x, ...) {
   
-  # Handle binomial tests specially
+  # Handle binomial tests
   if (!is.null(x$`test type`) && x$`test type` == "binomial") {
     final_bf <- tail(na.omit(x$BF), n = 1)
     final_prob <- tail(na.omit(x$`probability of success`), n = 1)
@@ -902,11 +898,45 @@ print.seqbf <- function(x, ...) {
                 final_p
     ))
     
-    invisible(x)
     return(invisible(x))
   }
   
-  # Original code for t-tests
+  # Handle correlation tests
+  if (!is.null(x$`test type`) && x$`test type` == "correlation") {
+    final_bf <- tail(na.omit(x$BF), n = 1)
+    final_r <- tail(na.omit(x$r), n = 1)
+    final_p <- tail(na.omit(x$`p-value`), n = 1)
+    
+    cat(sprintf("
+  Sequential Bayesian Testing
+  --------------------------------
+  Test: Pearson correlation test
+  Sample size: %d
+  Final Bayes Factor: BF10 = %.3f; BF01 = %.3f
+  Prior: %s(%.3f, %.3f)
+  Alternative hypothesis: %s
+  Correlation: r = %.3f; p = %.3f
+  \n",
+                x$`sample size`,
+                final_bf,
+                1 / final_bf,
+                x$prior$distribution,
+                x$prior$location,
+                x$prior$scale,
+                x$alternative,
+                final_r,
+                final_p
+    ))
+    
+    return(invisible(x))
+  }
+  
+  # Handle t-tests (parametric and non-parametric)
+  # Check if parametric field exists
+  if (is.null(x$parametric)) {
+    stop("Cannot determine test type: 'parametric' field is missing")
+  }
+  
   # Determine test name
   if (x$parametric) {
     test_name <- paste(.capitalize(x$`test type`), "t-test")
@@ -922,23 +952,27 @@ print.seqbf <- function(x, ...) {
   final_bf <- tail(na.omit(x$BF), n = 1)
   final_stat <- tail(na.omit(x[[1]]), n = 1)
   final_p <- tail(na.omit(x$`p-value`), n = 1)
-  final_delta <- tail(na.omit(x$delta), n = 1)
-  final_delta_lower <- tail(na.omit(x$delta.lower), n = 1)
-  final_delta_upper <- tail(na.omit(x$delta.upper), n = 1)
   
-  # Build delta string
-  if (!x$parametric && !is.na(final_delta)) {
-    delta_string <- sprintf(
-      "  Effect size: δ = %.3f, 95%% CI [%.3f, %.3f]",
-      final_delta, final_delta_lower, final_delta_upper
-    )
-  } else if (x$parametric && !is.na(final_delta)) {
-    delta_string <- sprintf(
-      "  Effect size: δ ≈ %.3f (approximation from t-statistic)",
-      final_delta
-    )
-  } else {
-    delta_string <- ""
+  # Build delta string only if delta exists
+  delta_string <- ""
+  if (!is.null(x$delta) && !is.null(x$delta.lower) && !is.null(x$delta.upper)) {
+    final_delta <- tail(na.omit(x$delta), n = 1)
+    final_delta_lower <- tail(na.omit(x$delta.lower), n = 1)
+    final_delta_upper <- tail(na.omit(x$delta.upper), n = 1)
+    
+    if (!is.na(final_delta)) {
+      if (!x$parametric) {
+        delta_string <- sprintf(
+          "  Effect size: δ = %.3f, 95%% CI [%.3f, %.3f]",
+          final_delta, final_delta_lower, final_delta_upper
+        )
+      } else {
+        delta_string <- sprintf(
+          "  Effect size: δ ≈ %.3f (approximation from t-statistic)",
+          final_delta
+        )
+      }
+    }
   }
   
   # Print output
