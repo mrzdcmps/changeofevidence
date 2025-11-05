@@ -105,7 +105,7 @@ print(bf.binom)
 plot(bf.binom)
 ```
 
-### Bayesian Sequential Coorelation Test
+### Bayesian Sequential Correlation Test
 ```{r}
 x <- rnorm(100)
 y <- x + rnorm(100, 0, 5)  # Correlated data
