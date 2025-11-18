@@ -317,7 +317,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     
     if (nstart == "auto") {
       if (parametric) {
-        nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r)
+        nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r, mu)
       } else {
         nstart <- 10  # Minimum for stable MCMC
       }
@@ -1073,19 +1073,16 @@ print.bfRobustness <- function(x, ...) {
 .try_bft_calculation <- function(n, ...) {
   nstart <- n - 1
   tryCatch({
-    
     sink(tempfile())  # Redirect output to a temp file
+    # Explicitly call the PACKAGE version to avoid recursion
     result <- suppressMessages(suppressWarnings(
-      bfttest(..., nstart = nstart, exact = TRUE)
+      changeofevidence::bfttest(..., nstart = nstart, exact = TRUE)
     ))
     sink()  # Restore normal output
     
-    
     # Check if we got valid BF values
-    #!is.na(tail(result$BF, 1))
     !is.na(result$BF[length(result$BF) - 1])
   }, error = function(e) {
-    #warning(sprintf("Error at step %d: %s", nstart, e$message))
     FALSE
   })
 }
@@ -1142,17 +1139,18 @@ print.bfRobustness <- function(x, ...) {
 }
 
 # Determine minimum n for one sample test
-.determine_min_n_one_sample <- function(x, alternative = "two.sided", prior.loc = 0, prior.r = 0.1) {
+.determine_min_n_one_sample <- function(x, alternative = "two.sided", prior.loc = 0, prior.r = 0.1, mu = 0) {
   n <- 3
   nstart <- n - 1
   while (n <= length(x)) {
     if (var(x[1:nstart]) > 0) {
-      # Try running bfttest
+      # Try running bfttest - NOW PASSING mu!
       if (.try_bft_calculation(n,
                                x = x[1:n],
                                alternative = alternative,
                                prior.loc = prior.loc,
-                               prior.r = prior.r)) {
+                               prior.r = prior.r,
+                               mu = mu)) {
         return(nstart)
       }
     }
