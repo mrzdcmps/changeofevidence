@@ -16,7 +16,8 @@ bfttest(
   prior.r = 0.1,
   nstart = "auto",
   nsamples = "auto",
-  exact = TRUE
+  exact = TRUE,
+  parallel = TRUE
 )
 }
 \arguments{
@@ -43,6 +44,11 @@ bfttest(
 \item{nsamples}{Number of MCMC samples for non-parametric tests (default = adaptive sampling based on N)}
 
 \item{exact}{Logical. If TRUE, calculates BF for all points}
+
+\item{parallel}{Logical. If TRUE (default), uses parallel processing across available 
+CPU cores (detectCores() - 1), providing substantial speedup especially for 
+non-parametric tests with large samples. Set to FALSE for reproducibility across 
+sessions or when debugging errors.}
 }
 \value{
 A list of class "seqbf" containing:
@@ -71,17 +77,23 @@ Adaptive sampling uses
 - 250 samples for intermediate steps and 1000 samples for final BF for N <= 500
 - 150 samples for intermediate steps and 750 samples for final BF for 500 < N <= 2000
 - 100 samples for intermediate steps and 500 samples for final BF for N > 2000
+
+Parallel processing can significantly speed up computation, especially for non-parametric 
+tests with large samples. Set parallel = FALSE for reproducible results or debugging.
 }
 \examples{
 # Parametric one-sample test
 x <- rnorm(30, 0.5, 1)
 result1 <- bfttest(x, alternative = "greater")
 
-# Non-parametric independent samples test
+# Non-parametric independent samples test with parallel processing (default, fast)
 group <- rep(c("A", "B"), each = 15)
 values <- c(rnorm(15), rnorm(15, 0.5))
 df <- data.frame(values = values, group = group)
 result2 <- bfttest(values ~ group, data = df, parametric = FALSE)
+
+# For reproducibility or debugging, disable parallel processing
+result2b <- bfttest(values ~ group, data = df, parametric = FALSE, parallel = FALSE)
 
 # Non-parametric paired samples test
 pre <- rnorm(20)

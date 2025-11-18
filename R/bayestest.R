@@ -71,14 +71,19 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
   steps <- if (exact) {
     seq(nstart, n_data, 1)
   } else {
-    .seqlast(nstart, n_data, .nstep(n_data)) #stepwise
+    .seqlast(nstart, n_data, .nstep(n_data))
   }
   
-  # Initialize BF vector
-  bf <- c(rep(1, nstart - 1), numeric(length(steps)))
+  # Initialize BF vector for full sample size
+  bf <- rep(NA, n_data)
+  
+  # Pre-fill BF values for 1:(nstart-1) with 1
+  if (nstart > 1) {
+    bf[1:(nstart - 1)] <- 1
+  }
   
   # Progress reporting
-  message(sprintf("Binomial test (N = %d", n_data, ")"))
+  message(sprintf("Binomial test (N = %d)", n_data))
   message("Calculating Sequential Bayes Factors...")
   
   pb <- txtProgressBar(min = nstart, max = n_data, initial = nstart, style = 3)
@@ -97,7 +102,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
       NA
     })
     
-    bf[nstart - 1 + i] <- bf_result
+    bf[n] <- bf_result  # Assign to position n, not sequential position
     setTxtProgressBar(pb, n)
   }
   
@@ -122,7 +127,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
   )
   
   # Report final results
-  final_bf <- tail(bf, n = 1)
+  final_bf <- tail(na.omit(bf), n = 1)  # Use na.omit here
   if (final_bf > 1) {
     message(sprintf(
       "Final Bayes Factor: BF10 = %.3f (probability of success = %.3f; p = %.3f)",
@@ -159,6 +164,10 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #' @param nstart Minimum observations before first BF calculation ("auto" or >= 2)
 #' @param nsamples Number of MCMC samples for non-parametric tests (default = adaptive sampling based on N)
 #' @param exact Logical. If TRUE, calculates BF for all points
+#' @param parallel Logical. If TRUE (default), uses parallel processing across available 
+#'   CPU cores (detectCores() - 1), providing substantial speedup especially for 
+#'   non-parametric tests with large samples. Set to FALSE for reproducibility across 
+#'   sessions or when debugging errors.
 #' @return A list of class "seqbf" containing:
 #'   \itemize{
 #'     \item t-value or W-value: Sequential test statistics
@@ -177,22 +186,29 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #' - 250 samples for intermediate steps and 1000 samples for final BF for N <= 500
 #' - 150 samples for intermediate steps and 750 samples for final BF for 500 < N <= 2000
 #' - 100 samples for intermediate steps and 500 samples for final BF for N > 2000
+#' @note Parallel processing can significantly speed up computation, especially for non-parametric 
+#' tests with large samples. Set parallel = FALSE for reproducible results or debugging.
 #' @examples
 #' # Parametric one-sample test
 #' x <- rnorm(30, 0.5, 1)
 #' result1 <- bfttest(x, alternative = "greater")
 #'
-#' # Non-parametric independent samples test
+#' # Non-parametric independent samples test with parallel processing (default, fast)
 #' group <- rep(c("A", "B"), each = 15)
 #' values <- c(rnorm(15), rnorm(15, 0.5))
 #' df <- data.frame(values = values, group = group)
 #' result2 <- bfttest(values ~ group, data = df, parametric = FALSE)
+#' 
+#' # For reproducibility or debugging, disable parallel processing
+#' result2b <- bfttest(values ~ group, data = df, parametric = FALSE, parallel = FALSE)
 #'
 #' # Non-parametric paired samples test
 #' pre <- rnorm(20)
 #' post <- pre + rnorm(20, 0.5)
 #' result3 <- bfttest(pre, post, parametric = FALSE)
-#' @importFrom stats t.test wilcox.test var complete.cases na.omit
+#' @importFrom stats t.test wilcox.test var complete.cases na.omit quantile
+#' @importFrom parallel detectCores makeCluster stopCluster clusterExport
+#' @importFrom pbapply pblapply
 #' @export
 
 bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, 
@@ -202,10 +218,16 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                     prior.r = 0.1,
                     nstart = "auto", 
                     nsamples = "auto",
-                    exact = TRUE) {
+                    exact = TRUE,
+                    parallel = TRUE) {
   
   # Match alternative argument
   alternative <- match.arg(alternative)
+  
+  # Validate parallel argument
+  if (!is.logical(parallel) || length(parallel) != 1) {
+    stop("parallel must be TRUE or FALSE")
+  }
   
   # Validate nstart
   if (nstart != "auto") {
@@ -317,7 +339,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     
     if (nstart == "auto") {
       if (parametric) {
-        nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r, mu)
+        nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r)
       } else {
         nstart <- 10  # Minimum for stable MCMC
       }
@@ -402,22 +424,16 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     }
   }
   
-  message("Calculating Sequential Bayes Factors...")
-  
-  # Calculate weights for progress bar (computational cost scales with sample size)
-  if (!parametric) {
-    # Weight by sample size for non-parametric tests (MCMC complexity)
-    step_weights <- steps
-    cumulative_weights <- cumsum(step_weights)
-    total_weight <- sum(step_weights)
-    pb <- txtProgressBar(min = 0, max = total_weight, initial = 0, style = 3)
-  } else {
-    # Equal weights for parametric tests (relatively fast)
-    pb <- txtProgressBar(min = 0, max = length(steps), initial = 0, style = 3)
+  # Display parallel processing info
+  if (parallel) {
+    cores <- parallel::detectCores() - 1
+    message(sprintf("Using parallel processing with %d cores", cores))
   }
   
-  # Calculate sequential BFs
-  for (i in seq_along(steps)) {
+  message("Calculating Sequential Bayes Factors...")
+  
+  # Define worker function for parallel/sequential execution
+  calculate_step <- function(i) {
     n <- steps[i]
     is_final <- (i == length(steps))
     
@@ -471,11 +487,12 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
         }
         
         list(
+          n = n,
           stat = unname(t_result$statistic),
           p = t_result$p.value,
           bf = .get_directional_bf(bf_result, alternative),
           delta = delta_est,
-          delta_lower = NA,  # Not available for parametric
+          delta_lower = NA,
           delta_upper = NA
         )
         
@@ -513,6 +530,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                                   probs = c(0.025, 0.5, 0.975))
           
           list(
+            n = n,
             stat = unname(w_result$statistic),
             p = w_result$p.value,
             bf = bf_result,
@@ -558,6 +576,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
                                   probs = c(0.025, 0.5, 0.975))
           
           list(
+            n = n,
             stat = unname(w_result$statistic),
             p = w_result$p.value,
             bf = bf_result,
@@ -569,26 +588,58 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
       }
     }, error = function(e) {
       warning(sprintf("Error at step %d: %s", n, e$message))
-      list(stat = NA, p = NA, bf = NA, delta = NA, 
+      list(n = n, stat = NA, p = NA, bf = NA, delta = NA, 
            delta_lower = NA, delta_upper = NA)
     })
     
+    return(result)
+  }
+  
+  # Execute calculations (parallel or sequential)
+  if (parallel && length(steps) > 1) {
+    # Parallel execution
+    cores <- parallel::detectCores() - 1
+    cl <- parallel::makeCluster(cores)
+    
+    # Export necessary objects and functions
+    parallel::clusterEvalQ(cl, {
+      library(changeofevidence)
+    })
+    
+    parallel::clusterExport(cl, 
+                            c("steps", "test_type", "parametric", 
+                              "alternative", "prior.loc", "prior.r", "mu",
+                              "intermediate_samples", "final_samples"),
+                            envir = environment())
+    
+    # Export test-specific data
+    if (test_type == "independent") {
+      parallel::clusterExport(cl, c("data", "formula", "response_var", "group_var", "groups"), 
+                              envir = environment())
+    } else {
+      parallel::clusterExport(cl, c("x", "y"), envir = environment())
+    }
+    
+    # Run parallel calculations with progress bar
+    results_list <- pbapply::pblapply(seq_along(steps), calculate_step, cl = cl)
+    
+    parallel::stopCluster(cl)
+    
+  } else {
+    # Sequential execution with progress bar
+    results_list <- pbapply::pblapply(seq_along(steps), calculate_step)
+  }
+  
+  # Organize results into vectors
+  for (result in results_list) {
+    n <- result$n
     stat_values[n] <- result$stat
     p_values[n] <- result$p
     bf_values[n] <- result$bf
     delta_values[n] <- result$delta
     delta_lower[n] <- result$delta_lower
     delta_upper[n] <- result$delta_upper
-    
-    # Update progress bar
-    if (!parametric) {
-      setTxtProgressBar(pb, cumulative_weights[i])
-    } else {
-      setTxtProgressBar(pb, i)
-    }
   }
-  
-  close(pb)
   
   # Prepare output
   stat_name <- if (parametric) "t-value" else "W-value"
@@ -721,16 +772,19 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
   steps <- if (exact) {
     seq(nstart, n_data, 1)
   } else {
-    # Create reasonable steps for larger datasets
-    step_size <- max(1, floor(n_data / 100))
-    seq(nstart, n_data, step_size)
+    .seqlast(nstart, n_data, .nstep(n_data))
   }
   
-  # Initialize BF vector
-  bf <- c(rep(1, nstart - 1), numeric(length(steps)))
+  # Initialize BF vector for full sample size
+  bf <- rep(NA, n_data)
+  
+  # Pre-fill BF values for 1:(nstart-1) with 1
+  if (nstart > 1) {
+    bf[1:(nstart - 1)] <- 1
+  }
   
   # Progress reporting
-  message(sprintf("Correlation test (N = %d", n_data, ")"))
+  message(sprintf("Correlation test (N = %d)", n_data))
   message("Calculating Sequential Bayes Factors...")
   
   pb <- txtProgressBar(min = nstart, max = n_data, initial = nstart, style = 3)
@@ -747,7 +801,7 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
       NA
     })
     
-    bf[nstart - 1 + i] <- bf_result
+    bf[n] <- bf_result  # Assign to position n, not sequential position
     setTxtProgressBar(pb, n)
   }
   
@@ -772,7 +826,7 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
   )
   
   # Get final BF
-  final_bf <- tail(bf, n = 1)
+  final_bf <- tail(na.omit(bf), n = 1)  # Use na.omit here
   
   # Report final results with improved BF interpretation
   if (is.na(final_bf)) {
@@ -809,9 +863,12 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
 #' @param prior.loc Range of locations of the cauchy distributed prior function.
 #' @param prior.r Range of scales of the cauchy distributed prior function.
 #' @examples
+#' seqbf <- bfttest(rnorm(30, 0.5, 1), alternative = "two.sided", parallel = FALSE)
+#' 
 #' bfrInformed <- bfRobustness(seqbf) 
-#' bfrUninformed <- bfRobustness(seqbf, informed = FALSE) 
 #' print(bfrInformed)
+#' 
+#' bfrUninformed <- bfRobustness(seqbf, informed = FALSE) 
 #' plot(bfrInformed)
 #' @export
 
