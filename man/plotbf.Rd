@@ -5,7 +5,8 @@
 \title{Plot Sequential Bayesian Analysis}
 \usage{
 plotbf(
-  data,
+  ...,
+  labels = NULL,
   sims.df = NULL,
   sims.df.col = "bf",
   color = "black",
@@ -14,17 +15,23 @@ plotbf(
 )
 }
 \arguments{
-\item{data}{A seqbf object or a vector containing sequential Bayes Factors or a list containing multiple vectors.}
+\item{...}{One or more seqbf objects, vectors containing sequential Bayes Factors, or a single list containing multiple vectors.
+When multiple seqbf objects or vectors are provided, they will be plotted together for comparison.}
+
+\item{labels}{Optional character vector of names for multiple datasets. If NULL, auto-generates names.}
 
 \item{sims.df}{A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.}
 
-\item{sims.df.col}{The name of the column of the simulation dataframe to compare to.}
+\item{sims.df.col}{The name of the column of the simulation dataframe to compare to. Default is "bf".}
 
-\item{color}{A color in which the Seq BF-function will be drawn.}
+\item{color}{A color in which the Seq BF-function will be drawn (only used for single dataset plots). Default is "black".}
 
-\item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
+\item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn. If NULL, automatically determined.}
 
-\item{label.x}{A character that overrides the label for the x-axis ("N" for sum scores, "Trials" for binomial data).}
+\item{label.x}{A character that overrides the label for the x-axis. Default is "N" (automatically set to "Trials" for binomial data).}
+}
+\value{
+A ggplot2 object.
 }
 \description{
 This function allows to plot a sequential Bayesian analysis.
@@ -35,16 +42,31 @@ BFs above 1 indicate evidence towards H1, BFs below 1 indicate evidence towards 
 Depending on the amount of simulations, drawing might take a while. It might be wise to chose a smaller simulation set for this purpose.
 }
 \examples{
-
+# Single seqbf object
 plot(seqbf)
+plotbf(seqbf)
 
+# Single BF vector
 p.bf <- plotbf(tbl$bf)
 p.bf
 
-plotbf(list(test1=bf1,test2=bf2))
+# Multiple seqbf objects with custom labels
+plotbf(bf1, bf2, labels = c("Experiment 1", "Experiment 2"))
 
+# Multiple seqbf objects with auto-generated labels
+plotbf(bf1, bf2, bf3)
+
+# List of BF vectors (backward compatible)
+plotbf(list(test1 = bf1$BF, test2 = bf2$BF))
+
+# With simulated data
 plotbf(tbl$bf, sims.df = sims)
 
+# With subset of simulations
 sims1000 <- subset(sims, simid <= 1000)
 plotbf(tbl$bf, sims.df = sims1000)
+
+# Custom y-axis limits
+plotbf(bf1, bf2, coordy = c(1/30, 30))
+
 }

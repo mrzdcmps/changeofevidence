@@ -598,7 +598,6 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   # Execute calculations (parallel or sequential)
   if (parallel && length(steps) > 1) {
     # Parallel execution
-    cores <- parallel::detectCores() - 1
     cl <- parallel::makeCluster(cores)
     
     # Export necessary objects and functions

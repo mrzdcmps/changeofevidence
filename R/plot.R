@@ -175,30 +175,91 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' BFs above 1 indicate evidence towards H1, BFs below 1 indicate evidence towards H0.
 #' Depending on the amount of simulations, drawing might take a while. It might be wise to chose a smaller simulation set for this purpose.
 #'
-#' @param data A seqbf object or a vector containing sequential Bayes Factors or a list containing multiple vectors.
+#' @param ... One or more seqbf objects, vectors containing sequential Bayes Factors, or a single list containing multiple vectors.
+#'   When multiple seqbf objects or vectors are provided, they will be plotted together for comparison.
+#' @param labels Optional character vector of names for multiple datasets. If NULL, auto-generates names.
 #' @param sims.df A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.
-#' @param sims.df.col The name of the column of the simulation dataframe to compare to.
-#' @param color A color in which the Seq BF-function will be drawn.
-#' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
-#' @param label.x A character that overrides the label for the x-axis ("N" for sum scores, "Trials" for binomial data).
+#' @param sims.df.col The name of the column of the simulation dataframe to compare to. Default is "bf".
+#' @param color A color in which the Seq BF-function will be drawn (only used for single dataset plots). Default is "black".
+#' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn. If NULL, automatically determined.
+#' @param label.x A character that overrides the label for the x-axis. Default is "N" (automatically set to "Trials" for binomial data).
+#' 
+#' @return A ggplot2 object.
+#' 
 #' @examples
-#' 
+#' # Single seqbf object
 #' plot(seqbf)
+#' plotbf(seqbf)
 #' 
+#' # Single BF vector
 #' p.bf <- plotbf(tbl$bf)
 #' p.bf
 #'
-#' plotbf(list(test1=bf1,test2=bf2))
+#' # Multiple seqbf objects with custom labels
+#' plotbf(bf1, bf2, labels = c("Experiment 1", "Experiment 2"))
 #' 
+#' # Multiple seqbf objects with auto-generated labels
+#' plotbf(bf1, bf2, bf3)
+#' 
+#' # List of BF vectors (backward compatible)
+#' plotbf(list(test1 = bf1$BF, test2 = bf2$BF))
+#' 
+#' # With simulated data
 #' plotbf(tbl$bf, sims.df = sims)
 #'
+#' # With subset of simulations
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotbf(tbl$bf, sims.df = sims1000)
+#' 
+#' # Custom y-axis limits
+#' plotbf(bf1, bf2, coordy = c(1/30, 30))
+#' 
 #' @export
 
 # Plot Sequential BF
-plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N"){
+plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N"){
   
+  # Capture all arguments passed via ...
+  args <- list(...)
+  
+  # Handle different input patterns
+  if(length(args) == 0) {
+    stop("No data provided")
+  }
+  
+  # Single argument - could be seqbf, vector, or list
+  if(length(args) == 1) {
+    data <- args[[1]]
+    # If it's a list but not a seqbf object, treat as list of BF vectors (backward compat)
+    if(is.list(data) && !inherits(data, "seqbf")) {
+      # This is the old list(bf1$BF, bf2$BF) syntax - keep as is
+      data <- data
+    }
+    # else: single seqbf object or vector - will be handled below
+  } else {
+    # Multiple arguments - convert seqbf objects to BF vectors
+    data <- list()
+    for(i in seq_along(args)) {
+      if(inherits(args[[i]], "seqbf")) {
+        data[[i]] <- args[[i]]$BF
+      } else {
+        data[[i]] <- args[[i]]
+      }
+    }
+    
+    # Apply labels
+    if(!is.null(labels)) {
+      if(length(labels) != length(data)) {
+        warning("Length of labels does not match number of data objects")
+      }
+      names(data) <- labels
+    } else {
+      # Auto-generate names
+      names(data) <- paste0("Data ", 1:length(data))
+    }
+  }
+  
+  # Continue with existing logic for seqbf object
   if(inherits(data,"seqbf") == TRUE){
     
     # Determine test type and name
@@ -229,13 +290,6 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
       testtype <- "Unknown"
     }
     
-    # # Add parametric/non-parametric label
-    # if(!is.null(data$parametric)) {
-    #   test_method <- ifelse(data$parametric, "parametric", "non-parametric")
-    # } else {
-    #   test_method <- "parametric"  # Default for backward compatibility
-    # }
-    
     # Determine tails
     tails <- ifelse(data$alternative == "two.sided", "two-tailed", "one-tailed")
     
@@ -245,7 +299,6 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
     
     # Create caption with test info
     caption <- paste0(
-      #testtype, " (", test_method, "); ",
       testtype, "; ",
       tails, "; ",
       data$prior$distribution, "(", 
@@ -293,11 +346,12 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   # Scale y-Axis
   breaks <- annotationlist[[3]]
   labels <- annotationlist[[4]]
+  breaks_filtered <- annotationlist[[5]]
   
-  
+  # Print message if simulations are drawn
   if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
   
-  # Draw plot
+  # Initialize plot
   p <- ggplot2::ggplot()
   
   # Add simulations
@@ -305,8 +359,9 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
   
   # Add horizontal lines
   p <- p + ggplot2::geom_hline(yintercept = 1, color = 'grey60', linetype = 'solid') +
-    ggplot2::geom_hline(yintercept = breaks, color = 'grey60', linetype = 'dotted')
+    ggplot2::geom_hline(yintercept = breaks_filtered, color = 'grey60', linetype = 'dotted')
   
+  # Unlist data if multiple bfs are provided
   if(is.list(data)){
     df <- NULL
     for(i in 1:length(data)){
@@ -320,30 +375,59 @@ plotbf <- function(data, sims.df = NULL, sims.df.col = "bf", color = "black", co
       df <- df[!is.na(df$y), ]
     }
     p <- p + ggplot2::geom_line(data = df, aes(x = x, y = y, color = element), linewidth = 1) +
-      ggplot2::scale_color_brewer("Data", type = "qualitative", palette = "Set1")
-    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x = max(df$x) * 1.2, y = annobreaks, label = annotation, hjust = 1, parse = TRUE)
+      ggplot2::scale_color_brewer("", type = "qualitative", palette = "Set1")
     
+    # Add annotations outside plot area
+    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) {
+      p <- p + ggplot2::annotate("text", 
+                                 x = Inf,
+                                 y = annobreaks, 
+                                 label = annotation, 
+                                 hjust = -0.05,
+                                 size = 3.5,
+                                 parse = TRUE,
+                                 color = "grey40")
+    }
+    
+    # Add single data  
   } else {
     df <- data.frame(y = data, x = as.numeric(1:length(data)))
     df <- df[!is.na(df$y), ]
     
     p <- p + ggplot2::geom_line(data = df, aes(x = x, y = y), color = color, linewidth = 1)
-    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) p <- p + ggplot2::annotate("text", x = length(data) * 1.2, y = annobreaks, label = annotation, hjust = 1, parse = TRUE)
+    
+    # Add annotations outside plot area
+    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) {
+      p <- p + ggplot2::annotate("text", 
+                                 x = Inf, 
+                                 y = annobreaks, 
+                                 label = annotation, 
+                                 hjust = -0.05,
+                                 size = 3.5,
+                                 parse = TRUE,
+                                 color = "grey40")
+    }
   }
   
+  # Add subtitle and caption if seqbf object
   if(exists("showinfo")) p <- p + ggplot2::labs(subtitle = subtitle, caption = caption)
   
+  # Finalize plot
   p + ggplot2::labs(x = label.x, y = "Evidence (BF)") +
     ggplot2::scale_y_log10(breaks = breaks, labels = labels) +
-    ggplot2::coord_cartesian(ylim = coordy) +
+    ggplot2::scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
+    ggplot2::coord_cartesian(ylim = coordy, clip = "off") +
     ggplot2::theme_bw(base_size = 14) +
-    ggplot2::theme(legend.position = show.legend, panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    ggplot2::theme(legend.position = show.legend, 
+                   panel.grid.major = element_blank(), 
+                   panel.grid.minor = element_blank(),
+                   plot.margin = margin(5, 70, 5, 5, "pt"))
   
 }
 
 #' @export
-plot.seqbf <- function(data, ...) {
-  suppressWarnings(plotbf(data, ...))
+plot.seqbf <- function(x, ...) {
+  suppressWarnings(plotbf(x, ...))
 }
 
 
@@ -612,25 +696,30 @@ plot.bfRobustness <- function(data, ...) {
     annobreaks <- head(annobreaks,-3)
   }
   
+  # Filter annotations to only include those within coordy range
+  within_range <- annobreaks >= coordy[1] & annobreaks <= coordy[2]
+  annotation <- annotation[within_range]
+  annobreaks <- annobreaks[within_range]
+  
   #Scale y-Axis
   if(coordy[2] <= 1000 && coordy[1] >= 1/1000){
     breaks = c(1000,300,100,30,10,3,1,1/3,1/10,1/30,1/100,1/300,1/1000)
-    labels = c("1,000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1/1,000")
+    labels = c("1,000","300","100","30","10","3","1","1/3","1/10","1/30","1/100","1/300","1,1,000")
   } else if(coordy[2] <= 1000000 && coordy[1] >= 1/1000000){
     breaks = c(1000000,100000,10000,1000,100,10,1,1/10,1/100,1/1000,1/10000,1/100000,1/1000000)
     labels = c("1,000,000","100,000","10,000","1,000","100","10","1","1/10","1/100","1/1,000","1/10,000","1/100,000","1/1,000,000")
-    #annotation = annotation[c(1,3,5,6,8,10)]
-    #annobreaks = exp(c(mean(c(log(300),log(100))),mean(c(log(100),log(30))),mean(c(log(30),log(10))),mean(c(log(10),log(3))),mean(c(log(3),log(1))),mean(c(log(1),log(1/3))),mean(c(log(1/3),log(1/10))),mean(c(log(1/10),log(1/30))),mean(c(log(1/30),log(1/100))),mean(c(log(1/100),log(1/300)))))
   } else {
     breaks = c(1e+12,1e+10,1e+8,1e+6,1e+4,1e+2,1,1/1e+2,1/1e+4,1/1e+6,1/1e+8,1/1e+10,1/1e+12)
     labels = c("1e+12","1e+10","1e+8","1e+6","1e+4","1e+2","1","1/1e+2","1/1e+4","1/1e+6","1/1e+8","1/1e+10","1/1e+12")
-    #annotation = annotation[c(1,10)]
-    #annobreaks = exp(c(mean(c(log(1000),log(100))),mean(c(log(1/100),log(1/1000)))))
   }
+  
+  # Filter threshold breaks for horizontal lines
+  breaks_filtered <- breaks[breaks >= coordy[1] & breaks <= coordy[2]]
   
   list(annotation,
        annobreaks,
        breaks,
-       labels)
+       labels,
+       breaks_filtered)  # Add filtered breaks for horizontal lines
 }
 
