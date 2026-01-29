@@ -105,8 +105,6 @@ Tests whether oscillatory patterns in the BF trajectory are unusual using Fast F
 **Parameters:**
 - `data`: A `seqbf` object or FFT-transformed data (from `fftcreate()`)
 - `sims.df`: Simulation dataframe
-- `sims.df.col`: Column name in simulations (default: `"density.bf"`)
-- `top5`: Include deprecated Top5-Frequency method (default: `FALSE`)
 
 **Returns:** Amplitude sum and comparison to simulations.
 
@@ -154,8 +152,6 @@ Visualizes BF trajectories over time with evidence strength annotations.
 - `labels`: Names for multiple datasets
 - `sims.df`: Optional simulation data for background
 - `color`: Line color (default: `"black"`)
-- `coordy`: Y-axis limits
-- `show_annotations`: Show evidence labels (default: `TRUE`)
 
 **Example:**
 ```r
@@ -177,7 +173,6 @@ Visualizes frequency spectra with 95% confidence intervals from simulations.
 **Parameters:**
 - `data`: FFT-transformed vector
 - `sims.df`: Optional simulation data
-- `sims.df.col`: Simulation column name (default: `"density.bf"`)
 - `n.hz`: Number of frequencies to display (default: 50)
 
 #### `plotrobust()` - Plot Robustness Analysis
@@ -186,22 +181,16 @@ Shows how BF varies across different prior specifications.
 **Parameters:**
 - `data`: A `bfRobustness` object
 
-#### `plotrobustTile()` - Heatmap Robustness Plot
-Creates a heatmap showing BF values across prior parameter grid.
-
-**Parameters:**
-- `data`: A `bfRobustness` object
-- `limit`: BF threshold to highlight (default: 10)
-
 ## Interpretation
 
 **Bayes Factors:**
-- BF > 3: Moderate evidence for H₁
-- BF > 10: Strong evidence for H₁
-- BF > 30: Very strong evidence for H₁
-- BF > 100: Extreme evidence for H₁
-- BF < 1/3: Moderate evidence for H₀
-- BF < 1/10: Strong evidence for H₀
+- BF > 1: Anecdotal evidence
+- BF > 3: Moderate evidence
+- BF > 10: Strong evidence
+- BF > 30: Very strong evidence
+- BF > 100: Extreme evidence
+
+Note: BF_01 = 1 / BF_10
 
 **CoE p-value:**
 The harmonic mean of p-values from MaxBF, Energy, and FFT tests. Values < 0.05 suggest the temporal pattern of evidence is unusual and may indicate a volatile effect rather than a stable effect or random fluctuation.
@@ -209,10 +198,12 @@ The harmonic mean of p-values from MaxBF, Energy, and FFT tests. Values < 0.05 s
 
 
 ## Installation
+```
   # Install remotes if necessary
   if (!requireNamespace("remotes")) install.packages("remotes")
   # Get package from Github
   remotes::install_github("mrzdcmps/changeofevidence")
+```
     
 ## How to use the package
 [Vignette](https://mrzdcmps.github.io/changeofevidence/vignette.html)
