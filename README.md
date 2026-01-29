@@ -190,7 +190,7 @@ Shows how BF varies across different prior specifications.
 - BF > 30: Very strong evidence
 - BF > 100: Extreme evidence
 
-Note: BF$_{01}$ = 1 / BF$_{10}$
+Note: BF<sub>01</sub> = 1 / BF<sub>10</sub>
 
 **CoE p-value:**
 The harmonic mean of p-values from MaxBF, Energy, and FFT tests. Values < 0.05 suggest the temporal pattern of evidence is unusual and may indicate a volatile effect rather than a stable effect or random fluctuation.
