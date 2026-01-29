@@ -11,7 +11,8 @@ plotbf(
   sims.df.col = "bf",
   color = "black",
   coordy = NULL,
-  label.x = "N"
+  label.x = "N",
+  show_annotations = TRUE
 )
 }
 \arguments{
@@ -29,6 +30,8 @@ When multiple seqbf objects or vectors are provided, they will be plotted togeth
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn. If NULL, automatically determined.}
 
 \item{label.x}{A character that overrides the label for the x-axis. Default is "N" (automatically set to "Trials" for binomial data).}
+
+\item{show_annotations}{Logical. If TRUE (default), displays evidence strength annotations (e.g., "Moderate H1", "Strong H0"). Set to FALSE to hide annotations and use full plot width.}
 }
 \value{
 A ggplot2 object.

@@ -343,14 +343,30 @@ coe <- function(data, sims.df) {
     # FFT analysis
     fftdata <- fftcreate(data)
     ffttest_result <- ffttest(fftdata, sims.df)
-    
-    # Step 4: Store all results in a list
+
+    # Step 4: Calculate harmonic mean of empirical p-values
+    # Convert percentages to proportions (p-values)
+    p_maxbf <- maxbf_result$Sims_with_higher_BFs / 100
+    p_energy <- energybf_result$Sims_with_higher_energy / 100
+    p_fft <- ffttest_result$Sims_with_higher_Amplitude / 100
+
+    # Calculate harmonic mean: n / sum(1/p_i)
+    # Handle edge case where any p-value is 0
+    p_values <- c(p_maxbf, p_energy, p_fft)
+    if (any(p_values == 0)) {
+      harmonic_p <- 0
+    } else {
+      harmonic_p <- 3 / sum(1 / p_values)
+    }
+
+    # Step 5: Store all results in a list
     results <- list(
       Data_Length = data_length,
       Num_Sims = length(sim_ids),
       maxbf = maxbf_result,
       energybf = energybf_result,
-      ffttest = ffttest_result
+      ffttest = ffttest_result,
+      harmonic_p = harmonic_p
     )
     
     # Add class for potential future methods
@@ -372,6 +388,9 @@ print.coe <- function(x, ..., header = TRUE) {
     cat("*** Change of Evidence Results ***\n\n")
     if (!is.null(x$Num_Sims)) {
       cat("Number of Simulations:", x$Num_Sims, "\n")
+    }
+    if (!is.null(x$harmonic_p)) {
+      cat("CoE p-value:", round(x$harmonic_p, 6), "\n")
     }
     cat("-----------------------------------\n")
   }
@@ -401,19 +420,19 @@ print.coe <- function(x, ..., header = TRUE) {
   
   # Composite object — call sub-prints without headers
   if (!is.null(x$maxbf)) {
-    cat(">>> MaxBF Test <<<\n\n")
+    cat("MaxBF Test\n\n")
     print(x$maxbf, header = FALSE)
     cat("-----------------------------------\n")
   }
   
   if (!is.null(x$energybf)) {
-    cat(">>> Energy Test <<<\n\n")
+    cat("BF Energy Test\n\n")
     print(x$energybf, header = FALSE)
     cat("-----------------------------------\n")
   }
   
   if (!is.null(x$ffttest)) {
-    cat(">>> FFT Test <<<\n\n")
+    cat("FFT Test\n\n")
     print(x$ffttest, header = FALSE)
     cat("-----------------------------------\n")
   }
@@ -438,17 +457,18 @@ plot.coe <- function(x, sims = NULL, ...) {
     common_theme <- ggplot2::theme(text = ggplot2::element_text(size = 10))
     
     if (!is.null(x$maxbf)) {
-      p1 <- plotbf(x$maxbf$data, sims) +
+      p1 <- plotbf(x$maxbf$data, sims, show_annotations = FALSE) +
         ggplot2::geom_point(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF), color = "red", size = 3) +
         ggplot2::geom_text(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF,
-                      label = paste("Max BF:", round(x$maxbf$MaxBF, 2))), vjust = -1) +
+                      label = paste("Max BF:", round(x$maxbf$MaxBF, 2))), vjust = -1, size = 3) +
         ggplot2::ggtitle("Maximum BF") +
+        ggplot2::theme(legend.position = "none") +
         common_theme
       plots_row1 <- c(plots_row1, list(p1))
     }
     
     if (!is.null(x$energybf)) {
-      p2 <- plotbf(x$energybf$data) +
+      p2 <- plotbf(x$energybf$data, show_annotations = FALSE) +
         ggplot2::geom_ribbon(
           aes(x = 1:length(x$energybf$data), ymin = pmin(x$energybf$data, 1), ymax = 1),
           fill = "red", alpha = 0.3

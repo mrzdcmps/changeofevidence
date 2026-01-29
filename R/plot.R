@@ -183,6 +183,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' @param color A color in which the Seq BF-function will be drawn (only used for single dataset plots). Default is "black".
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn. If NULL, automatically determined.
 #' @param label.x A character that overrides the label for the x-axis. Default is "N" (automatically set to "Trials" for binomial data).
+#' @param show_annotations Logical. If TRUE (default), displays evidence strength annotations (e.g., "Moderate H1", "Strong H0"). Set to FALSE to hide annotations and use full plot width.
 #' 
 #' @return A ggplot2 object.
 #' 
@@ -217,7 +218,7 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' @export
 
 # Plot Sequential BF
-plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N"){
+plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N", show_annotations = TRUE){
   
   # Capture all arguments passed via ...
   args <- list(...)
@@ -376,13 +377,13 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
     }
     p <- p + ggplot2::geom_line(data = df, aes(x = x, y = y, color = element), linewidth = 1) +
       ggplot2::scale_color_brewer("", type = "qualitative", palette = "Set1")
-    
+
     # Add annotations outside plot area
-    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) {
-      p <- p + ggplot2::annotate("text", 
+    if(show_annotations && coordy[2] <= 1000 && coordy[1] >= 1/1000) {
+      p <- p + ggplot2::annotate("text",
                                  x = Inf,
-                                 y = annobreaks, 
-                                 label = annotation, 
+                                 y = annobreaks,
+                                 label = annotation,
                                  hjust = -0.05,
                                  size = 3.5,
                                  parse = TRUE,
@@ -395,13 +396,13 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
     df <- df[!is.na(df$y), ]
     
     p <- p + ggplot2::geom_line(data = df, aes(x = x, y = y), color = color, linewidth = 1)
-    
+
     # Add annotations outside plot area
-    if(coordy[2] <= 1000 && coordy[1] >= 1/1000) {
-      p <- p + ggplot2::annotate("text", 
-                                 x = Inf, 
-                                 y = annobreaks, 
-                                 label = annotation, 
+    if(show_annotations && coordy[2] <= 1000 && coordy[1] >= 1/1000) {
+      p <- p + ggplot2::annotate("text",
+                                 x = Inf,
+                                 y = annobreaks,
+                                 label = annotation,
                                  hjust = -0.05,
                                  size = 3.5,
                                  parse = TRUE,
@@ -413,15 +414,18 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
   if(exists("showinfo")) p <- p + ggplot2::labs(subtitle = subtitle, caption = caption)
   
   # Finalize plot
+  # Adjust margins based on whether annotations are shown
+  right_margin <- if(show_annotations) 70 else 5
+
   p + ggplot2::labs(x = label.x, y = "Evidence (BF)") +
     ggplot2::scale_y_log10(breaks = breaks, labels = labels) +
     ggplot2::scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
-    ggplot2::coord_cartesian(ylim = coordy, clip = "off") +
+    ggplot2::coord_cartesian(ylim = coordy, clip = if(show_annotations) "off" else "on") +
     ggplot2::theme_bw(base_size = 14) +
-    ggplot2::theme(legend.position = show.legend, 
-                   panel.grid.major = element_blank(), 
+    ggplot2::theme(legend.position = show.legend,
+                   panel.grid.major = element_blank(),
                    panel.grid.minor = element_blank(),
-                   plot.margin = margin(5, 70, 5, 5, "pt"))
+                   plot.margin = margin(5, right_margin, 5, 5, "pt"))
   
 }
 
