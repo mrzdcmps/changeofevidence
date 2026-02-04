@@ -70,13 +70,7 @@
 #' rw_20bits <- cumsum(bit_sums_20 - 10)  # Subtract chance level (10)
 #' plotrw(rw_20bits, n_bits = 20)
 #'
-#' # Example 8: From real experimental data structure
-#' # Assuming you have a dataframe 'experiment_data' with column 'score'
-#' # where score represents the sum of bits per trial
-#' # experiment_data$rw <- cumsum(experiment_data$score - 5)
-#' # plotrw(experiment_data$rw, n_bits = 10)
-#'
-#' # Example 9: Biased bits (e.g., p=0.2)
+#' # Example 8: Biased bits (e.g., p=0.2)
 #' bit_sums_biased <- rbinom(100, 10, 0.2)
 #' rw_biased_bits <- cumsum(bit_sums_biased - 2)  # Subtract expected value (10*0.2)
 #' plotrw(rw_biased_bits, n_bits = 10, p = 0.2)
@@ -85,7 +79,7 @@
 
 plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = NULL, p = 0.5, n_bits = NULL){
   library(ggplot2)
-  greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
+  greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 200, maxColorValue = 255)
   
   # Adjust the random walk if p != 0.5 (only for binary walks)
   adjust_rw <- function(rw, p) {
@@ -116,9 +110,10 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     data <- adjust_rw(data, p)
   }
   
-  # Set coordy if not provided
+  # Set coordy if not provided - extend beyond data range for better grey visibility
   if(is.null(coordy)) {
-    coordy <- c(-absolutemax, absolutemax)
+    margin_factor <- 1.2  # Add 20% margin
+    coordy <- c(-absolutemax * margin_factor, absolutemax * margin_factor)
   }
   
   # Data for confidence bounds (p-parabel)
@@ -141,9 +136,18 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   
   xrow <- as.numeric(p.s$n)
   
-  # Create base plot
+  # Create base plot with inverted colors (grey outside, white inside)
+  # Clip bounds to plot limits to prevent ribbon issues
+  p.s$p.dn_clipped <- pmax(p.s$p.dn, coordy[1])
+  p.s$p.up_clipped <- pmin(p.s$p.up, coordy[2])
+  
   plot <- ggplot() +
-    geom_ribbon(data = p.s, aes(x = n, ymin = p.dn, ymax = p.up), fill = greycol, alpha = 0.5) +
+    # Fill area below lower bound (grey) - only where p.dn is above coordy[1]
+    geom_ribbon(data = p.s, aes(x = n, ymin = coordy[1], ymax = p.dn_clipped), fill = greycol, alpha = 0.3) +
+    # Fill area above upper bound (grey) - only where p.up is below coordy[2]
+    geom_ribbon(data = p.s, aes(x = n, ymin = p.up_clipped, ymax = coordy[2]), fill = greycol, alpha = 0.3) +
+    # Explicitly fill inside the bounds with white
+    geom_ribbon(data = p.s, aes(x = n, ymin = p.dn, ymax = p.up), fill = "white", alpha = 1) +
     geom_line(data = p.s, aes(x = n, y = p.up), color = "grey50", linetype = "dashed") +
     geom_line(data = p.s, aes(x = n, y = p.dn), color = "grey50", linetype = "dashed") +
     geom_hline(yintercept = 0, color = "black", linetype = "solid") +

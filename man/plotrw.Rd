@@ -93,13 +93,7 @@ bit_sums_20 <- rbinom(100, 20, 0.5)
 rw_20bits <- cumsum(bit_sums_20 - 10)  # Subtract chance level (10)
 plotrw(rw_20bits, n_bits = 20)
 
-# Example 8: From real experimental data structure
-# Assuming you have a dataframe 'experiment_data' with column 'score'
-# where score represents the sum of bits per trial
-# experiment_data$rw <- cumsum(experiment_data$score - 5)
-# plotrw(experiment_data$rw, n_bits = 10)
-
-# Example 9: Biased bits (e.g., p=0.2)
+# Example 8: Biased bits (e.g., p=0.2)
 bit_sums_biased <- rbinom(100, 10, 0.2)
 rw_biased_bits <- cumsum(bit_sums_biased - 2)  # Subtract expected value (10*0.2)
 plotrw(rw_biased_bits, n_bits = 10, p = 0.2)
