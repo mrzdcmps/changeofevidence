@@ -5,7 +5,7 @@
 # Change of Evidence
 This package provides functions to test for a change of Bayesian evidence over time which can be used to examine volatile effects. 
 
-## Core Functions
+## Functionality
 
 ### 1. Bayesian Sequential Testing
 
