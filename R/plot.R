@@ -1,5 +1,3 @@
-# Plot Functions
-
 #' Plot Random Walk
 #'
 #' This function plots random walks with appropriate confidence intervals.
@@ -77,20 +75,26 @@
 #' # where score represents the sum of bits per trial
 #' # experiment_data$rw <- cumsum(experiment_data$score - 5)
 #' # plotrw(experiment_data$rw, n_bits = 10)
+#'
+#' # Example 9: Biased bits (e.g., p=0.2)
+#' bit_sums_biased <- rbinom(100, 10, 0.2)
+#' rw_biased_bits <- cumsum(bit_sums_biased - 2)  # Subtract expected value (10*0.2)
+#' plotrw(rw_biased_bits, n_bits = 10, p = 0.2)
 #' 
 #' @export
 
-# Plot Random Walk - Corrected Version
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = c(-absolutemax,absolutemax), p = 0.5, n_bits = NULL){
+plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = NULL, p = 0.5, n_bits = NULL){
   library(ggplot2)
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
-  # Adjust the random walk if p != 0.5
+  # Adjust the random walk if p != 0.5 (only for binary walks)
   adjust_rw <- function(rw, p) {
-    if (p != 0.5) {
-      # Correct adjustment: Expected value at each step is 2p-1
-      steps <- rw * (2*p - 1)
-      return(cumsum(steps))
+    if (p != 0.5 && is.null(n_bits)) {
+      # For binary random walks: adjust drift
+      # Expected value at each step is 2p-1
+      n <- length(rw) - 1  # subtract 1 because we prepend 0
+      adjusted <- rw + (2*p - 1) * (0:(n))
+      return(adjusted)
     }
     return(rw)
   }
@@ -101,13 +105,20 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     nmax <- max(lengths(data))
     absolutemax <- max(c(max(unlist(data)), abs(min(unlist(data)))))
     for (i in 1:length(data)) {
-      data[[i]] <- adjust_rw(c(0, data[[i]]), p)
+      data[[i]] <- c(0, data[[i]])
+      data[[i]] <- adjust_rw(data[[i]], p)
     }
   } else {
     show.legend <- "none"
     nmax <- length(data)
     absolutemax <- max(c(max(data), abs(min(data))))
-    data <- adjust_rw(c(0, data), p)
+    data <- c(0, data)
+    data <- adjust_rw(data, p)
+  }
+  
+  # Set coordy if not provided
+  if(is.null(coordy)) {
+    coordy <- c(-absolutemax, absolutemax)
   }
   
   # Data for confidence bounds (p-parabel)
@@ -121,47 +132,57 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     p.s$p.dn <- (2*p - 1) * p.s$n - z * sqrt(4 * p.s$n * p * (1-p))
   } else {
     # Deviation-based walk case: sum of n_bits minus chance level
-    # For fair bits, variance per step = n_bits * 0.25
-    variance_per_step <- n_bits * 0.25
+    # Variance per step = n_bits * p * (1-p)
+    # FIXED: Now correctly accounts for biased probabilities
+    variance_per_step <- n_bits * p * (1-p)
     p.s$p.up <- z * sqrt(variance_per_step * p.s$n)  # No drift expected at chance
     p.s$p.dn <- -z * sqrt(variance_per_step * p.s$n)
   }
   
   xrow <- as.numeric(p.s$n)
   
-  if (!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
+  # Create base plot
+  plot <- ggplot() +
+    geom_ribbon(data = p.s, aes(x = n, ymin = p.dn, ymax = p.up), fill = greycol, alpha = 0.5) +
+    geom_line(data = p.s, aes(x = n, y = p.up), color = "grey50", linetype = "dashed") +
+    geom_line(data = p.s, aes(x = n, y = p.dn), color = "grey50", linetype = "dashed") +
+    geom_hline(yintercept = 0, color = "black", linetype = "solid") +
+    coord_cartesian(ylim = coordy) +
+    labs(x = "Trial", y = "Cumulative Deviation", color = "") +
+    theme_minimal() +
+    theme(legend.position = show.legend)
   
-  p <- ggplot2::ggplot() +
-    ggplot2::geom_line(data = p.s, aes(x = xrow, y = p.up), color = "grey60", linetype = "dotted", linewidth = 1) +
-    ggplot2::geom_line(data = p.s, aes(x = xrow, y = p.dn), color = "grey60", linetype = "dotted", linewidth = 1)
-  
+  # Add simulation data if provided
   if (!is.null(sims.df)) {
-    p <- p + ggplot2::geom_line(data = sims.df, aes(x = index, y = .data[[sims.df.col]], group = simid), color = greycol)
+    plot <- plot + 
+      geom_line(data = sims.df, 
+                aes(x = index, y = .data[[sims.df.col]], group = simid), 
+                color = "grey70", alpha = 0.2, linewidth = 0.3)
   }
   
+  # Add actual data
   if (is.list(data)) {
-    df <- NULL
+    # Multiple random walks
+    plot_data <- data.frame()
     for (i in 1:length(data)) {
-      ydat <- data[[i]]
-      if (!is.null(names(data))) {
-        ndf <- data.frame(element = as.factor(names(data)[i]), x = 1:length(ydat), y = ydat)
-      } else {
-        ndf <- data.frame(element = paste0("data ", i), x = 1:length(ydat), y = ydat)
-      }
-      df <- rbind(df, ndf)
+      temp_df <- data.frame(
+        n = 0:(length(data[[i]]) - 1),
+        rw = data[[i]],
+        group = names(data)[i]
+      )
+      plot_data <- rbind(plot_data, temp_df)
     }
-    p <- p + ggplot2::geom_line(data = df, aes(x = x - 1, y = y, color = element), linewidth = 1) +
-      ggplot2::scale_color_brewer("Data", type = "qualitative", palette = "Set1")
+    plot <- plot + 
+      geom_line(data = plot_data, aes(x = n, y = rw, color = group), linewidth = 1) +
+      scale_color_brewer(palette = "Set1")
   } else {
-    p <- p + ggplot2::geom_line(data = as.data.frame(data), aes(x = xrow, y = data), color = color, linewidth = 1)
+    # Single random walk
+    plot_data <- data.frame(n = 0:(length(data) - 1), rw = data)
+    plot <- plot + 
+      geom_line(data = plot_data, aes(x = n, y = rw), color = color, linewidth = 1)
   }
   
-  p + ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "grey60", linewidth = 1) +
-    ggplot2::labs(x = "Trials", y = "Random Walk") +
-    ggplot2::scale_x_continuous(expand = c(0, 0)) +
-    ggplot2::coord_cartesian(ylim = coordy) +
-    ggplot2::theme_bw(base_size = 14) +
-    ggplot2::theme(legend.position = show.legend)
+  return(plot)
 }
 
 

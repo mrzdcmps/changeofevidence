@@ -9,7 +9,7 @@ plotrw(
   sims.df = NULL,
   sims.df.col = "rw",
   color = "black",
-  coordy = c(-absolutemax, absolutemax),
+  coordy = NULL,
   p = 0.5,
   n_bits = NULL
 )
@@ -98,5 +98,10 @@ plotrw(rw_20bits, n_bits = 20)
 # where score represents the sum of bits per trial
 # experiment_data$rw <- cumsum(experiment_data$score - 5)
 # plotrw(experiment_data$rw, n_bits = 10)
+
+# Example 9: Biased bits (e.g., p=0.2)
+bit_sums_biased <- rbinom(100, 10, 0.2)
+rw_biased_bits <- cumsum(bit_sums_biased - 2)  # Subtract expected value (10*0.2)
+plotrw(rw_biased_bits, n_bits = 10, p = 0.2)
 
 }
