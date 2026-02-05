@@ -817,8 +817,8 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
     "test type" = "correlation",
     "prior" = list(
       "distribution" = "Beta",
-      "location" = 0,
-      "scale" = prior.r
+      "location" = 1/prior.r,
+      "scale" = 1/prior.r
     ),
     "sample size" = n_data,
     "alternative" = alternative
