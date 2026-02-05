@@ -138,16 +138,15 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
   
   # Create base plot with inverted colors (grey outside, white inside)
   # Clip bounds to plot limits to prevent ribbon issues
-  p.s$p.dn_clipped <- pmax(p.s$p.dn, coordy[1])
-  p.s$p.up_clipped <- pmin(p.s$p.up, coordy[2])
+  # p.s$p.dn_clipped <- pmax(p.s$p.dn, coordy[1])
+  # p.s$p.up_clipped <- pmin(p.s$p.up, coordy[2])
   
   plot <- ggplot() +
-    # Fill area below lower bound (grey) - only where p.dn is above coordy[1]
-    geom_ribbon(data = p.s, aes(x = n, ymin = coordy[1], ymax = p.dn_clipped), fill = greycol, alpha = 0.3) +
-    # Fill area above upper bound (grey) - only where p.up is below coordy[2]
-    geom_ribbon(data = p.s, aes(x = n, ymin = p.up_clipped, ymax = coordy[2]), fill = greycol, alpha = 0.3) +
-    # Explicitly fill inside the bounds with white
-    geom_ribbon(data = p.s, aes(x = n, ymin = p.dn, ymax = p.up), fill = "white", alpha = 1) +
+    # # Fill area below lower bound (grey) - only where p.dn is above coordy[1]
+    # geom_ribbon(data = p.s, aes(x = n, ymin = coordy[1], ymax = p.dn_clipped), fill = greycol, alpha = 0.3) +
+    # # Fill area above upper bound (grey) - only where p.up is below coordy[2]
+    # geom_ribbon(data = p.s, aes(x = n, ymin = p.up_clipped, ymax = coordy[2]), fill = greycol, alpha = 0.3) +
+    geom_ribbon(data = p.s, aes(x = n, ymin = p.dn, ymax = p.up), fill = greycol, alpha = 0.3) +
     geom_line(data = p.s, aes(x = n, y = p.up), color = "grey50", linetype = "dashed") +
     geom_line(data = p.s, aes(x = n, y = p.dn), color = "grey50", linetype = "dashed") +
     geom_hline(yintercept = 0, color = "black", linetype = "solid") +
