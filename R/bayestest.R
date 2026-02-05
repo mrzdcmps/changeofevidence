@@ -119,7 +119,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
     "test type" = "binomial",
     "prior" = list(
       "distribution" = "Logistic",
-      "location" = 0,
+      "location" = log(p / (1 - p)),  # logit(p)
       "scale" = prior.r
     ),
     "sample size" = n_data,
@@ -817,8 +817,8 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
     "test type" = "correlation",
     "prior" = list(
       "distribution" = "Beta",
-      "location" = 1/prior.r,
-      "scale" = 1/prior.r
+      "alpha" = 1/prior.r,
+      "beta" = 1/prior.r
     ),
     "sample size" = n_data,
     "alternative" = alternative
@@ -939,7 +939,7 @@ print.seqbf <- function(x, ...) {
   Test: Binomial proportion test
   Sample size: %d
   Final Bayes Factor: BF10 = %.3f; BF01 = %.3f
-  Prior: %s(%.3f, %.3f)
+  Prior: %s(%g, %g)
   Alternative hypothesis: %s
   Probability of success: %.3f; p = %.3f
   \n",
@@ -969,7 +969,7 @@ print.seqbf <- function(x, ...) {
   Test: Pearson correlation test
   Sample size: %d
   Final Bayes Factor: BF10 = %.3f; BF01 = %.3f
-  Prior: %s(%.3f, %.3f)
+  Prior: %s(%g, %g)
   Alternative hypothesis: %s
   Correlation: r = %.3f; p = %.3f
   \n",
@@ -1038,7 +1038,7 @@ print.seqbf <- function(x, ...) {
   Test: %s%s
   Sample size: %s
   Final Bayes Factor: BF10 = %.3f; BF01 = %.3f
-  Prior: %s(%.3f, %.3f)
+  Prior: %s(%g, %g)
   Alternative hypothesis: %s
   %s: %.3f; p = %.3f%s
   \n",

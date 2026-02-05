@@ -327,8 +327,8 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
       testtype, "; ",
       tails, "; ",
       data$prior$distribution, "(", 
-      round(data$prior$location, 3), ", ", 
-      round(data$prior$scale, 3), ")")
+      round(data$prior[[2]], 3), ", ", 
+      round(data$prior[[3]], 3), ")")
     
     # Add delta to caption if available
     final_delta <- tail(na.omit(data$delta), n = 1)
