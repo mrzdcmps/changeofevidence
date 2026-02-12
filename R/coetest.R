@@ -191,50 +191,6 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FAL
 }
 
 
-#' Frequency Analysis Likelihood Test
-#'
-#' This function estimates the likelihood of a specific proportion of Top5-Frequencies.
-#' To serve as reference, the Top5-Frequencies of 10% of simulations in comparison to all simulations are calculated.
-#'
-#' @param df A dataframe containing the results of a ffttest.
-#' @param proportion The porportion of simulations in sims.df that should be tested against all simulations.
-#' @param sims.df A dataframe containing simulations, including columns "index" and "simid".
-#' @param sims.df.col The column of the simulation dataframe that contains the comparison data.
-#' @return A vector containing the number of Top5-Frequencies of simulations.
-#' @examples
-#' fftlikelihood(r.fft)
-
-
-# Count likelihood and distribution of Top5 occurrences
-fftlikelihood <- function(df, proportion = 100, sims.df = sims, sims.df.col = "density.bf"){
-  warning("This function is deprecated and will be removed in a future version. Please use `ffttest()` instead.")
-  require(foreach)
-  require(doParallel)
-  
-  cores=detectCores()
-  cl <- makeCluster(cores[1]-1) #not to overload your computer
-  registerDoParallel(cl)
-  
-  cat(">> FREQUENCY ANALYSIS LIKELIHOOD << \n")
-  cat("This test runs in parallel. See log.txt for status updates!")
-  
-  likelihoodlist <- foreach(i=1:(length(unique(sims.df$simid))*(proportion/100)), .combine=c) %dopar% {
-    sink("log.txt", append=TRUE)  
-    cat(paste(Sys.time(),"Starting iteration",i,"of",length(unique(sims.df$simid))*(proportion/100),"\n"))
-    sink()
-    tmpdat.r <- subset(sims.df, simid == i)
-    tmptest <- changeofevidence::ffttest(tmpdat.r[[sims.dfl.col]], sims.df)
-    likeresult <- sum(tmptest$LowerSims > 0.95)
-    likeresult
-  }
-  stopCluster(cl)
-  
-  cat("\nLikelihood for",sum(df$LowerSims > 0.95),"(=",(sum(df$LowerSims > 0.95)/nrow(df))*100,"%) or more Top5-Frequencies is estimated",(sum(likelihoodlist >= sum(df$LowerSims > 0.95))/length(likelihoodlist))*100,"% \n")
-  
-  likelihood.out <- list("Likelihood" = sum(likelihoodlist >= sum(df$LowerSims > 0.95))/length(likelihoodlist), "Top5 of Sims" = likelihoodlist)
-  return(likelihood.out)
-}
-
 
 # Create a copy of simulations and only redo FFT
 #' Create a copy of simulation-df with different amount of trials.

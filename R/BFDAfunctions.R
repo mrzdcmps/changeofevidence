@@ -124,44 +124,6 @@ cdf_t <- function(x, t, n1, n2 = NULL, independentSamples = FALSE,
 }
 
 
-posterior_normal_tmp <- function(delta, t, n1, n2 = NULL,
-                                 independentSamples = FALSE, prior.mean,
-                                 prior.variance,
-                                 rel.tol = .Machine$double.eps^0.25) {
-  
-  neff <- ifelse(independentSamples, n1*n2/(n1 + n2), n1)
-  nu <- ifelse(independentSamples, n1 + n2 - 2, n1 - 1)
-  
-  mu.delta <- prior.mean
-  g <- prior.variance
-  
-  numerator <- exp(-neff/2*delta^2)*(1 + t^2/nu)^(-(nu + 1)/2)*
-    (C(delta, t, neff, nu) + D(delta, t, neff, nu))*
-    dnorm(delta, mu.delta, sqrt(g))
-  
-  denominator <- term_normalprior(t = t, n = neff, nu = nu,
-                                  mu.delta = mu.delta, g = g)
-  
-  out <- numerator/denominator
-  
-  if ( is.na(out))
-    out <- 0
-  
-  return(out)
-  
-}
-
-posterior_normal <- Vectorize(posterior_normal_tmp, "delta")
-
-cdf_normal <- function(x, t, n1, n2 = NULL, independentSamples = FALSE,
-                       prior.mean, prior.variance) {
-  
-  integrate(posterior_normal, lower = -Inf, upper = x, t = t, n1 = n1, n2 = n2,
-            independentSamples = independentSamples,
-            prior.mean = prior.mean, prior.variance = prior.variance)$value
-  
-}
-
 # Function to compute the Bayes factor with t distribution as prior
 
 bf10_t <- function(t, n1, n2 = NULL, independentSamples = FALSE, prior.location,
@@ -195,36 +157,6 @@ bf10_t <- function(t, n1, n2 = NULL, independentSamples = FALSE, prior.location,
   return(list(BF10 = BF10, BFplus0 = BFplus0, BFmin0 = BFmin0))
   
 }
-
-# Function to compute the Bayes factor with normal distribution as prior
-
-bf10_normal <- function(t, n1, n2 = NULL, independentSamples = FALSE,
-                        prior.mean, prior.variance) {
-  
-  neff <- ifelse(independentSamples, n1*n2/(n1 + n2), n1)
-  nu <- ifelse(independentSamples, n1 + n2 - 2, n1 - 1)
-  
-  mu.delta <- prior.mean
-  g <- prior.variance
-  numerator <- term_normalprior(t = t, n = neff, nu  = nu,
-                                mu.delta = mu.delta, g = g)
-  denominator <- (1 + t^2/nu)^(-(nu + 1)/2)
-  
-  BF10 <- numerator/denominator
-  priorAreaSmaller0 <- pnorm(0, mean = prior.mean, sd = sqrt(prior.variance))
-  postAreaSmaller0 <- cdf_normal(x = 0, t = t, n1 = n1, n2 = n2,
-                                 independentSamples = independentSamples,
-                                 prior.mean = prior.mean,
-                                 prior.variance = prior.variance)
-  BFmin1 <- postAreaSmaller0/priorAreaSmaller0
-  BFplus1 <- (1 - postAreaSmaller0)/(1 - priorAreaSmaller0)
-  BFmin0 <- BFmin1 * BF10
-  BFplus0 <- BFplus1 * BF10
-  
-  return(list(BF10 = BF10, BFplus0 = BFplus0, BFmin0 = BFmin0))
-  
-}
-
 
 
 # ==============================================================================
