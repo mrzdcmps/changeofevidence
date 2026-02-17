@@ -5,6 +5,14 @@
 # Change of Evidence
 This package provides functions to test for a change of Bayesian evidence over time which can be used to examine volatile effects. 
 
+## Installation
+```
+  # Install remotes if necessary
+  if (!requireNamespace("remotes")) install.packages("remotes")
+  # Get package from Github
+  remotes::install_github("mrzdcmps/changeofevidence")
+```
+
 ## Functionality
 
 ### 1. Bayesian Sequential Testing
@@ -197,14 +205,6 @@ The harmonic mean of p-values from MaxBF, Energy, and FFT tests. Values < 0.05 s
 
 
 
-## Installation
-```
-  # Install remotes if necessary
-  if (!requireNamespace("remotes")) install.packages("remotes")
-  # Get package from Github
-  remotes::install_github("mrzdcmps/changeofevidence")
-```
-    
 ## How to use the package
 [Vignette](https://mrzdcmps.github.io/changeofevidence/vignette.html)
   

@@ -123,7 +123,10 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
       "scale" = prior.r
     ),
     "sample size" = n_data,
-    "alternative" = alternative
+    "alternative" = alternative,
+    # NEW: Simulation parameters
+    "null_p" = p,
+    "data_type" = "binary"
   )
   
   # Report final results
@@ -211,19 +214,36 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #' @importFrom pbapply pblapply
 #' @export
 
-bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL, 
-                    alternative = c("two.sided", "less", "greater"), 
+bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
+                    alternative = c("two.sided", "less", "greater"),
                     mu = 0, parametric = TRUE,
-                    prior.loc = 0, 
+                    prior.loc = 0,
                     prior.r = 0.1,
-                    nstart = "auto", 
+                    nstart = "auto",
                     nsamples = "auto",
                     exact = TRUE,
-                    parallel = TRUE) {
+                    parallel = TRUE,
+                    # NEW PARAMETERS:
+                    data_type = c("unknown", "summed_bits", "continuous", "integer"),
+                    n_bits = NULL,
+                    bit_probability = NULL) {
   
   # Match alternative argument
   alternative <- match.arg(alternative)
-  
+
+  # Match data_type argument
+  data_type <- match.arg(data_type)
+
+  # Set defaults based on data_type
+  if (!is.null(n_bits) && data_type == "unknown") {
+    data_type <- "summed_bits"
+  }
+
+  # Set default bit_probability
+  if (is.null(bit_probability)) {
+    bit_probability <- 0.5
+  }
+
   # Validate parallel argument
   if (!is.logical(parallel) || length(parallel) != 1) {
     stop("parallel must be TRUE or FALSE")
@@ -658,7 +678,12 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
       "scale" = prior.r
     ),
     "sample size" = sample_size,
-    "alternative" = alternative
+    "alternative" = alternative,
+    # NEW: Simulation parameters
+    "null_mu" = mu,
+    "data_type" = data_type,
+    "n_bits" = n_bits,
+    "bit_probability" = bit_probability
   )
   names(bf_out)[1] <- stat_name
   
@@ -821,7 +846,10 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
       "beta" = 1/prior.r
     ),
     "sample size" = n_data,
-    "alternative" = alternative
+    "alternative" = alternative,
+    # NEW: Simulation parameters
+    "null_rho" = 0,
+    "data_type" = "correlation"
   )
   
   # Get final BF

@@ -17,7 +17,10 @@ bfttest(
   nstart = "auto",
   nsamples = "auto",
   exact = TRUE,
-  parallel = TRUE
+  parallel = TRUE,
+  data_type = c("unknown", "summed_bits", "continuous", "integer"),
+  n_bits = NULL,
+  bit_probability = NULL
 )
 }
 \arguments{

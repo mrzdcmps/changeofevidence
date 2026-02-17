@@ -1,7 +1,7 @@
 Package: changeofevidence
 Type: Package
 Title: Change of Evidence
-Version: 1.4.5
+Version: 1.5
 Author: Moritz Dechamps
 Maintainer: Moritz Dechamps <moritz.dechamps@psy.lmu.de>
 Description: This package provides functions to test for a change of Bayesian evidence over time which can be used to examine volatile effects. It includes sequential Bayesian testing methods for t-Tests, Non-Parametric Tests, Binomial Tests, and Correlation Tests.
