@@ -3,7 +3,7 @@
 
 
 # Change of Evidence
-This package provides functions to test for a change of Bayesian evidence over time which can be used to examine volatile effects. 
+This package provides functions to test for a change of Bayesian evidence over time which can be used to examine volatile effects.
 
 ## Installation
 ```
@@ -37,7 +37,7 @@ Performs sequential Bayesian t-tests (parametric) or non-parametric tests (Wilco
 - Paired samples: `bfttest(x, y)`
 - Independent samples: `bfttest(response ~ group, data = df)`
 
-**Returns:** A `seqbf` object containing sequential BF values, test statistics, p-values, and effect size estimates (δ).
+**Returns:** A `seqbf` object containing sequential BF values, test statistics, p-values, effect size estimates (δ), and raw data.
 
 #### `bfbinom()` - Bayesian Sequential Binomial Test
 Tests binary data (0s and 1s) sequentially.
@@ -137,18 +137,89 @@ Recalculates FFT densities for simulations to match a different data length.
 ### 3. Simulation Generation
 
 #### `simcreate()` - Generate Null Simulations
-Creates Monte Carlo simulations of random data for CoE analysis.
+Convenience wrapper that automatically generates the appropriate simulations based on a `seqbf` object. It inspects the test type and extracts parameters (sample size, prior, alternative) automatically.
+
+**Primary interface (recommended):**
+```r
+result <- bfttest(rnorm(50, 0.5), mu = 0)
+sims <- simcreate(result, n.sims = 1000)
+```
 
 **Parameters:**
-- `trials`: Number of trials per simulation
+- `x`: A `seqbf` object (recommended) — test type and parameters are inferred automatically
 - `n.sims`: Number of simulations to generate (default: 1000)
-- `mean.scores`: If specified, sums bits to create normally distributed scores centered at this value
-- `method`: `"pseudo"` (software RNG), `"files"` (quantum RNG files), or `"quantis"` (hardware QRNG)
-- `filespath`: Path to random bit files (if using `method = "files"`)
+- `N`: Override the sample size extracted from the `seqbf` object
+- `method`: `"pseudo"` (software RNG), `"files"` (quantum RNG), or `"quantis"` (hardware QRNG)
+- `filespath`: Path to quantum random data file (if using `method = "files"`)
 - `parallel`: Use parallel processing (default: `TRUE`)
-- `nstart`, `alternative`, `prior.loc`, `prior.r`, `p`: Test parameters matching your analysis
+- Override parameters: `mu`, `n_bits`, `p`, `rho`, `data_type`, `prior.loc`, `prior.r`, `alternative`, `nstart`
 
 **Returns:** Dataframe with columns: `simid`, `index`, `raw`, `rw`, `density.rw`, `bf`, `density.bf`.
+
+> **Note:** The old interface `simcreate(trials, mean.scores, ...)` is deprecated. Use the type-specific functions below instead.
+
+#### `simcreate_bin()` - Binomial Test Simulations
+Generates Monte Carlo simulations for binomial tests.
+
+**Parameters:**
+- `N`: Sample size (number of binary observations)
+- `n.sims`: Number of simulations (default: 1000)
+- `p`: Null hypothesis probability (default: 0.5)
+- `method`: `"pseudo"`, `"files"`, or `"quantis"`
+- `parallel`: Use parallel processing (default: `TRUE`)
+- `nstart`: Minimum observations before first BF (default: 5)
+- `prior.r`: Prior scale parameter (default: 0.1)
+- `alternative`: `"two.sided"`, `"less"`, or `"greater"`
+
+**Returns:** Dataframe with columns: `simid`, `index`, `raw`, `rw`, `density.rw`, `bf`, `density.bf`.
+
+#### `simcreate_t()` - T-Test Simulations
+Generates Monte Carlo simulations for t-tests with support for different data types.
+
+**Parameters:**
+- `N`: Sample size
+- `n.sims`: Number of simulations (default: 1000)
+- `mu`: Null hypothesis mean
+- `data_type`: `"summed_bits"`, `"continuous"`, `"integer"`, or `"unknown"`
+- `n_bits`: Number of bits to sum per observation (for `data_type = "summed_bits"`)
+- `p`: Bit probability (default: 0.5)
+- `int_min`, `int_max`: Integer range (for `data_type = "integer"`)
+- `method`: `"pseudo"`, `"files"`, or `"quantis"`
+- `parallel`: Use parallel processing (default: `TRUE`)
+- `nstart`, `alternative`, `prior.loc`, `prior.r`: Test parameters
+
+**Returns:** Dataframe with columns: `simid`, `index`, `raw`, `rw`, `density.rw`, `bf`, `density.bf`.
+
+#### `simcreate_cor()` - Correlation Test Simulations
+Generates Monte Carlo simulations for correlation tests.
+
+**Parameters:**
+- `N`: Sample size (number of paired observations)
+- `n.sims`: Number of simulations (default: 1000)
+- `rho`: Null hypothesis correlation (default: 0)
+- `method`: `"pseudo"` or `"quantis"` (files not supported)
+- `parallel`: Use parallel processing (default: `TRUE`)
+- `nstart`: Minimum observations before first BF (default: 5)
+- `prior.r`: Prior scale parameter (default: 0.353)
+
+**Returns:** Dataframe with columns: `simid`, `index`, `raw`, `raw2`, `rw`, `bf`, `density.bf`.
+
+#### `download_quantum_data()` - Download Quantum Random Data
+Downloads pregenerated quantum random bits for use with `method = "files"`. After downloading once, the file location is remembered automatically.
+
+**Parameters:**
+- `path`: Directory to save the file (default: package extdata directory)
+- `force`: Re-download even if file exists (default: `FALSE`)
+
+**Example:**
+```r
+# Download once
+download_quantum_data()
+
+# Then use automatically in simulations
+result <- bfbinom(rbinom(100, 1, 0.6))
+sims <- simcreate(result, n.sims = 1000, method = "files")
+```
 
 ### 4. Plotting Functions
 
@@ -156,32 +227,61 @@ Creates Monte Carlo simulations of random data for CoE analysis.
 Visualizes BF trajectories over time with evidence strength annotations.
 
 **Parameters:**
-- `...`: One or more `seqbf` objects or BF vectors
-- `labels`: Names for multiple datasets
+- `...`: One or more `seqbf` objects, BF vectors, or a single list of vectors
+- `labels`: Names for multiple datasets (auto-generated if `NULL`)
 - `sims.df`: Optional simulation data for background
-- `color`: Line color (default: `"black"`)
+- `sims.df.col`: Column in simulation dataframe to plot (default: `"bf"`)
+- `color`: A single color or vector of colors for the BF line(s). A vector applies custom colors to multiple lines (overrides the default palette).
+- `coordy`: Manual y-axis limits
+- `label.x`: Override x-axis label (default: `"N"`)
+- `show_annotations`: Show evidence strength labels (default: `TRUE`)
 
-**Example:**
+**Examples:**
 ```r
-plotbf(bf1, bf2, labels = c("Experiment 1", "Experiment 2"))
+# Single result
+plotbf(result)
+
+# Multiple results with custom labels and colors
+plotbf(bf1, bf2, labels = c("Experiment 1", "Experiment 2"), color = c("blue", "red"))
+
+# With simulation background
+plotbf(result, sims.df = sims)
 ```
 
 #### `plotrw()` - Plot Random Walk
 Plots random walk trajectories with confidence intervals.
 
 **Parameters:**
-- `data`: Vector or list of random walk values
+- `...`: One or more numeric vectors of random walk values, or a single named list
+- `labels`: Names for multiple random walks (auto-generated if `NULL`)
 - `sims.df`: Optional simulation data
+- `sims.df.col`: Column in simulation dataframe to plot (default: `"rw"`)
+- `color`: A single color or vector of colors. When multiple series are plotted, a vector applies custom colors (overrides default palette).
+- `coordy`: Manual y-axis limits
 - `p`: Probability parameter for confidence bounds (default: 0.5)
 - `n_bits`: Number of bits summed per trial (for deviation-based walks)
+
+**Examples:**
+```r
+# Single random walk
+plotrw(my_rw)
+
+# Multiple random walks
+plotrw(rw1, rw2, labels = c("Group A", "Group B"), color = c("steelblue", "coral"))
+
+# With simulation comparison
+plotrw(my_rw, sims.df = sims, n_bits = 10)
+```
 
 #### `plotfft()` - Plot FFT
 Visualizes frequency spectra with 95% confidence intervals from simulations.
 
 **Parameters:**
-- `data`: FFT-transformed vector
+- `data`: FFT-transformed vector or `seqbf` object
 - `sims.df`: Optional simulation data
+- `sims.df.col`: Column to compare to (default: `"density.bf"`)
 - `n.hz`: Number of frequencies to display (default: 50)
+- `color`: Line color (default: `"black"`)
 
 #### `plotrobust()` - Plot Robustness Analysis
 Shows how BF varies across different prior specifications.
@@ -207,8 +307,8 @@ The harmonic mean of p-values from MaxBF, Energy, and FFT tests. Values < 0.05 s
 
 ## How to use the package
 [Vignette](https://mrzdcmps.github.io/changeofevidence/vignette.html)
-  
+
 ## Random Files
 
-You can download 10,000 data files each containing 1,000,000 random bits generated by a quantum random number generator (Quantis by idquantique) as source for the monte carlo simulations here:
+You can download pregenerated quantum random bits directly from within R using `download_quantum_data()`. Alternatively, 10,000 data files each containing 1,000,000 random bits generated by a quantum random number generator (Quantis by idquantique) are available here:
 https://osf.io/gs42z/files/
