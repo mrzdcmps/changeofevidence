@@ -20,6 +20,7 @@
 #'     \item prior: list with prior distribution details
 #'     \item sample size: total number of observations
 #'     \item alternative: chosen alternative hypothesis
+#'     \item data: list with element \code{x} (the cleaned binary data vector)
 #'   }
 #' @examples
 #' data <- rbinom(100, 1, 0.7)
@@ -124,9 +125,9 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
     ),
     "sample size" = n_data,
     "alternative" = alternative,
-    # NEW: Simulation parameters
     "null_p" = p,
-    "data_type" = "binary"
+    "data_type" = "binary",
+    "data" = list(x = data)
   )
   
   # Report final results
@@ -184,6 +185,8 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #'     \item prior: List with prior distribution details
 #'     \item sample size: Number of observations
 #'     \item alternative: Chosen alternative hypothesis
+#'     \item data: list with \code{x} (one-sample/paired) or \code{x} and \code{y} (paired)
+#'       or \code{data} and \code{formula} (independent samples)
 #'   }
 #' @note Adaptive sampling uses 
 #' - 250 samples for intermediate steps and 1000 samples for final BF for N <= 500
@@ -663,6 +666,15 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   # Prepare output
   stat_name <- if (parametric) "t-value" else "W-value"
   
+  # Store tested data consistently
+  tested_data <- if (test_type == "independent") {
+    list(data = data, formula = formula)
+  } else if (test_type == "paired") {
+    list(x = x, y = y)
+  } else {
+    list(x = x)
+  }
+
   bf_out <- list(
     stat_name = stat_values,
     "p-value" = p_values,
@@ -679,11 +691,11 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     ),
     "sample size" = sample_size,
     "alternative" = alternative,
-    # NEW: Simulation parameters
     "null_mu" = mu,
     "data_type" = data_type,
     "n_bits" = n_bits,
-    "bit_probability" = bit_probability
+    "bit_probability" = bit_probability,
+    "data" = tested_data
   )
   names(bf_out)[1] <- stat_name
   
@@ -739,6 +751,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
 #'     \item prior: list with prior distribution details
 #'     \item sample size: total number of observations
 #'     \item alternative: chosen alternative hypothesis
+#'     \item data: list with elements \code{x} and \code{y} (cleaned data vectors)
 #'   }
 #' @examples
 #' x <- rnorm(100)
@@ -847,9 +860,9 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
     ),
     "sample size" = n_data,
     "alternative" = alternative,
-    # NEW: Simulation parameters
     "null_rho" = 0,
-    "data_type" = "correlation"
+    "data_type" = "correlation",
+    "data" = list(x = x, y = y)
   )
   
   # Get final BF
