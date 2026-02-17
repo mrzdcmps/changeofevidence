@@ -2,14 +2,16 @@
 #'
 #' This function plots random walks with appropriate confidence intervals.
 #'
-#' The Random Walk can be plotted by itself or in comparison to simulated data sets. 
+#' The Random Walk can be plotted by itself or in comparison to simulated data sets.
 #' The function supports both classic binary random walks (+1/-1 steps) and deviation-based walks (e.g., from summed bits).
 #' Depending on the amount of simulations, drawing might take a while. It might be wise to choose a smaller simulation set for this purpose.
 #'
-#' @param data A vector containing the random walk to be drawn or a list containing multiple vectors.
+#' @param ... One or more numeric vectors containing the random walk(s) to be drawn, or a single list of vectors.
+#' @param labels Optional character vector of names for multiple random walks. If NULL, auto-generates names.
 #' @param sims.df A dataframe containing simulations, including columns "simid" and "index". Set to NULL if you don't want to display simulations.
 #' @param sims.df.col The name of the column in the simulation dataframe to compare to.
-#' @param color A color in which the Random Walk will be drawn (ignored if data is a list).
+#' @param color A color or vector of colors for the random walk line(s). A single color is used for one line;
+#'   a vector of colors applies custom colors to multiple lines (overrides default palette).
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
 #' @param p Probability of success for binary random walks (0 < p < 1). Default is 0.5.
 #' @param n_bits Number of bits being summed per trial (used with deviation-based walks).
@@ -77,28 +79,46 @@
 #' 
 #' @export
 
-plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", coordy = NULL, p = 0.5, n_bits = NULL){
+plotrw <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "rw",
+                   color = "black", coordy = NULL, p = 0.5, n_bits = NULL) {
   library(ggplot2)
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 200, maxColorValue = 255)
-  
+
+  # Collect inputs from ...
+  args <- list(...)
+  if (length(args) == 0) stop("No data provided")
+
+  if (length(args) == 1) {
+    data <- args[[1]]
+    # Single list of vectors passed directly - apply labels if given
+    if (is.list(data) && !is.null(labels)) {
+      names(data) <- labels[seq_along(data)]
+    }
+  } else {
+    # Multiple vectors passed via ... - combine into a named list
+    data <- args
+    if (!is.null(labels)) {
+      names(data) <- labels[seq_along(data)]
+    } else {
+      names(data) <- paste0("Data ", seq_along(data))
+    }
+  }
+
   # Adjust the random walk if p != 0.5 (only for binary walks)
   adjust_rw <- function(rw, p) {
     if (p != 0.5 && is.null(n_bits)) {
-      # For binary random walks: adjust drift
-      # Expected value at each step is 2p-1
-      n <- length(rw) - 1  # subtract 1 because we prepend 0
-      adjusted <- rw + (2*p - 1) * (0:(n))
-      return(adjusted)
+      n <- length(rw) - 1
+      return(rw + (2 * p - 1) * (0:n))
     }
     return(rw)
   }
-  
-  # Show legend and decide length for p-parabel
+
+  # Normalise to list internally; track whether multiple series are shown
   if (is.list(data)) {
     show.legend <- "bottom"
     nmax <- max(lengths(data))
     absolutemax <- max(c(max(unlist(data)), abs(min(unlist(data)))))
-    for (i in 1:length(data)) {
+    for (i in seq_along(data)) {
       data[[i]] <- c(0, data[[i]])
       data[[i]] <- adjust_rw(data[[i]], p)
     }
@@ -109,43 +129,27 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     data <- c(0, data)
     data <- adjust_rw(data, p)
   }
-  
-  # Set coordy if not provided - extend beyond data range for better grey visibility
-  if(is.null(coordy)) {
-    margin_factor <- 1.2  # Add 20% margin
+
+  # Set coordy if not provided
+  if (is.null(coordy)) {
+    margin_factor <- 1.2
     coordy <- c(-absolutemax * margin_factor, absolutemax * margin_factor)
   }
-  
-  # Data for confidence bounds (p-parabel)
-  z <- 1.96  # 95% confidence interval
+
+  # Confidence bounds (p-parabola)
+  z <- 1.96
   p.s <- data.frame(n = 0:nmax)
-  
-  if(is.null(n_bits)){
-    # Binary random walk case: +1/-1 steps
-    # Var(Sn) = 4np(1-p) where Sn is the position after n steps
-    p.s$p.up <- (2*p - 1) * p.s$n + z * sqrt(4 * p.s$n * p * (1-p))
-    p.s$p.dn <- (2*p - 1) * p.s$n - z * sqrt(4 * p.s$n * p * (1-p))
+  if (is.null(n_bits)) {
+    p.s$p.up <- (2 * p - 1) * p.s$n + z * sqrt(4 * p.s$n * p * (1 - p))
+    p.s$p.dn <- (2 * p - 1) * p.s$n - z * sqrt(4 * p.s$n * p * (1 - p))
   } else {
-    # Deviation-based walk case: sum of n_bits minus chance level
-    # Variance per step = n_bits * p * (1-p)
-    # FIXED: Now correctly accounts for biased probabilities
-    variance_per_step <- n_bits * p * (1-p)
-    p.s$p.up <- z * sqrt(variance_per_step * p.s$n)  # No drift expected at chance
+    variance_per_step <- n_bits * p * (1 - p)
+    p.s$p.up <-  z * sqrt(variance_per_step * p.s$n)
     p.s$p.dn <- -z * sqrt(variance_per_step * p.s$n)
   }
-  
-  xrow <- as.numeric(p.s$n)
-  
-  # Create base plot with inverted colors (grey outside, white inside)
-  # Clip bounds to plot limits to prevent ribbon issues
-  # p.s$p.dn_clipped <- pmax(p.s$p.dn, coordy[1])
-  # p.s$p.up_clipped <- pmin(p.s$p.up, coordy[2])
-  
+
+  # Base plot
   plot <- ggplot() +
-    # # Fill area below lower bound (grey) - only where p.dn is above coordy[1]
-    # geom_ribbon(data = p.s, aes(x = n, ymin = coordy[1], ymax = p.dn_clipped), fill = greycol, alpha = 0.3) +
-    # # Fill area above upper bound (grey) - only where p.up is below coordy[2]
-    # geom_ribbon(data = p.s, aes(x = n, ymin = p.up_clipped, ymax = coordy[2]), fill = greycol, alpha = 0.3) +
     geom_ribbon(data = p.s, aes(x = n, ymin = p.dn, ymax = p.up), fill = greycol, alpha = 0.3) +
     geom_line(data = p.s, aes(x = n, y = p.up), color = "grey50", linetype = "dashed") +
     geom_line(data = p.s, aes(x = n, y = p.dn), color = "grey50", linetype = "dashed") +
@@ -154,37 +158,41 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
     labs(x = "Trial", y = "Cumulative Deviation", color = "") +
     theme_minimal() +
     theme(legend.position = show.legend)
-  
+
   # Add simulation data if provided
   if (!is.null(sims.df)) {
-    plot <- plot + 
-      geom_line(data = sims.df, 
-                aes(x = index, y = .data[[sims.df.col]], group = simid), 
+    plot <- plot +
+      geom_line(data = sims.df,
+                aes(x = index, y = .data[[sims.df.col]], group = simid),
                 color = "grey70", alpha = 0.2, linewidth = 0.3)
   }
-  
+
   # Add actual data
   if (is.list(data)) {
-    # Multiple random walks
     plot_data <- data.frame()
-    for (i in 1:length(data)) {
+    for (i in seq_along(data)) {
       temp_df <- data.frame(
-        n = 0:(length(data[[i]]) - 1),
-        rw = data[[i]],
+        n     = 0:(length(data[[i]]) - 1),
+        rw    = data[[i]],
         group = names(data)[i]
       )
       plot_data <- rbind(plot_data, temp_df)
     }
-    plot <- plot + 
-      geom_line(data = plot_data, aes(x = n, y = rw, color = group), linewidth = 1) +
-      scale_color_brewer(palette = "Set1")
+    # Preserve factor order for legend
+    plot_data$group <- factor(plot_data$group, levels = names(data))
+    plot <- plot +
+      geom_line(data = plot_data, aes(x = n, y = rw, color = group), linewidth = 1)
+    if (length(color) > 1) {
+      plot <- plot + scale_color_manual(values = color)
+    } else {
+      plot <- plot + scale_color_brewer(palette = "Set1")
+    }
   } else {
-    # Single random walk
     plot_data <- data.frame(n = 0:(length(data) - 1), rw = data)
-    plot <- plot + 
-      geom_line(data = plot_data, aes(x = n, y = rw), color = color, linewidth = 1)
+    plot <- plot +
+      geom_line(data = plot_data, aes(x = n, y = rw), color = color[1], linewidth = 1)
   }
-  
+
   return(plot)
 }
 
@@ -204,7 +212,8 @@ plotrw <- function(data, sims.df = NULL, sims.df.col = "rw", color = "black", co
 #' @param labels Optional character vector of names for multiple datasets. If NULL, auto-generates names.
 #' @param sims.df A dataframe containing simulations, including column "simid". Set to NULL if you don't want to display simulations.
 #' @param sims.df.col The name of the column of the simulation dataframe to compare to. Default is "bf".
-#' @param color A color in which the Seq BF-function will be drawn (only used for single dataset plots). Default is "black".
+#' @param color A color or vector of colors for the BF line(s). A single color is used for one line;
+#'   a vector of colors applies custom colors to multiple lines (overrides the default palette).
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn. If NULL, automatically determined.
 #' @param label.x A character that overrides the label for the x-axis. Default is "N" (automatically set to "Trials" for binomial data).
 #' @param show_annotations Logical. If TRUE (default), displays evidence strength annotations (e.g., "Moderate H1", "Strong H0"). Set to FALSE to hide annotations and use full plot width.
@@ -399,8 +408,12 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
       df <- rbind(df, ndf)
       df <- df[!is.na(df$y), ]
     }
-    p <- p + ggplot2::geom_line(data = df, aes(x = x, y = y, color = element), linewidth = 1) +
-      ggplot2::scale_color_brewer("", type = "qualitative", palette = "Set1")
+    p <- p + ggplot2::geom_line(data = df, aes(x = x, y = y, color = element), linewidth = 1)
+    if (length(color) > 1) {
+      p <- p + ggplot2::scale_color_manual("", values = color)
+    } else {
+      p <- p + ggplot2::scale_color_brewer("", type = "qualitative", palette = "Set1")
+    }
 
     # Add annotations outside plot area
     if(show_annotations && coordy[2] <= 1000 && coordy[1] >= 1/1000) {
