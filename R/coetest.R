@@ -9,14 +9,17 @@
 #' @param sims.df A dataframe containing simulations, including columns "simid" and "bf".
 #' @return A list containing the Maximum BF of the experimental data, its position in the temporal order of data points, and the proportion of simulations with higher BFs at any time.
 #' @examples
+#' \dontrun{
 #' r.maxbf <- maxbf(seqbf, sims)
 #' r.maxbf <- maxbf(tbl$bf, sims.df = newsims)
+#' }
 #' @export
 
 # Maximum BF analysis
-maxbf <- function(data, sims.df = sims) {
+maxbf <- function(data, sims.df = NULL) {
   if (inherits(data, "seqbf")) data <- data$BF
-  
+  if (is.null(sims.df)) stop("Please provide a simulation dataframe via sims.df.")
+
   simids <- unique(sims.df$simid)
   u.nsims <- length(simids)
   
@@ -58,14 +61,17 @@ maxbf <- function(data, sims.df = sims) {
 #' @param sims.df A dataframe containing simulations, including columns "simid" and "bf".
 #' @return A list containing the Energy of the experimental data, the mean and SD of the energy values of all simulations, and the proportion of simulations with a higher energy than the experimental data.
 #' @examples
+#' \dontrun{
 #' r.energybf <- energybf(seqbf, sims)
 #' r.energybf <- energybf(tbl$bf, sims.df = newsims)
+#' }
 #' @export
 
 # Energy of BF
-energybf <- function(data, sims.df = sims) {
+energybf <- function(data, sims.df = NULL) {
   if (inherits(data, "seqbf")) data <- data$BF
-  
+  if (is.null(sims.df)) stop("Please provide a simulation dataframe via sims.df.")
+
   simids <- unique(sims.df$simid)
   u.nsims <- length(simids)
   nullenergy <- length(data) - 1
@@ -102,8 +108,10 @@ energybf <- function(data, sims.df = sims) {
 #'
 #' @param data A seqbf object or vector to be transformed.
 #' @examples
+#' \dontrun{
 #' density.bf <- fftcreate(seqbf)
 #' tblFFT <- data.frame(density.bf = fftcreate(tbl$bf), density.rw = fftcreate(tbl$rw))
+#' }
 #' @export
 
 # Create FFT
@@ -111,7 +119,7 @@ fftcreate <- function(data){
   
   if(inherits(data,"seqbf") == TRUE) data <- data$BF
   
-  L <- length(data) # Länge
+  L <- length(data) # Length
   L2 <- ceiling(L/2) # Consider only first half, round up
   T <- 1/L # Rate
   Y <- fft(data) # Fast Fourier Transformation
@@ -127,7 +135,7 @@ fftcreate <- function(data){
 }
 
 ### Helper-Function: Count Frequencies
-.fftcount <- function(data, sims.df = sims, sims.df.col = "density.bf"){
+.fftcount <- function(data, sims.df = NULL, sims.df.col = "density.bf"){
   
   CHz <- sims.df[sims.df$index==as.numeric(data[2]),]
   output <- data.frame(H = as.numeric(data[2]), LowerSims = (sum(CHz[[sims.df.col]] < as.numeric(data[1])))/length(unique(sims.df$simid)))
@@ -147,14 +155,17 @@ fftcreate <- function(data){
 #' @param top5 Logical. If set to TRUE, function will additionally return the Top5-Frequency method. For each frequency the function counts how many simulations show a higher amplitude. If no more than 5 percent of simulations are above the experimental value, it is considered a "Top5-Frequency". The proportion of Top5-Frequencies indicates the pronouncedness of oscillatory elements in the data.
 #' @return A list containing a dataframe of all frequencies and the proportion of simulations with a lower amplitude, and information on the sum of amplitudes.
 #' @examples
+#' \dontrun{
 #' ffttest(bf, sims)
 #' r.fft <- ffttest(fftcreate(seqbf))
 #' r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
+#' }
 #' @export
 
-ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE) {
+ffttest <- function(data, sims.df = NULL, sims.df.col = "density.bf", top5 = FALSE) {
   if (inherits(data, "seqbf")) data <- changeofevidence::fftcreate(data$BF)
-  
+  if (is.null(sims.df)) stop("Please provide a simulation dataframe via sims.df.")
+
   if (var(data[1:3]) == 0) stop("It seems like you specified a vector containing BFs. Please use fftcreate(bf) to Fourier transform first.")
   if (!is.numeric(sims.df[[sims.df.col]])) stop("Wrong sims data. Does sims.df.col exist?")
   if (ceiling(max(sims.df$index / 2)) != length(data)) stop("Lengths of FFT data and sims do not match! Consider using simredo()")
@@ -181,7 +192,7 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FAL
   
   if (top5) {
     list.HB <- pbapply::pbapply(data.df, 1, .fftcount, sims.df = sims.df, sims.df.col = sims.df.col)
-    list.HB <- dplyr::bind_rows(list.HB)
+    list.HB <- do.call(rbind, list.HB)
     fftbf.out$FFTComparison <- list.HB
     fftbf.out$Top5_Frequencies_above_95pct <- sum(list.HB$LowerSims > 0.95) / length(data) * 100
   }
@@ -203,7 +214,9 @@ ffttest <- function(data, sims.df = sims, sims.df.col = "density.bf", top5 = FAL
 #' @param n The amount of trials per simulation. Must be smaller than in the original simulation df.
 #' @param rw boolean. Set to TRUE if you also want to recalculate the density of the Random Walk. Needs the colums 'rw' and 'density.rw'.
 #' @examples
+#' \dontrun{
 #' sim.new <- simredo(sims, length(bf.new), rw=F)
+#' }
 #' @export
 simredo <- function(df, n, rw = TRUE){
   if(n > max(df$index)) stop("Amount of trials (n) is larger than in the provided simulation dataframe!")
@@ -232,8 +245,10 @@ simredo <- function(df, n, rw = TRUE){
 #' @param sims.df A dataframe containing simulations, must include column "simid".
 #' @return A list containing results from maxbf, energybf, and ffttest analyses.
 #' @examples
+#' \dontrun{
 #' result <- coe(seqbf, sims)
 #' result <- coe(bf_vector, sims.df = newsims)
+#' }
 #' @export
 
 coe <- function(data, sims.df) {
@@ -354,27 +369,27 @@ print.coe <- function(x, ..., header = TRUE) {
   # Print MaxBF info
   if (!is.null(x$MaxBF)) {
     cat("Max BF:", round(x$MaxBF, 3), "at N =", x$MaxBF_N, "\n")
-    cat("Sims with ≥ this BF:", x$Sims_with_higher_BFs, "%\n")
+    cat("Sims with \u2265 this BF:", x$Sims_with_higher_BFs, "%\n")
   }
   
   # Print Energy info
   if (!is.null(x$Energy)) {
     cat("Energy:", round(x$Energy, 3), "\n")
     cat("Simulated Energy: M =", round(x$Simenergy_M, 3), ", SD =", round(x$Simenergy_SD, 3), "\n")
-    cat("Sims with ≥ this Energy:", x$Sims_with_higher_energy, "%\n")
+    cat("Sims with \u2265 this Energy:", x$Sims_with_higher_energy, "%\n")
   }
   
   # Print FFT info
   if (!is.null(x$Amplitude_sum)) {
     cat("Amplitude Sum:", round(x$Amplitude_sum, 3), "\n")
     cat("Simulated Amplitude Sum: M =", round(x$Sim_Ampsum_M, 3), ", SD =", round(x$Sim_Ampsum_SD, 3), "\n")
-    cat("Sims with ≥ this Amplitude:", x$Sims_with_higher_Amplitude, "%\n")
+    cat("Sims with \u2265 this Amplitude:", x$Sims_with_higher_Amplitude, "%\n")
     if (!is.null(x$Top5_Frequencies_above_95pct)) {
       cat("Top 5 Frequencies > 95% of Simulations:", x$Top5_Frequencies_above_95pct, "%\n")
     }
   }
   
-  # Composite object — call sub-prints without headers
+  # Composite object \u2014 call sub-prints without headers
   if (!is.null(x$maxbf)) {
     cat("MaxBF Test\n\n")
     print(x$maxbf, header = FALSE)
@@ -405,7 +420,7 @@ plot.coe <- function(x, sims = NULL, ...) {
     stop("Object must be of class 'coe' to plot.")
   }
   
-  # Aggregate coe object — build plots
+  # Aggregate coe object \u2014 build plots
   if (!is.null(x$maxbf) || !is.null(x$energybf) || !is.null(x$ffttest)) {
     plots_row1 <- list()
     plot_row2 <- NULL

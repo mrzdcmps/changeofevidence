@@ -25,6 +25,8 @@ all three core analyses: maximum BF evaluation, energy calculation, and frequenc
 analysis via FFT.
 }
 \examples{
+\dontrun{
 result <- coe(seqbf, sims)
 result <- coe(bf_vector, sims.df = newsims)
+}
 }

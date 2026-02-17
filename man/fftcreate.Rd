@@ -17,6 +17,8 @@ The FFT shows the spectral density of the input. It can be understood as a harmo
 It can therefore be used to assess the meaning of oscillation as a characteristic. N/2 Frequencies are used as sampling rate.
 }
 \examples{
+\dontrun{
 density.bf <- fftcreate(seqbf)
 tblFFT <- data.frame(density.bf = fftcreate(tbl$bf), density.rw = fftcreate(tbl$rw))
+}
 }

@@ -35,9 +35,11 @@ An experimental 95% Confidence Interval is calculated. Values above the black do
 Use the full simulation set to correcly identify the 5% border line.
 }
 \examples{
+\dontrun{
 p.fftbf <- plotfft(tblFFT$density.bf, color = "blue")
 p.fftbf
 
 p.fftrw <- plotfft(tblFFT$density.rw, sims.df = sims, sims.df.col = "density.rw")
 p.fftrw
+}
 }

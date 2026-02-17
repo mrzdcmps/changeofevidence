@@ -43,6 +43,8 @@ Generates Monte Carlo simulations for binomial tests with specified sample size
 and null hypothesis probability.
 }
 \examples{
+\dontrun{
 # Generate binomial simulations
 sims <- simcreate_bin(N = 100, p = 0.5, n.sims = 100)
+}
 }

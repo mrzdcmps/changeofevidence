@@ -5,7 +5,8 @@
 \title{Plot Random Walk}
 \usage{
 plotrw(
-  data,
+  ...,
+  labels = NULL,
   sims.df = NULL,
   sims.df.col = "rw",
   color = "black",
@@ -15,13 +16,16 @@ plotrw(
 )
 }
 \arguments{
-\item{data}{A vector containing the random walk to be drawn or a list containing multiple vectors.}
+\item{...}{One or more numeric vectors containing the random walk(s) to be drawn, or a single list of vectors.}
+
+\item{labels}{Optional character vector of names for multiple random walks. If NULL, auto-generates names.}
 
 \item{sims.df}{A dataframe containing simulations, including columns "simid" and "index". Set to NULL if you don't want to display simulations.}
 
 \item{sims.df.col}{The name of the column in the simulation dataframe to compare to.}
 
-\item{color}{A color in which the Random Walk will be drawn (ignored if data is a list).}
+\item{color}{A color or vector of colors for the random walk line(s). A single color is used for one line;
+a vector of colors applies custom colors to multiple lines (overrides default palette).}
 
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn.}
 
@@ -33,13 +37,12 @@ plotrw(
 This function plots random walks with appropriate confidence intervals.
 }
 \details{
-The Random Walk can be plotted by itself or in comparison to simulated data sets. 
+The Random Walk can be plotted by itself or in comparison to simulated data sets.
 The function supports both classic binary random walks (+1/-1 steps) and deviation-based walks (e.g., from summed bits).
 Depending on the amount of simulations, drawing might take a while. It might be wise to choose a smaller simulation set for this purpose.
 }
 \examples{
 # Example 1: Classic binary random walk (+1/-1 steps)
-# Generate random correct/incorrect responses
 responses <- sample(c(TRUE, FALSE), 100, replace = TRUE)
 rw_binary <- cumsum(ifelse(responses, 1, -1))
 plotrw(rw_binary)
@@ -50,52 +53,35 @@ rw_biased <- cumsum(ifelse(responses_biased, 1, -1))
 plotrw(rw_biased, p = 0.6)
 
 # Example 3: Deviation-based walk from summed bits (10 bits per trial)
-bit_sums <- rbinom(100, 10, 0.5)  # Sum of 10 fair coin flips per trial
-rw_deviation <- cumsum(bit_sums - 5)  # Subtract chance level (5)
+bit_sums <- rbinom(100, 10, 0.5)
+rw_deviation <- cumsum(bit_sums - 5)
 plotrw(rw_deviation, n_bits = 10)
 
 # Example 4: Multiple random walks comparison
-# Generate data for two conditions
 condition_a <- rbinom(80, 10, 0.5)
-condition_b <- rbinom(80, 10, 0.55)  # Slightly above chance
-rw_list <- list(
-  control = cumsum(condition_a - 5),
-  experimental = cumsum(condition_b - 5)
-)
+condition_b <- rbinom(80, 10, 0.55)
+rw_list <- list(control = cumsum(condition_a - 5), experimental = cumsum(condition_b - 5))
 plotrw(rw_list, n_bits = 10)
 
 # Example 5: With custom y-axis limits
 plotrw(rw_deviation, n_bits = 10, coordy = c(-20, 20))
 
-# Example 6: With simulation data for comparison
-# First create simulation data
-n_sims <- 1000
-n_trials <- 100
-sims_data <- data.frame()
-for(i in 1:n_sims) {
-  sim_bits <- rbinom(n_trials, 10, 0.5)
-  sim_rw <- cumsum(sim_bits - 5)
-  sim_df <- data.frame(
-    simid = i,
-    index = 1:n_trials,
-    rw = sim_rw
-  )
-  sims_data <- rbind(sims_data, sim_df)
+\donttest{
+# Example 6: With simulation data for comparison (slow - 1000 simulations)
+sims_data <- do.call(rbind, lapply(1:100, function(i) {
+  sim_rw <- cumsum(rbinom(100, 10, 0.5) - 5)
+  data.frame(simid = i, index = 1:100, rw = sim_rw)
+}))
+plotrw(rw_deviation, sims.df = sims_data, sims.df.col = "rw", n_bits = 10)
 }
 
-# Plot with simulations (use subset for faster rendering)
-sims_subset <- subset(sims_data, simid <= 100)
-plotrw(rw_deviation, sims.df = sims_subset, sims.df.col = "rw", n_bits = 10)
-
 # Example 7: Different bit sizes
-# For 20 bits per trial
 bit_sums_20 <- rbinom(100, 20, 0.5)
-rw_20bits <- cumsum(bit_sums_20 - 10)  # Subtract chance level (10)
+rw_20bits <- cumsum(bit_sums_20 - 10)
 plotrw(rw_20bits, n_bits = 20)
 
 # Example 8: Biased bits (e.g., p=0.2)
 bit_sums_biased <- rbinom(100, 10, 0.2)
-rw_biased_bits <- cumsum(bit_sums_biased - 2)  # Subtract expected value (10*0.2)
+rw_biased_bits <- cumsum(bit_sums_biased - 2)
 plotrw(rw_biased_bits, n_bits = 10, p = 0.2)
-
 }

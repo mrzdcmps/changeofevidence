@@ -19,11 +19,13 @@ bfRobustness(x = NULL, informed = TRUE, prior.loc = NULL, prior.r = NULL)
 This function compares Bayes Factors of different priors. Returns a list containing BFMatrix, a data frame comprising the Bayes Factors of all possible combinations of the prior parameters (prior.location and prior.width)
 }
 \examples{
+\dontrun{
 seqbf <- bfttest(rnorm(30, 0.5, 1), alternative = "two.sided", parallel = FALSE)
 
-bfrInformed <- bfRobustness(seqbf) 
+bfrInformed <- bfRobustness(seqbf)
 print(bfrInformed)
 
-bfrUninformed <- bfRobustness(seqbf, informed = FALSE) 
+bfrUninformed <- bfRobustness(seqbf, informed = FALSE)
 plot(bfrInformed)
+}
 }

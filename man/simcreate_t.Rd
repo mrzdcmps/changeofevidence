@@ -7,7 +7,7 @@
 simcreate_t(
   N,
   n.sims = 1000,
-  mu = 0,
+  mu = NULL,
   data_type = c("summed_bits", "continuous", "integer", "unknown"),
   n_bits = NULL,
   p = 0.5,
@@ -27,7 +27,7 @@ simcreate_t(
 
 \item{n.sims}{Number of simulations (default: 1000)}
 
-\item{mu}{Null hypothesis mean (default: 0)}
+\item{mu}{Null hypothesis mean (default: 0 for continuous/integer, n_bits*p for summed_bits)}
 
 \item{data_type}{Type of data: "summed_bits", "continuous", "integer", or "unknown"}
 
@@ -61,10 +61,12 @@ Generates Monte Carlo simulations for t-tests with support for different data ty
 summed bits, continuous normal data, or random integers.
 }
 \examples{
+\dontrun{
 # Generate t-test simulations with summed bits
 sims <- simcreate_t(N = 100, mu = 10, data_type = "summed_bits",
                    n_bits = 20, p = 0.5, n.sims = 100)
 
 # Generate t-test simulations with continuous data
 sims <- simcreate_t(N = 100, mu = 0, data_type = "continuous", n.sims = 100)
+}
 }

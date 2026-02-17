@@ -4,7 +4,7 @@
 \alias{ffttest}
 \title{Frequency Analysis Test}
 \usage{
-ffttest(data, sims.df = sims, sims.df.col = "density.bf", top5 = FALSE)
+ffttest(data, sims.df = NULL, sims.df.col = "density.bf", top5 = FALSE)
 }
 \arguments{
 \item{data}{A seqbf-object or a vector containing Fourier transformed (spectral density) data (use `fftcreate` function).}
@@ -25,7 +25,9 @@ This function analyses FFTs and compares the amplitudes of all frequencies to th
 If you want to use the old "Top5-Frequency" method instead of amplitude sums, indicate by setting 'top5 = TRUE'.
 }
 \examples{
+\dontrun{
 ffttest(bf, sims)
 r.fft <- ffttest(fftcreate(seqbf))
 r.fftrw <- ffttest(tblFFT$density.rw, sims.df = newsims, sims.df.col = "density.rw")
+}
 }

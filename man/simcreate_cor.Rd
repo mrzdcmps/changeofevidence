@@ -30,13 +30,15 @@ simcreate_cor(
 \item{prior.r}{Prior scale parameter (default: 0.353)}
 }
 \value{
-Dataframe with columns: simid, index, raw (X values), rw (cumulative r), bf, density.bf
+Dataframe with columns: simid, index, raw (X values), raw2 (Y values), rw (cumulative r), bf, density.bf
 }
 \description{
 Generates Monte Carlo simulations for correlation tests with specified sample size
 and null hypothesis correlation.
 }
 \examples{
+\dontrun{
 # Generate correlation simulations
 sims <- simcreate_cor(N = 100, rho = 0, n.sims = 100)
+}
 }

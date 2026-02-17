@@ -15,16 +15,17 @@ download_quantum_data(path = NULL, force = FALSE)
 Path to downloaded file (invisibly)
 }
 \description{
-Downloads pregenerated quantum random bits from OSF for use with method="files".
+Downloads pregenerated quantum random bits from GitHub releases for use with method="files".
 The file contains 1,000 simulations worth of quantum random bits (1 million bits each).
+After download, the path is automatically saved and used by simulation functions.
 }
 \examples{
 \dontrun{
-# Download quantum data (only needed once)
+# Download once (file location is remembered automatically)
 download_quantum_data()
 
-# Use in simulations
+# Then use in simulations (finds file automatically)
 result <- bfbinom(rbinom(100, 1, 0.6))
-sims <- simcreate(result, n.sims = 100, method = "files")
+sims <- simcreate(result, n.sims = 1000, method = "files")
 }
 }

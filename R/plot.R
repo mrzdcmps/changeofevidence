@@ -1,3 +1,11 @@
+# Suppress R CMD check notes for ggplot2 aesthetic variables
+utils::globalVariables(c(
+  ".data",
+  "n", "p.dn", "p.up", "rw", "group",
+  "index", "simid", "x", "y", "element",
+  "bf", "prior.loc", "prior.r"
+))
+
 #' Plot Random Walk
 #'
 #' This function plots random walks with appropriate confidence intervals.
@@ -18,7 +26,6 @@
 #' 
 #' @examples
 #' # Example 1: Classic binary random walk (+1/-1 steps)
-#' # Generate random correct/incorrect responses
 #' responses <- sample(c(TRUE, FALSE), 100, replace = TRUE)
 #' rw_binary <- cumsum(ifelse(responses, 1, -1))
 #' plotrw(rw_binary)
@@ -29,59 +36,41 @@
 #' plotrw(rw_biased, p = 0.6)
 #'
 #' # Example 3: Deviation-based walk from summed bits (10 bits per trial)
-#' bit_sums <- rbinom(100, 10, 0.5)  # Sum of 10 fair coin flips per trial
-#' rw_deviation <- cumsum(bit_sums - 5)  # Subtract chance level (5)
+#' bit_sums <- rbinom(100, 10, 0.5)
+#' rw_deviation <- cumsum(bit_sums - 5)
 #' plotrw(rw_deviation, n_bits = 10)
 #'
 #' # Example 4: Multiple random walks comparison
-#' # Generate data for two conditions
 #' condition_a <- rbinom(80, 10, 0.5)
-#' condition_b <- rbinom(80, 10, 0.55)  # Slightly above chance
-#' rw_list <- list(
-#'   control = cumsum(condition_a - 5),
-#'   experimental = cumsum(condition_b - 5)
-#' )
+#' condition_b <- rbinom(80, 10, 0.55)
+#' rw_list <- list(control = cumsum(condition_a - 5), experimental = cumsum(condition_b - 5))
 #' plotrw(rw_list, n_bits = 10)
 #'
 #' # Example 5: With custom y-axis limits
 #' plotrw(rw_deviation, n_bits = 10, coordy = c(-20, 20))
 #'
-#' # Example 6: With simulation data for comparison
-#' # First create simulation data
-#' n_sims <- 1000
-#' n_trials <- 100
-#' sims_data <- data.frame()
-#' for(i in 1:n_sims) {
-#'   sim_bits <- rbinom(n_trials, 10, 0.5)
-#'   sim_rw <- cumsum(sim_bits - 5)
-#'   sim_df <- data.frame(
-#'     simid = i,
-#'     index = 1:n_trials,
-#'     rw = sim_rw
-#'   )
-#'   sims_data <- rbind(sims_data, sim_df)
+#' \donttest{
+#' # Example 6: With simulation data for comparison (slow - 1000 simulations)
+#' sims_data <- do.call(rbind, lapply(1:100, function(i) {
+#'   sim_rw <- cumsum(rbinom(100, 10, 0.5) - 5)
+#'   data.frame(simid = i, index = 1:100, rw = sim_rw)
+#' }))
+#' plotrw(rw_deviation, sims.df = sims_data, sims.df.col = "rw", n_bits = 10)
 #' }
-#' 
-#' # Plot with simulations (use subset for faster rendering)
-#' sims_subset <- subset(sims_data, simid <= 100)
-#' plotrw(rw_deviation, sims.df = sims_subset, sims.df.col = "rw", n_bits = 10)
 #'
 #' # Example 7: Different bit sizes
-#' # For 20 bits per trial
 #' bit_sums_20 <- rbinom(100, 20, 0.5)
-#' rw_20bits <- cumsum(bit_sums_20 - 10)  # Subtract chance level (10)
+#' rw_20bits <- cumsum(bit_sums_20 - 10)
 #' plotrw(rw_20bits, n_bits = 20)
 #'
 #' # Example 8: Biased bits (e.g., p=0.2)
 #' bit_sums_biased <- rbinom(100, 10, 0.2)
-#' rw_biased_bits <- cumsum(bit_sums_biased - 2)  # Subtract expected value (10*0.2)
+#' rw_biased_bits <- cumsum(bit_sums_biased - 2)
 #' plotrw(rw_biased_bits, n_bits = 10, p = 0.2)
-#' 
 #' @export
 
 plotrw <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "rw",
                    color = "black", coordy = NULL, p = 0.5, n_bits = NULL) {
-  library(ggplot2)
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 200, maxColorValue = 255)
 
   # Collect inputs from ...
@@ -221,38 +210,39 @@ plotrw <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "rw",
 #' @return A ggplot2 object.
 #' 
 #' @examples
+#' \dontrun{
 #' # Single seqbf object
 #' plot(seqbf)
 #' plotbf(seqbf)
-#' 
+#'
 #' # Single BF vector
 #' p.bf <- plotbf(tbl$bf)
 #' p.bf
 #'
 #' # Multiple seqbf objects with custom labels
 #' plotbf(bf1, bf2, labels = c("Experiment 1", "Experiment 2"))
-#' 
+#'
 #' # Multiple seqbf objects with auto-generated labels
 #' plotbf(bf1, bf2, bf3)
-#' 
+#'
 #' # List of BF vectors (backward compatible)
 #' plotbf(list(test1 = bf1$BF, test2 = bf2$BF))
-#' 
+#'
 #' # With simulated data
 #' plotbf(tbl$bf, sims.df = sims)
 #'
 #' # With subset of simulations
 #' sims1000 <- subset(sims, simid <= 1000)
 #' plotbf(tbl$bf, sims.df = sims1000)
-#' 
+#'
 #' # Custom y-axis limits
 #' plotbf(bf1, bf2, coordy = c(1/30, 30))
-#' 
+#' }
 #' @export
 
 # Plot Sequential BF
 plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N", show_annotations = TRUE){
-  
+
   # Capture all arguments passed via ...
   args <- list(...)
   
@@ -342,16 +332,15 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
     # Add delta to caption if available
     final_delta <- tail(na.omit(data$delta), n = 1)
     if(length(final_delta) > 0 && !is.na(final_delta)) {
-      caption <- paste0(caption, "; δ = ", round(final_delta, 3))
+      caption <- paste0(caption, "; \u03b4 = ", round(final_delta, 3))
     }
     
     data <- data$BF
     showinfo <- TRUE
   }
   
-  library(ggplot2)
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
-  
+
   # Set y coordinates
   if(is.null(coordy)){
     if(is.list(data)){
@@ -487,11 +476,13 @@ plot.seqbf <- function(x, ...) {
 #' @param color A color in which the FFT will be drawn.
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn.
 #' @examples
+#' \dontrun{
 #' p.fftbf <- plotfft(tblFFT$density.bf, color = "blue")
 #' p.fftbf
 #'
 #' p.fftrw <- plotfft(tblFFT$density.rw, sims.df = sims, sims.df.col = "density.rw")
 #' p.fftrw
+#' }
 #' @export
 
 # Plot FFT
@@ -500,7 +491,6 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
   if(inherits(data,"seqbf") == TRUE) data <- changeofevidence::fftcreate(data$BF)
   
   secondhighestval <- sort(data,partial=length(data)-1)[length(data)-1]
-  library(ggplot2)
   #cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
   
@@ -541,7 +531,9 @@ plotfft <- function(data, sims.df = NULL, sims.df.col = "density.bf", n.hz = 50,
 #'
 #' @param data An object generated with the bfRobustness()-function.
 #' @examples
+#' \dontrun{
 #' plotrobust(bfRobustness(seqbf))
+#' }
 #' @export
 plotrobust <- function(data){
   
@@ -665,7 +657,9 @@ plotrobust <- function(data){
 #' @param data An object generated with the bfRobustness()-function.
 #' @param limit A BF limit which is marked in the plot.
 #' @examples
+#' \dontrun{
 #' plotrobustTile(bfRobustness(seqbf))
+#' }
 #' @export
 
 plotrobustTile <- function(data, limit=10){
@@ -700,8 +694,8 @@ plotrobustTile <- function(data, limit=10){
 }
 
 #' @export
-plot.bfRobustness <- function(data, ...) {
-  suppressWarnings(plotrobust(data, ...))
+plot.bfRobustness <- function(x, ...) {
+  suppressWarnings(plotrobust(x, ...))
 }
 
 

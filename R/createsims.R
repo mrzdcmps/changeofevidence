@@ -158,7 +158,7 @@
       }
     } else {
       stop(sprintf(
-        "Insufficient data: need %s bits, have %s bits.\nReduce n_sims or N.",
+        "Insufficient data: need %s bits, have %s bits.\nReduce n.sims or N.",
         format(required_bits, big.mark = ","),
         format(data_info$size, big.mark = ",")
       ))
@@ -175,7 +175,7 @@
 #' or provides legacy interface (deprecated).
 #'
 #' @param x A seqbf object from bfttest(), bfbinom(), or bfcor(), OR trials (deprecated)
-#' @param n_sims Number of simulations (default: 1000)
+#' @param n.sims Number of simulations (default: 1000)
 #' @param N Override sample size (extracted from seqbf if not provided)
 #' @param ... Additional parameters passed to type-specific functions
 #' @param mu Override null hypothesis mean (for t-tests)
@@ -200,14 +200,16 @@
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' # Automatic simulation from test result
 #' result <- bfttest(rnorm(50, 0.5), mu = 0)
-#' sims <- simcreate(result, n_sims = 1000)
+#' sims <- simcreate(result, n.sims = 1000)
 #'
 #' # Manual binomial simulation
-#' sims <- simcreate_bin(N = 100, p = 0.5, n_sims = 1000)
+#' sims <- simcreate_bin(N = 100, p = 0.5, n.sims = 1000)
+#' }
 simcreate <- function(x = NULL,
-                     n_sims = 1000,
+                     n.sims = 1000,
                      N = NULL,
                      ...,
                      # Override parameters
@@ -259,7 +261,7 @@ simcreate <- function(x = NULL,
     if (test_type == "binomial") {
       return(simcreate_bin(
         N = N_to_use,
-        n_sims = n_sims,
+        n.sims = n.sims,
         p = p %||% x$null_p %||% 0.5,
         method = method %||% "pseudo",
         filespath = filespath,
@@ -278,7 +280,7 @@ simcreate <- function(x = NULL,
 
       return(simcreate_t(
         N = N_to_use,
-        n_sims = n_sims,
+        n.sims = n.sims,
         mu = mu_to_use,
         data_type = data_type_to_use,
         n_bits = n_bits_to_use,
@@ -302,7 +304,7 @@ simcreate <- function(x = NULL,
 
       return(simcreate_cor(
         N = N_to_use,
-        n_sims = n_sims,
+        n.sims = n.sims,
         rho = rho %||% x$null_rho %||% 0,
         method = method %||% "pseudo",
         parallel = parallel,
@@ -333,7 +335,7 @@ simcreate <- function(x = NULL,
       warning("Using deprecated interface. Please use simcreate_bin() instead.")
       return(simcreate_bin(
         N = trials,
-        n_sims = n_sims,
+        n.sims = n.sims,
         p = p %||% 0.5,
         method = method %||% "pseudo",
         filespath = filespath,
@@ -357,7 +359,7 @@ simcreate <- function(x = NULL,
 
       return(simcreate_t(
         N = N_legacy,
-        n_sims = n_sims,
+        n.sims = n.sims,
         mu = mu %||% mean.scores,
         data_type = "summed_bits",
         n_bits = n_bits_legacy,
@@ -398,7 +400,7 @@ simcreate <- function(x = NULL,
 #' and null hypothesis probability.
 #'
 #' @param N Sample size (number of binary observations)
-#' @param n_sims Number of simulations (default: 1000)
+#' @param n.sims Number of simulations (default: 1000)
 #' @param p Null hypothesis probability (default: 0.5)
 #' @param method Random generation method: "pseudo", "files", or "quantis"
 #' @param filespath Path to quantum random data file (for method="files")
@@ -411,10 +413,12 @@ simcreate <- function(x = NULL,
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' # Generate binomial simulations
-#' sims <- simcreate_bin(N = 100, p = 0.5, n_sims = 100)
+#' sims <- simcreate_bin(N = 100, p = 0.5, n.sims = 100)
+#' }
 simcreate_bin <- function(N,
-                         n_sims = 1000,
+                         n.sims = 1000,
                          p = 0.5,
                          method = c("pseudo", "files", "quantis"),
                          filespath = NULL,
@@ -440,7 +444,7 @@ simcreate_bin <- function(N,
   if (method == "files") {
     if (is.null(filespath)) {
       # Automatic detection with smart fallback
-      required_bits <- N * n_sims
+      required_bits <- N * n.sims
       data_info <- .find_quantum_data()
       fallback_result <- .check_quantum_data(required_bits, data_info, allow_fallback = TRUE)
 
@@ -457,7 +461,7 @@ simcreate_bin <- function(N,
       }
       quantum_filepath <- filespath
       quantum_data <- if (!parallel) readRDS(filespath) else NULL  # Only load for non-parallel
-      required_bits <- N * n_sims
+      required_bits <- N * n.sims
       if (!parallel) {
         if (length(quantum_data) < required_bits) {
           stop(sprintf(
@@ -485,7 +489,7 @@ simcreate_bin <- function(N,
   # For parallel + files: pre-load only the required bits (avoids per-worker full-file reads)
   quantum_bits <- NULL
   if (method == "files" && parallel && !is.null(quantum_filepath)) {
-    required_bits <- N * n_sims
+    required_bits <- N * n.sims
     all_bits <- readRDS(quantum_filepath)
     quantum_bits <- all_bits[1:required_bits]
     rm(all_bits)
@@ -534,18 +538,18 @@ simcreate_bin <- function(N,
   # Run simulations
   if (parallel) {
     cores <- parallel::detectCores() - 1
-    message(sprintf("Generating %d binomial simulations (N=%d) using %d cores...", n_sims, N, cores))
+    message(sprintf("Generating %d binomial simulations (N=%d) using %d cores...", n.sims, N, cores))
     cl <- parallel::makeCluster(cores)
     parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", ".quiet",
                                    "N", "p", "method", "nstart", "prior.r", "alternative",
                                    ".generate_binary_quantis"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
-    sims_list <- pbapply::pblapply(1:n_sims, generate_simulation, cl = cl)
+    sims_list <- pbapply::pblapply(1:n.sims, generate_simulation, cl = cl)
     parallel::stopCluster(cl)
   } else {
-    message(sprintf("Generating %d binomial simulations (N=%d)...", n_sims, N))
-    sims_list <- pbapply::pblapply(1:n_sims, generate_simulation)
+    message(sprintf("Generating %d binomial simulations (N=%d)...", n.sims, N))
+    sims_list <- pbapply::pblapply(1:n.sims, generate_simulation)
   }
 
   # Combine and process
@@ -564,7 +568,7 @@ simcreate_bin <- function(N,
 #' summed bits, continuous normal data, or random integers.
 #'
 #' @param N Sample size (number of observations after summing/grouping)
-#' @param n_sims Number of simulations (default: 1000)
+#' @param n.sims Number of simulations (default: 1000)
 #' @param mu Null hypothesis mean (default: 0 for continuous/integer, n_bits*p for summed_bits)
 #' @param data_type Type of data: "summed_bits", "continuous", "integer", or "unknown"
 #' @param n_bits Number of bits to sum per observation (for summed_bits)
@@ -583,14 +587,16 @@ simcreate_bin <- function(N,
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' # Generate t-test simulations with summed bits
 #' sims <- simcreate_t(N = 100, mu = 10, data_type = "summed_bits",
-#'                    n_bits = 20, p = 0.5, n_sims = 100)
+#'                    n_bits = 20, p = 0.5, n.sims = 100)
 #'
 #' # Generate t-test simulations with continuous data
-#' sims <- simcreate_t(N = 100, mu = 0, data_type = "continuous", n_sims = 100)
+#' sims <- simcreate_t(N = 100, mu = 0, data_type = "continuous", n.sims = 100)
+#' }
 simcreate_t <- function(N,
-                       n_sims = 1000,
+                       n.sims = 1000,
                        mu = NULL,
                        data_type = c("summed_bits", "continuous", "integer", "unknown"),
                        n_bits = NULL,
@@ -668,7 +674,7 @@ simcreate_t <- function(N,
   if (method == "files") {
     if (is.null(filespath)) {
       # Automatic detection with smart fallback
-      required_bits <- trials * n_sims
+      required_bits <- trials * n.sims
       data_info <- .find_quantum_data()
       fallback_result <- .check_quantum_data(required_bits, data_info, allow_fallback = TRUE)
 
@@ -685,7 +691,7 @@ simcreate_t <- function(N,
       }
       quantum_filepath <- filespath
       quantum_data <- if (!parallel) readRDS(filespath) else NULL  # Only load for non-parallel
-      required_bits <- trials * n_sims
+      required_bits <- trials * n.sims
       if (!parallel) {
         if (length(quantum_data) < required_bits) {
           stop(sprintf(
@@ -712,7 +718,7 @@ simcreate_t <- function(N,
   # For parallel + files: pre-load only the required bits (avoids per-worker full-file reads)
   quantum_bits <- NULL
   if (method == "files" && parallel && !is.null(quantum_filepath)) {
-    required_bits <- trials * n_sims
+    required_bits <- trials * n.sims
     all_bits <- readRDS(quantum_filepath)
     quantum_bits <- all_bits[1:required_bits]
     rm(all_bits)
@@ -788,7 +794,7 @@ simcreate_t <- function(N,
   if (parallel) {
     cores <- parallel::detectCores() - 1
     message(sprintf("Generating %d t-test simulations (N=%d, data_type=%s) using %d cores...",
-                   n_sims, N, data_type, cores))
+                   n.sims, N, data_type, cores))
     cl <- parallel::makeCluster(cores)
     parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", ".quiet",
                                    "N", "mu", "data_type", "n_bits", "p", "int_min", "int_max",
@@ -796,12 +802,12 @@ simcreate_t <- function(N,
                                    ".generate_binary_quantis", ".generate_float_quantis"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
-    sims_list <- pbapply::pblapply(1:n_sims, generate_simulation, cl = cl)
+    sims_list <- pbapply::pblapply(1:n.sims, generate_simulation, cl = cl)
     parallel::stopCluster(cl)
   } else {
     message(sprintf("Generating %d t-test simulations (N=%d, data_type=%s)...",
-                   n_sims, N, data_type))
-    sims_list <- pbapply::pblapply(1:n_sims, generate_simulation)
+                   n.sims, N, data_type))
+    sims_list <- pbapply::pblapply(1:n.sims, generate_simulation)
   }
 
   # Combine and process
@@ -820,7 +826,7 @@ simcreate_t <- function(N,
 #' and null hypothesis correlation.
 #'
 #' @param N Sample size (number of paired observations)
-#' @param n_sims Number of simulations (default: 1000)
+#' @param n.sims Number of simulations (default: 1000)
 #' @param rho Null hypothesis correlation (default: 0)
 #' @param method Random generation method: "pseudo" or "quantis" (files not supported)
 #' @param parallel Use parallel processing (default: TRUE)
@@ -831,10 +837,12 @@ simcreate_t <- function(N,
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' # Generate correlation simulations
-#' sims <- simcreate_cor(N = 100, rho = 0, n_sims = 100)
+#' sims <- simcreate_cor(N = 100, rho = 0, n.sims = 100)
+#' }
 simcreate_cor <- function(N,
-                         n_sims = 1000,
+                         n.sims = 1000,
                          rho = 0,
                          method = c("pseudo", "quantis"),
                          parallel = TRUE,
@@ -896,17 +904,17 @@ simcreate_cor <- function(N,
   # Run simulations
   if (parallel) {
     cores <- parallel::detectCores() - 1
-    message(sprintf("Generating %d correlation simulations (N=%d) using %d cores...", n_sims, N, cores))
+    message(sprintf("Generating %d correlation simulations (N=%d) using %d cores...", n.sims, N, cores))
     cl <- parallel::makeCluster(cores)
     parallel::clusterExport(cl, c("generate_simulation", ".quiet", "N", "rho",
                                    "method", "nstart", "prior.r", ".generate_float_quantis"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
-    sims_list <- pbapply::pblapply(1:n_sims, generate_simulation, cl = cl)
+    sims_list <- pbapply::pblapply(1:n.sims, generate_simulation, cl = cl)
     parallel::stopCluster(cl)
   } else {
-    message(sprintf("Generating %d correlation simulations (N=%d)...", n_sims, N))
-    sims_list <- pbapply::pblapply(1:n_sims, generate_simulation)
+    message(sprintf("Generating %d correlation simulations (N=%d)...", n.sims, N))
+    sims_list <- pbapply::pblapply(1:n.sims, generate_simulation)
   }
 
   # Combine and process
@@ -938,7 +946,7 @@ simcreate_cor <- function(N,
 #'
 #' # Then use in simulations (finds file automatically)
 #' result <- bfbinom(rbinom(100, 1, 0.6))
-#' sims <- simcreate(result, n_sims = 1000, method = "files")
+#' sims <- simcreate(result, n.sims = 1000, method = "files")
 #' }
 download_quantum_data <- function(path = NULL, force = FALSE) {
   # Use package extdata directory by default
@@ -974,7 +982,7 @@ download_quantum_data <- function(path = NULL, force = FALSE) {
   url <- "https://github.com/mrzdcmps/changeofevidence/releases/download/data-v1.0/quantum_bits_1000sims.rds"
 
   message("Downloading pregenerated quantum random data...")
-  message("(1,000 simulations × 1,000,000 bits = ~125 MB)")
+  message("(1,000 simulations \u00d7 1,000,000 bits = ~125 MB)")
   message("This may take a few minutes...")
 
   tryCatch({

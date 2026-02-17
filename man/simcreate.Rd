@@ -80,10 +80,12 @@ Convenience wrapper that automatically generates simulations based on a seqbf ob
 or provides legacy interface (deprecated).
 }
 \examples{
+\dontrun{
 # Automatic simulation from test result
 result <- bfttest(rnorm(50, 0.5), mu = 0)
 sims <- simcreate(result, n.sims = 1000)
 
 # Manual binomial simulation
 sims <- simcreate_bin(N = 100, p = 0.5, n.sims = 1000)
+}
 }

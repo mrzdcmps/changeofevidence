@@ -4,7 +4,7 @@
 \alias{energybf}
 \title{BF Energy Analysis}
 \usage{
-energybf(data, sims.df = sims)
+energybf(data, sims.df = NULL)
 }
 \arguments{
 \item{data}{A seqbf object or vector containing Bayes Factors.}
@@ -23,6 +23,8 @@ Energy is calculated using the trapezoidal integration "trapz" of the pracma-lib
 Mean and SD scores of the simulations' energies are provided.
 }
 \examples{
+\dontrun{
 r.energybf <- energybf(seqbf, sims)
 r.energybf <- energybf(tbl$bf, sims.df = newsims)
+}
 }

@@ -16,5 +16,7 @@ This function allows to plot a BF robustness analysis (bfttestRobustness())
 Returns an overview showing the the BFs for different prior parameters (location and scale)
 }
 \examples{
+\dontrun{
 plotrobust(bfRobustness(seqbf))
+}
 }

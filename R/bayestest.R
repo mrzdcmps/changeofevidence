@@ -168,10 +168,15 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #' @param nstart Minimum observations before first BF calculation ("auto" or >= 2)
 #' @param nsamples Number of MCMC samples for non-parametric tests (default = adaptive sampling based on N)
 #' @param exact Logical. If TRUE, calculates BF for all points
-#' @param parallel Logical. If TRUE (default), uses parallel processing across available 
-#'   CPU cores (detectCores() - 1), providing substantial speedup especially for 
-#'   non-parametric tests with large samples. Set to FALSE for reproducibility across 
+#' @param parallel Logical. If TRUE (default), uses parallel processing across available
+#'   CPU cores (detectCores() - 1), providing substantial speedup especially for
+#'   non-parametric tests with large samples. Set to FALSE for reproducibility across
 #'   sessions or when debugging errors.
+#' @param data_type Type of input data: "unknown" (default, auto-detected), "summed_bits"
+#'   (sum of binary bits), "continuous", or "integer".
+#' @param n_bits Number of bits summed per observation (only relevant for data_type = "summed_bits").
+#' @param bit_probability Probability of a 1-bit (only relevant for data_type = "summed_bits",
+#'   default = 0.5).
 #' @return A list of class "seqbf" containing:
 #'   \itemize{
 #'     \item t-value or W-value: Sequential test statistics
@@ -195,6 +200,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #' @note Parallel processing can significantly speed up computation, especially for non-parametric 
 #' tests with large samples. Set parallel = FALSE for reproducible results or debugging.
 #' @examples
+#' \dontrun{
 #' # Parametric one-sample test
 #' x <- rnorm(30, 0.5, 1)
 #' result1 <- bfttest(x, alternative = "greater")
@@ -204,7 +210,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #' values <- c(rnorm(15), rnorm(15, 0.5))
 #' df <- data.frame(values = values, group = group)
 #' result2 <- bfttest(values ~ group, data = df, parametric = FALSE)
-#' 
+#'
 #' # For reproducibility or debugging, disable parallel processing
 #' result2b <- bfttest(values ~ group, data = df, parametric = FALSE, parallel = FALSE)
 #'
@@ -212,6 +218,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
 #' pre <- rnorm(20)
 #' post <- pre + rnorm(20, 0.5)
 #' result3 <- bfttest(pre, post, parametric = FALSE)
+#' }
 #' @importFrom stats t.test wilcox.test var complete.cases na.omit quantile
 #' @importFrom parallel detectCores makeCluster stopCluster clusterExport
 #' @importFrom pbapply pblapply
@@ -440,7 +447,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   # Display MCMC sampling strategy for non-parametric tests
   if (!parametric) {
     if (use_adaptive_sampling) {
-      message(sprintf("MCMC samples: %d (intermediate) → %d (final)", 
+      message(sprintf("MCMC samples: %d (intermediate) \u2192 %d (final)",
                       intermediate_samples, final_samples))
     } else {
       message(sprintf("MCMC samples: %d", final_samples))
@@ -710,17 +717,17 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     message("Final Bayes Factor could not be calculated")
   } else if (final_bf > 1) {
     message(sprintf(
-      "Final Bayes Factor: BF10 = %.3f (%s = %.3f; p = %.3f; δ = %.3f)",
+      "Final Bayes Factor: BF10 = %.3f (%s = %.3f; p = %.3f; \u03b4 = %.3f)",
       final_bf, stat_name, final_stat, final_p, final_delta
     ))
   } else if (final_bf == 1) {
     message(sprintf(
-      "Final Bayes Factor: BF10 = 1 (no evidence; %s = %.3f; p = %.3f; δ = %.3f)",
+      "Final Bayes Factor: BF10 = 1 (no evidence; %s = %.3f; p = %.3f; \u03b4 = %.3f)",
       stat_name, final_stat, final_p, final_delta
     ))
   } else {
     message(sprintf(
-      "Final Bayes Factor: BF10 = %.3f; BF01 = %.3f (%s = %.3f; p = %.3f; δ = %.3f)",
+      "Final Bayes Factor: BF10 = %.3f; BF01 = %.3f (%s = %.3f; p = %.3f; \u03b4 = %.3f)",
       final_bf, 1/final_bf, stat_name, final_stat, final_p, final_delta
     ))
   }
@@ -903,13 +910,15 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
 #' @param prior.loc Range of locations of the cauchy distributed prior function.
 #' @param prior.r Range of scales of the cauchy distributed prior function.
 #' @examples
+#' \dontrun{
 #' seqbf <- bfttest(rnorm(30, 0.5, 1), alternative = "two.sided", parallel = FALSE)
-#' 
-#' bfrInformed <- bfRobustness(seqbf) 
+#'
+#' bfrInformed <- bfRobustness(seqbf)
 #' print(bfrInformed)
-#' 
-#' bfrUninformed <- bfRobustness(seqbf, informed = FALSE) 
+#'
+#' bfrUninformed <- bfRobustness(seqbf, informed = FALSE)
 #' plot(bfrInformed)
+#' }
 #' @export
 
 bfRobustness <- function(x = NULL, informed = TRUE, prior.loc = NULL, prior.r = NULL){
@@ -1060,12 +1069,12 @@ print.seqbf <- function(x, ...) {
     if (!is.na(final_delta)) {
       if (!x$parametric) {
         delta_string <- sprintf(
-          "  Effect size: δ = %.3f, 95%% CI [%.3f, %.3f]",
+          "  Effect size: \u03b4 = %.3f, 95%% CI [%.3f, %.3f]",
           final_delta, final_delta_lower, final_delta_upper
         )
       } else {
         delta_string <- sprintf(
-          "  Effect size: δ ≈ %.3f (approximation from t-statistic)",
+          "  Effect size: \u03b4 \u2248 %.3f (approximation from t-statistic)",
           final_delta
         )
       }

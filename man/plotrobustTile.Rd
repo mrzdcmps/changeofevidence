@@ -18,5 +18,7 @@ This function allows to plot a BF robustness analysis (bfttestRobustness())
 Returns a heatmap showing the the BFs for different prior parameters (location and scale)
 }
 \examples{
+\dontrun{
 plotrobustTile(bfRobustness(seqbf))
+}
 }

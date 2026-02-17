@@ -48,10 +48,18 @@ bfttest(
 
 \item{exact}{Logical. If TRUE, calculates BF for all points}
 
-\item{parallel}{Logical. If TRUE (default), uses parallel processing across available 
-CPU cores (detectCores() - 1), providing substantial speedup especially for 
-non-parametric tests with large samples. Set to FALSE for reproducibility across 
+\item{parallel}{Logical. If TRUE (default), uses parallel processing across available
+CPU cores (detectCores() - 1), providing substantial speedup especially for
+non-parametric tests with large samples. Set to FALSE for reproducibility across
 sessions or when debugging errors.}
+
+\item{data_type}{Type of input data: "unknown" (default, auto-detected), "summed_bits"
+(sum of binary bits), "continuous", or "integer".}
+
+\item{n_bits}{Number of bits summed per observation (only relevant for data_type = "summed_bits").}
+
+\item{bit_probability}{Probability of a 1-bit (only relevant for data_type = "summed_bits",
+default = 0.5).}
 }
 \value{
 A list of class "seqbf" containing:
@@ -67,6 +75,8 @@ A list of class "seqbf" containing:
     \item prior: List with prior distribution details
     \item sample size: Number of observations
     \item alternative: Chosen alternative hypothesis
+    \item data: list with \code{x} (one-sample/paired) or \code{x} and \code{y} (paired)
+      or \code{data} and \code{formula} (independent samples)
   }
 }
 \description{
@@ -85,6 +95,7 @@ Parallel processing can significantly speed up computation, especially for non-p
 tests with large samples. Set parallel = FALSE for reproducible results or debugging.
 }
 \examples{
+\dontrun{
 # Parametric one-sample test
 x <- rnorm(30, 0.5, 1)
 result1 <- bfttest(x, alternative = "greater")
@@ -102,4 +113,5 @@ result2b <- bfttest(values ~ group, data = df, parametric = FALSE, parallel = FA
 pre <- rnorm(20)
 post <- pre + rnorm(20, 0.5)
 result3 <- bfttest(pre, post, parametric = FALSE)
+}
 }

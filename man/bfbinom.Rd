@@ -39,6 +39,7 @@ A list of class "seqbf" containing:
     \item prior: list with prior distribution details
     \item sample size: total number of observations
     \item alternative: chosen alternative hypothesis
+    \item data: list with element \code{x} (the cleaned binary data vector)
   }
 }
 \description{

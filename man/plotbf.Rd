@@ -25,7 +25,8 @@ When multiple seqbf objects or vectors are provided, they will be plotted togeth
 
 \item{sims.df.col}{The name of the column of the simulation dataframe to compare to. Default is "bf".}
 
-\item{color}{A color in which the Seq BF-function will be drawn (only used for single dataset plots). Default is "black".}
+\item{color}{A color or vector of colors for the BF line(s). A single color is used for one line;
+a vector of colors applies custom colors to multiple lines (overrides the default palette).}
 
 \item{coordy}{A vector containing the minimum and maximum value of the y-coordinates to be drawn. If NULL, automatically determined.}
 
@@ -45,6 +46,7 @@ BFs above 1 indicate evidence towards H1, BFs below 1 indicate evidence towards 
 Depending on the amount of simulations, drawing might take a while. It might be wise to chose a smaller simulation set for this purpose.
 }
 \examples{
+\dontrun{
 # Single seqbf object
 plot(seqbf)
 plotbf(seqbf)
@@ -71,5 +73,5 @@ plotbf(tbl$bf, sims.df = sims1000)
 
 # Custom y-axis limits
 plotbf(bf1, bf2, coordy = c(1/30, 30))
-
+}
 }
