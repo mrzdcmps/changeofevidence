@@ -145,7 +145,7 @@ plotrw <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "rw",
     geom_hline(yintercept = 0, color = "black", linetype = "solid") +
     coord_cartesian(ylim = coordy) +
     labs(x = "Trial", y = "Cumulative Deviation", color = "") +
-    theme_minimal() +
+    theme_minimal(base_size = 14) +
     theme(legend.position = show.legend)
 
   # Add simulation data if provided
