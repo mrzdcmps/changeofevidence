@@ -378,7 +378,29 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   } else {
     stop("No valid input provided")
   }
-  
+
+  # Auto-detect data_type from the cleaned data if still unknown
+  if (data_type == "unknown") {
+    vals <- if (test_type == "independent") {
+      data[[response_var]]
+    } else if (test_type == "paired") {
+      c(x, y)
+    } else {
+      x
+    }
+
+    data_type <- if (all(vals == floor(vals), na.rm = TRUE)) {
+      if (min(vals, na.rm = TRUE) >= 0) "summed_bits" else "integer"
+    } else {
+      "continuous"
+    }
+
+    message(sprintf(
+      "data_type auto-detected as '%s'. Set data_type= explicitly in bfttest() to suppress this message.",
+      data_type
+    ))
+  }
+
   # Validate nstart doesn't exceed sample size
   if (nstart > total_sample_size) {
     stop(sprintf("nstart (%d) cannot exceed total sample size (%d)", 
