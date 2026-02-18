@@ -127,11 +127,9 @@
 .check_quantum_data <- function(required_bits, data_info, allow_fallback = TRUE) {
   if (is.null(data_info)) {
     if (allow_fallback) {
-      message("No quantum data found.")
-      message("Options:")
-      message("  1. Download full dataset: download_quantum_data()")
-      message("  2. Using pseudo-random fallback...")
-      return(list(method = "pseudo", data = NULL))
+      message(sprintf("No quantum data found (%s bits required).",
+                      format(required_bits, big.mark = ",")))
+      return(.prompt_download_or_pseudo())
     } else {
       stop("No quantum data found. Run download_quantum_data() or use method='pseudo'")
     }
@@ -141,14 +139,11 @@
     if (data_info$type == "sample") {
       if (allow_fallback) {
         message(sprintf(
-          "Sample data insufficient (%s bits needed, %s available).",
+          "Sample quantum data insufficient: %s bits needed, %s available.",
           format(required_bits, big.mark = ","),
           format(data_info$size, big.mark = ",")
         ))
-        message("\nFor more simulations, download full dataset:")
-        message("  download_quantum_data()")
-        message("\nFalling back to pseudo-random generation...")
-        return(list(method = "pseudo", data = NULL))
+        return(.prompt_download_or_pseudo())
       } else {
         stop(sprintf(
           "Sample data insufficient (%s bits needed, %s available).\nDownload full dataset: download_quantum_data()",
@@ -165,8 +160,40 @@
     }
   }
 
-  # Sufficient data - return path only (callers load data when needed)
-  return(list(method = "files", data = NULL))
+  # Sufficient data
+  return(list(method = "files", path = data_info$path))
+}
+
+# Prompt user to download full dataset or fall back to pseudo
+.prompt_download_or_pseudo <- function() {
+  if (!interactive()) {
+    stop(paste(
+      "Insufficient quantum data for the requested simulations.",
+      "In a non-interactive session, either run download_quantum_data() beforehand",
+      "or use method='pseudo'.",
+      sep = " "
+    ))
+  }
+
+  choice <- utils::menu(
+    choices = c(
+      "Download full quantum dataset (~125 MB) via download_quantum_data()",
+      "Use pseudo-random generation instead"
+    ),
+    title = "Quantum data insufficient. How would you like to proceed?"
+  )
+
+  if (choice == 1) {
+    download_quantum_data()
+    data_info <- .find_quantum_data()
+    if (is.null(data_info)) {
+      stop("Download appears to have failed. Please try again or use method='pseudo'.")
+    }
+    return(list(method = "files", path = data_info$path))
+  } else {
+    message("Using pseudo-random generation.")
+    return(list(method = "pseudo", path = NULL))
+  }
 }
 
 #' Generate Simulations for Change of Evidence Analysis
@@ -465,8 +492,8 @@ simcreate_bin <- function(N,
 
       method <- fallback_result$method
       if (method == "files") {
-        quantum_filepath <- data_info$path  # Store path, not data
-        quantum_data <- if (!parallel) readRDS(data_info$path) else NULL  # Only load for non-parallel
+        quantum_filepath <- fallback_result$path
+        quantum_data <- if (!parallel) readRDS(fallback_result$path) else NULL
       }
 
     } else {
@@ -697,8 +724,8 @@ simcreate_t <- function(N,
 
       method <- fallback_result$method
       if (method == "files") {
-        quantum_filepath <- data_info$path  # Store path, not data
-        quantum_data <- if (!parallel) readRDS(data_info$path) else NULL  # Only load for non-parallel
+        quantum_filepath <- fallback_result$path
+        quantum_data <- if (!parallel) readRDS(fallback_result$path) else NULL
       }
 
     } else {
