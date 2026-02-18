@@ -249,7 +249,20 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     data_type <- "summed_bits"
   }
 
-  # Set default bit_probability
+  # Reconcile n_bits, bit_probability, and mu for summed_bits data
+  if (data_type == "summed_bits" && !is.null(n_bits)) {
+    if (is.null(bit_probability) && mu != 0) {
+      bit_probability <- mu / n_bits          # derive from n_bits + mu
+    } else if (!is.null(bit_probability) && mu == 0) {
+      mu <- n_bits * bit_probability          # derive from n_bits + bit_probability
+    } else if (is.null(bit_probability) && mu == 0) {
+      bit_probability <- 0.5                  # default: both derived from n_bits
+      mu <- n_bits * bit_probability
+    }
+    # if both are explicitly set, use them as-is
+  }
+
+  # Set default bit_probability if still unset
   if (is.null(bit_probability)) {
     bit_probability <- 0.5
   }
