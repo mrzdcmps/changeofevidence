@@ -228,6 +228,7 @@ simcreate <- function(x = NULL,
                      filespath = NULL,
                      parallel = TRUE,
                      nstart = NULL,
+                     exact = TRUE,
                      alternative = NULL,
                      prior.loc = NULL,
                      prior.r = NULL,
@@ -248,6 +249,16 @@ simcreate <- function(x = NULL,
   if (inherits(x, "seqbf")) {
     test_type <- x$`test type`
 
+    # Warn if exact levels may not match
+    if (!exact && length(na.omit(x$BF)) > 100) {
+      warning(paste(
+        "The seqbf object has more than 100 calculated BF values (exact=TRUE data),",
+        "but simulations will use exact=FALSE (~100 steps).",
+        "This mismatch may bias CoE statistics. Consider setting exact=TRUE for simulations",
+        "or recomputing the seqbf object with exact=FALSE."
+      ))
+    }
+
     # Extract sample size
     N_to_use <- N %||% {
       sample_size <- x$`sample size`
@@ -267,6 +278,7 @@ simcreate <- function(x = NULL,
         filespath = filespath,
         parallel = parallel,
         nstart = nstart_to_use,
+        exact = exact,
         prior.r = prior.r %||% x$prior$scale,
         alternative = alternative %||% x$alternative
       ))
@@ -291,6 +303,7 @@ simcreate <- function(x = NULL,
         filespath = filespath,
         parallel = parallel,
         nstart = nstart_to_use,
+        exact = exact,
         alternative = alternative %||% x$alternative,
         prior.loc = prior.loc %||% x$prior$location,
         prior.r = prior.r %||% x$prior$scale
@@ -309,6 +322,7 @@ simcreate <- function(x = NULL,
         method = method %||% "pseudo",
         parallel = parallel,
         nstart = nstart_to_use,
+        exact = exact,
         prior.r = prior_r_cor
       ))
 
@@ -424,6 +438,7 @@ simcreate_bin <- function(N,
                          filespath = NULL,
                          parallel = TRUE,
                          nstart = 5,
+                         exact = TRUE,
                          prior.r = 0.1,
                          alternative = c("two.sided", "less", "greater")) {
 
@@ -529,6 +544,7 @@ simcreate_bin <- function(N,
       p = p,
       prior.r = prior.r,
       nstart = nstart,
+      exact = exact,
       alternative = alternative
     )$BF)
 
@@ -541,7 +557,7 @@ simcreate_bin <- function(N,
     message(sprintf("Generating %d binomial simulations (N=%d) using %d cores...", n.sims, N, cores))
     cl <- parallel::makeCluster(cores)
     parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", ".quiet",
-                                   "N", "p", "method", "nstart", "prior.r", "alternative",
+                                   "N", "p", "method", "nstart", "exact", "prior.r", "alternative",
                                    ".generate_binary_quantis"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
@@ -607,6 +623,7 @@ simcreate_t <- function(N,
                        filespath = NULL,
                        parallel = TRUE,
                        nstart = 5,
+                       exact = TRUE,
                        alternative = c("two.sided", "less", "greater"),
                        prior.loc = 0,
                        prior.r = 0.353) {
@@ -784,6 +801,7 @@ simcreate_t <- function(N,
       prior.r = prior.r,
       alternative = alternative,
       nstart = nstart,
+      exact = exact,
       parallel = FALSE
     )$BF)
 
@@ -798,7 +816,7 @@ simcreate_t <- function(N,
     cl <- parallel::makeCluster(cores)
     parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", ".quiet",
                                    "N", "mu", "data_type", "n_bits", "p", "int_min", "int_max",
-                                   "trials", "method", "nstart", "prior.loc", "prior.r", "alternative",
+                                   "trials", "method", "nstart", "exact", "prior.loc", "prior.r", "alternative",
                                    ".generate_binary_quantis", ".generate_float_quantis"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
@@ -847,6 +865,7 @@ simcreate_cor <- function(N,
                          method = c("pseudo", "quantis"),
                          parallel = TRUE,
                          nstart = 5,
+                         exact = TRUE,
                          prior.r = 0.353) {
 
   method <- match.arg(method)
@@ -895,7 +914,8 @@ simcreate_cor <- function(N,
     sim$bf <- .quiet(changeofevidence::bfcor(
       x, y,
       prior.r = prior.r,
-      nstart = nstart
+      nstart = nstart,
+      exact = exact
     )$BF)
 
     return(sim)
@@ -907,7 +927,7 @@ simcreate_cor <- function(N,
     message(sprintf("Generating %d correlation simulations (N=%d) using %d cores...", n.sims, N, cores))
     cl <- parallel::makeCluster(cores)
     parallel::clusterExport(cl, c("generate_simulation", ".quiet", "N", "rho",
-                                   "method", "nstart", "prior.r", ".generate_float_quantis"),
+                                   "method", "nstart", "exact", "prior.r", ".generate_float_quantis"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
     sims_list <- pbapply::pblapply(1:n.sims, generate_simulation, cl = cl)
