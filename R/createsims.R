@@ -93,6 +93,24 @@
 # NULL coalescing operator
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
+# Find the simplest rational approximation p_num/p_den for a float p.
+# Tries denominators 1..max_den and returns the first where |round(p*d)/d - p| < tol.
+# Works reliably for any p that was itself specified as a simple fraction (0.5, 0.6, 0.3, etc.).
+.float_to_rational <- function(p, max_den = 10000, tol = .Machine$double.eps^0.5) {
+  for (d in 1:max_den) {
+    n <- round(p * d)
+    if (abs(n / d - p) < tol) {
+      g <- function(a, b) if (b == 0L) a else Recall(b, a %% b)  # GCD via Euclidean algorithm
+      gc <- g(as.integer(n), as.integer(d))
+      return(list(num = as.integer(n / gc), den = as.integer(d / gc)))
+    }
+  }
+  stop(sprintf(
+    "Cannot represent p=%.15g as a fraction with denominator <= %d. Supply p_num and p_den explicitly.",
+    p, max_den
+  ))
+}
+
 # Helper to find quantum data file automatically
 .find_quantum_data <- function() {
   # Priority order:
@@ -480,13 +498,20 @@ simcreate_bin <- function(N,
   if (N < 3) stop("N must be at least 3")
   if (p <= 0 || p >= 1) stop("p must be between 0 and 1")
 
+  # Infer exact rational p_num/p_den from the float p, then set up rejection sampling.
+  rat <- .float_to_rational(p)
+  p_num <- rat$num
+  p_den <- rat$den
+  valid_range <- (65536L %/% p_den) * p_den   # largest multiple of p_den <= 65536
+  chunks_per_sim <- ceiling(N * 1.01)          # 1% buffer absorbs rare rejections
+
   # Auto-detect quantum data and handle fallback
   quantum_data <- NULL
   quantum_filepath <- NULL
   if (method == "files") {
     if (is.null(filespath)) {
       # Automatic detection with smart fallback
-      required_bits <- N * n.sims
+      required_bits <- chunks_per_sim * n.sims * 16L
       data_info <- .find_quantum_data()
       fallback_result <- .check_quantum_data(required_bits, data_info, allow_fallback = TRUE)
 
@@ -503,7 +528,7 @@ simcreate_bin <- function(N,
       }
       quantum_filepath <- filespath
       quantum_data <- if (!parallel) readRDS(filespath) else NULL  # Only load for non-parallel
-      required_bits <- N * n.sims
+      required_bits <- chunks_per_sim * n.sims * 16L
       if (!parallel) {
         if (length(quantum_data) < required_bits) {
           stop(sprintf(
@@ -531,7 +556,7 @@ simcreate_bin <- function(N,
   # For parallel + files: pre-load only the required bits (avoids per-worker full-file reads)
   quantum_bits <- NULL
   if (method == "files" && parallel && !is.null(quantum_filepath)) {
-    required_bits <- N * n.sims
+    required_bits <- chunks_per_sim * n.sims * 16L
     all_bits <- readRDS(quantum_filepath)
     quantum_bits <- all_bits[1:required_bits]
     rm(all_bits)
@@ -539,19 +564,27 @@ simcreate_bin <- function(N,
 
   # Define single simulation function
   generate_simulation <- function(i) {
-    # Generate binary data
+    # Generate binary data with exact probability p_num/p_den via rejection sampling.
+    # For method="files"/"quantis": draw 16-bit integers uniform in [0, 65535], reject
+    # those >= valid_range, then output 1 iff accepted_int %% p_den < p_num.
     if (method == "pseudo") {
       sim_data <- rbinom(N, 1, p)
     } else if (method == "files") {
-      start_idx <- (i - 1) * N + 1
-      end_idx <- i * N
+      start_idx <- (i - 1) * chunks_per_sim * 16L + 1
+      end_idx <- i * chunks_per_sim * 16L
       if (!is.null(quantum_bits)) {
-        sim_data <- quantum_bits[start_idx:end_idx]  # Pre-sliced subset (parallel)
+        raw_quantum <- quantum_bits[start_idx:end_idx]
       } else {
-        sim_data <- quantum_data[start_idx:end_idx]  # Full data (non-parallel)
+        raw_quantum <- quantum_data[start_idx:end_idx]
       }
+      bit_groups <- matrix(raw_quantum, nrow = chunks_per_sim, ncol = 16L, byrow = TRUE)
+      integers <- as.numeric(bit_groups %*% 2^(0:15))
+      accepted <- integers[integers < valid_range]
+      sim_data <- as.integer(accepted[1:N] %% p_den < p_num)
     } else if (method == "quantis") {
-      sim_data <- .generate_binary_quantis(N, min = 0, max = 1)
+      raw_ints <- .generate_binary_quantis(chunks_per_sim, min = 0L, max = 65535L)
+      accepted <- raw_ints[raw_ints < valid_range]
+      sim_data <- as.integer(accepted[1:N] %% p_den < p_num)
     }
 
     # Create dataframe
@@ -584,7 +617,8 @@ simcreate_bin <- function(N,
     message(sprintf("Generating %d binomial simulations (N=%d) using %d cores...", n.sims, N, cores))
     cl <- parallel::makeCluster(cores)
     parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", ".quiet",
-                                   "N", "p", "method", "nstart", "exact", "prior.r", "alternative",
+                                   "N", "p", "p_num", "p_den", "valid_range", "chunks_per_sim",
+                                   "method", "nstart", "exact", "prior.r", "alternative",
                                    ".generate_binary_quantis"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
@@ -712,13 +746,24 @@ simcreate_t <- function(N,
     stop(sprintf("method='files' only supported for data_type='summed_bits'. You specified '%s'", data_type))
   }
 
+  # For p != 0.5, use 2-byte integers (uniform in [0, 65535]) with rejection sampling to
+  # achieve exact Bernoulli(p) where p = mu/n_bits (a rational number with denominator n_bits).
+  # Rejection rate = (65536 mod n_bits) / 65536 <= (n_bits-1)/65536  (< 0.002 for n_bits <= 100).
+  BITS_PER_OUTPUT <- if (method == "files" && data_type == "summed_bits" && !isTRUE(all.equal(p, 0.5))) 16L else 1L
+  rat         <- if (BITS_PER_OUTPUT == 16L) .float_to_rational(p) else NULL
+  p_num       <- if (BITS_PER_OUTPUT == 16L) rat$num else NULL
+  p_den       <- if (BITS_PER_OUTPUT == 16L) rat$den else NULL
+  valid_range <- if (BITS_PER_OUTPUT == 16L) (65536L %/% p_den) * p_den else NULL     # largest multiple of p_den <= 65536
+  # Draw slightly more chunks than trials to absorb rare rejections (1% buffer >> expected rejections)
+  chunks_per_sim <- if (BITS_PER_OUTPUT == 16L) ceiling(trials * 1.01) else trials
+
   # Auto-detect quantum data and handle fallback
   quantum_data <- NULL
   quantum_filepath <- NULL
   if (method == "files") {
     if (is.null(filespath)) {
       # Automatic detection with smart fallback
-      required_bits <- trials * n.sims
+      required_bits <- chunks_per_sim * n.sims * BITS_PER_OUTPUT
       data_info <- .find_quantum_data()
       fallback_result <- .check_quantum_data(required_bits, data_info, allow_fallback = TRUE)
 
@@ -735,7 +780,7 @@ simcreate_t <- function(N,
       }
       quantum_filepath <- filespath
       quantum_data <- if (!parallel) readRDS(filespath) else NULL  # Only load for non-parallel
-      required_bits <- trials * n.sims
+      required_bits <- chunks_per_sim * n.sims * BITS_PER_OUTPUT
       if (!parallel) {
         if (length(quantum_data) < required_bits) {
           stop(sprintf(
@@ -762,7 +807,7 @@ simcreate_t <- function(N,
   # For parallel + files: pre-load only the required bits (avoids per-worker full-file reads)
   quantum_bits <- NULL
   if (method == "files" && parallel && !is.null(quantum_filepath)) {
-    required_bits <- trials * n.sims
+    required_bits <- chunks_per_sim * n.sims * BITS_PER_OUTPUT
     all_bits <- readRDS(quantum_filepath)
     quantum_bits <- all_bits[1:required_bits]
     rm(all_bits)
@@ -776,15 +821,33 @@ simcreate_t <- function(N,
       if (method == "pseudo") {
         raw_bits <- rbinom(trials, 1, p)
       } else if (method == "files") {
-        start_idx <- (i - 1) * trials + 1
-        end_idx <- i * trials
+        start_idx <- (i - 1) * chunks_per_sim * BITS_PER_OUTPUT + 1
+        end_idx <- i * chunks_per_sim * BITS_PER_OUTPUT
         if (!is.null(quantum_bits)) {
-          raw_bits <- quantum_bits[start_idx:end_idx]  # Pre-sliced subset (parallel)
+          raw_quantum <- quantum_bits[start_idx:end_idx]  # Pre-sliced subset (parallel)
         } else {
-          raw_bits <- quantum_data[start_idx:end_idx]  # Full data (non-parallel)
+          raw_quantum <- quantum_data[start_idx:end_idx]  # Full data (non-parallel)
+        }
+        if (BITS_PER_OUTPUT == 1L) {
+          raw_bits <- raw_quantum
+        } else {
+          # Convert 16-bit chunks to integers uniform in [0, 65535],
+          # then apply rejection sampling for exact Bernoulli(p_num/p_den).
+          n_chunks <- length(raw_quantum) %/% 16L
+          bit_groups <- matrix(raw_quantum[1:(n_chunks * 16L)], nrow = n_chunks, ncol = 16L, byrow = TRUE)
+          integers <- as.numeric(bit_groups %*% 2^(0:15))
+          # Reject integers >= valid_range so the remainder is exactly uniform in [0, p_den)
+          accepted <- integers[integers < valid_range]
+          raw_bits <- as.integer(accepted[1:trials] %% p_den < p_num)
         }
       } else if (method == "quantis") {
-        raw_bits <- .generate_binary_quantis(trials, min = 0, max = 1)
+        if (isTRUE(all.equal(p, 0.5))) {
+          raw_bits <- .generate_binary_quantis(trials, min = 0, max = 1)
+        } else {
+          # Use float generation + threshold for arbitrary p
+          uniform_vals <- .generate_float_quantis(trials, min = 0, max = 1)
+          raw_bits <- as.integer(uniform_vals < p)
+        }
       }
 
       # Sum in groups
@@ -844,7 +907,9 @@ simcreate_t <- function(N,
     parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", ".quiet",
                                    "N", "mu", "data_type", "n_bits", "p", "int_min", "int_max",
                                    "trials", "method", "nstart", "exact", "prior.loc", "prior.r", "alternative",
-                                   ".generate_binary_quantis", ".generate_float_quantis"),
+                                   ".generate_binary_quantis", ".generate_float_quantis",
+                                   "BITS_PER_OUTPUT", "chunks_per_sim",
+                                   "p_num", "p_den", "valid_range"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
     sims_list <- pbapply::pblapply(1:n.sims, generate_simulation, cl = cl)
