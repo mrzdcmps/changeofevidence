@@ -490,11 +490,6 @@ simcreate_bin <- function(N,
   method <- match.arg(method)
   alternative <- match.arg(alternative)
 
-  if (method == "quantis" && parallel) {
-    message("method='quantis' requires hardware device access and cannot be parallelized. Setting parallel=FALSE.")
-    parallel <- FALSE
-  }
-
   if (N < 3) stop("N must be at least 3")
   if (p <= 0 || p >= 1) stop("p must be between 0 and 1")
 
@@ -562,6 +557,15 @@ simcreate_bin <- function(N,
     rm(all_bits)
   }
 
+  # For quantis: pre-generate all integers from device in one sequential call,
+  # then parallel workers access their slice by index — no per-worker device access needed.
+  quantum_int <- NULL
+  if (method == "quantis") {
+    total_ints <- chunks_per_sim * n.sims
+    message(sprintf("Generating %d integers from Quantis device...", total_ints))
+    quantum_int <- .generate_binary_quantis(total_ints, min = 0L, max = 65535L)
+  }
+
   # Define single simulation function
   generate_simulation <- function(i) {
     # Generate binary data with exact probability p_num/p_den via rejection sampling.
@@ -582,7 +586,9 @@ simcreate_bin <- function(N,
       accepted <- integers[integers < valid_range]
       sim_data <- as.integer(accepted[1:N] %% p_den < p_num)
     } else if (method == "quantis") {
-      raw_ints <- .generate_binary_quantis(chunks_per_sim, min = 0L, max = 65535L)
+      start_idx <- (i - 1) * chunks_per_sim + 1
+      end_idx <- i * chunks_per_sim
+      raw_ints <- quantum_int[start_idx:end_idx]
       accepted <- raw_ints[raw_ints < valid_range]
       sim_data <- as.integer(accepted[1:N] %% p_den < p_num)
     }
@@ -616,10 +622,9 @@ simcreate_bin <- function(N,
     cores <- parallel::detectCores() - 1
     message(sprintf("Generating %d binomial simulations (N=%d) using %d cores...", n.sims, N, cores))
     cl <- parallel::makeCluster(cores)
-    parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", ".quiet",
+    parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", "quantum_int", ".quiet",
                                    "N", "p", "p_num", "p_den", "valid_range", "chunks_per_sim",
-                                   "method", "nstart", "exact", "prior.r", "alternative",
-                                   ".generate_binary_quantis"),
+                                   "method", "nstart", "exact", "prior.r", "alternative"),
                            envir = environment())
     parallel::clusterEvalQ(cl, library(changeofevidence))
     sims_list <- pbapply::pblapply(1:n.sims, generate_simulation, cl = cl)
@@ -692,10 +697,6 @@ simcreate_t <- function(N,
   method <- match.arg(method)
   data_type <- match.arg(data_type)
 
-  if (method == "quantis" && parallel) {
-    message("method='quantis' requires hardware device access and cannot be parallelized. Setting parallel=FALSE.")
-    parallel <- FALSE
-  }
   alternative <- match.arg(alternative)
 
   # Infer data_type if unknown
@@ -813,6 +814,26 @@ simcreate_t <- function(N,
     rm(all_bits)
   }
 
+  # For quantis: pre-generate all data from device in one sequential call,
+  # then parallel workers access their slice by index — no per-worker device access needed.
+  quantum_int <- NULL
+  if (method == "quantis") {
+    if (data_type == "summed_bits") {
+      total_ints <- chunks_per_sim * n.sims
+      max_val <- if (BITS_PER_OUTPUT == 16L) 65535L else 1L
+      message(sprintf("Generating %d integers from Quantis device...", total_ints))
+      quantum_int <- .generate_binary_quantis(total_ints, min = 0L, max = max_val)
+    } else if (data_type == "continuous") {
+      total_floats <- N * n.sims
+      message(sprintf("Generating %d floats from Quantis device...", total_floats))
+      quantum_int <- .generate_float_quantis(total_floats, min = 0, max = 1)
+    } else if (data_type == "integer") {
+      total_ints <- N * n.sims
+      message(sprintf("Generating %d integers from Quantis device...", total_ints))
+      quantum_int <- .generate_binary_quantis(total_ints, min = int_min, max = int_max)
+    }
+  }
+
   # Define single simulation function
   generate_simulation <- function(i) {
     # Generate data based on type
@@ -841,12 +862,14 @@ simcreate_t <- function(N,
           raw_bits <- as.integer(accepted[1:trials] %% p_den < p_num)
         }
       } else if (method == "quantis") {
-        if (isTRUE(all.equal(p, 0.5))) {
-          raw_bits <- .generate_binary_quantis(trials, min = 0, max = 1)
+        start_idx <- (i - 1) * chunks_per_sim + 1
+        end_idx <- i * chunks_per_sim
+        raw_ints <- quantum_int[start_idx:end_idx]
+        if (BITS_PER_OUTPUT == 1L) {
+          raw_bits <- raw_ints  # pre-loaded 0/1 bits (p = 0.5)
         } else {
-          # Use float generation + threshold for arbitrary p
-          uniform_vals <- .generate_float_quantis(trials, min = 0, max = 1)
-          raw_bits <- as.integer(uniform_vals < p)
+          accepted <- raw_ints[raw_ints < valid_range]
+          raw_bits <- as.integer(accepted[1:trials] %% p_den < p_num)
         }
       }
 
@@ -859,8 +882,7 @@ simcreate_t <- function(N,
       if (method == "pseudo") {
         sim_data <- rnorm(N, mean = mu, sd = 1)
       } else if (method == "quantis") {
-        # Generate uniform then transform to normal
-        uniform_data <- .generate_float_quantis(N, min = 0, max = 1)
+        uniform_data <- quantum_int[(i - 1) * N + 1:(i * N)]
         sim_data <- qnorm(uniform_data, mean = mu, sd = 1)
       }
 
@@ -869,7 +891,7 @@ simcreate_t <- function(N,
       if (method == "pseudo") {
         sim_data <- sample(int_min:int_max, N, replace = TRUE)
       } else if (method == "quantis") {
-        sim_data <- .generate_binary_quantis(N, min = int_min, max = int_max)
+        sim_data <- quantum_int[(i - 1) * N + 1:(i * N)]
       }
     }
 
@@ -904,10 +926,9 @@ simcreate_t <- function(N,
     message(sprintf("Generating %d t-test simulations (N=%d, data_type=%s) using %d cores...",
                    n.sims, N, data_type, cores))
     cl <- parallel::makeCluster(cores)
-    parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", ".quiet",
+    parallel::clusterExport(cl, c("generate_simulation", "quantum_bits", "quantum_data", "quantum_int", ".quiet",
                                    "N", "mu", "data_type", "n_bits", "p", "int_min", "int_max",
                                    "trials", "method", "nstart", "exact", "prior.loc", "prior.r", "alternative",
-                                   ".generate_binary_quantis", ".generate_float_quantis",
                                    "BITS_PER_OUTPUT", "chunks_per_sim",
                                    "p_num", "p_den", "valid_range"),
                            envir = environment())
