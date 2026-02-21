@@ -11,6 +11,7 @@ simcreate_cor(
   method = c("pseudo", "quantis"),
   parallel = TRUE,
   nstart = 5,
+  exact = TRUE,
   prior.r = 0.353
 )
 }

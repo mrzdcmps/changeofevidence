@@ -750,7 +750,7 @@ simcreate_t <- function(N,
   # For p != 0.5, use 2-byte integers (uniform in [0, 65535]) with rejection sampling to
   # achieve exact Bernoulli(p) where p = mu/n_bits (a rational number with denominator n_bits).
   # Rejection rate = (65536 mod n_bits) / 65536 <= (n_bits-1)/65536  (< 0.002 for n_bits <= 100).
-  BITS_PER_OUTPUT <- if (method == "files" && data_type == "summed_bits" && !isTRUE(all.equal(p, 0.5))) 16L else 1L
+  BITS_PER_OUTPUT <- if ((method == "files" || method == "quantis") && data_type == "summed_bits" && !isTRUE(all.equal(p, 0.5))) 16L else 1L
   rat         <- if (BITS_PER_OUTPUT == 16L) .float_to_rational(p) else NULL
   p_num       <- if (BITS_PER_OUTPUT == 16L) rat$num else NULL
   p_den       <- if (BITS_PER_OUTPUT == 16L) rat$den else NULL

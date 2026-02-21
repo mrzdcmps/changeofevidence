@@ -17,6 +17,7 @@ simcreate_t(
   filespath = NULL,
   parallel = TRUE,
   nstart = 5,
+  exact = TRUE,
   alternative = c("two.sided", "less", "greater"),
   prior.loc = 0,
   prior.r = 0.353

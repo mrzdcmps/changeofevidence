@@ -12,6 +12,7 @@ simcreate_bin(
   filespath = NULL,
   parallel = TRUE,
   nstart = 5,
+  exact = TRUE,
   prior.r = 0.1,
   alternative = c("two.sided", "less", "greater")
 )
