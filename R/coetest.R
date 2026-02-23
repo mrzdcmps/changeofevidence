@@ -29,7 +29,7 @@ maxbf <- function(data, sims.df = NULL) {
   sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm = TRUE)
   max_data_bf <- max(data)
   max_data_bf_n <- which.max(data)
-  sims_with_higher_bf <- (sum(sim.maxbf >= max_data_bf) / u.nsims) * 100  # Percentage
+  sims_with_higher_bf <- (sum(sim.maxbf >= max_data_bf, na.rm = TRUE) / u.nsims) * 100  # Percentage
   
   maxbf.out <- list(
     MaxBF = max_data_bf,
@@ -82,8 +82,8 @@ energybf <- function(data, sims.df = NULL) {
   #sim.energy <- pbapply::pbtapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
   sim.energy <- tapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
   real_energy <- pracma::trapz(as.numeric(1:length(data)), data) - nullenergy
-  
-  sims_with_higher_energy <- (sum(sim.energy >= real_energy) / u.nsims) * 100  # Percentage
+
+  sims_with_higher_energy <- (sum(sim.energy >= real_energy, na.rm = TRUE) / u.nsims) * 100  # Percentage
   
   energybf.out <- list(
     Energy = real_energy,
@@ -178,8 +178,8 @@ ffttest <- function(data, sims.df = NULL, sims.df.col = "density.bf", top5 = FAL
   
   sims.df <- sims.df[sims.df$index <= length(data), ]
   simampsum <- tapply(sims.df[[sims.df.col]], sims.df$simid, sum)
-  
-  sims_with_higher_amp <- (sum(ampsum <= simampsum) / u.nsims) * 100  # Percentage
+
+  sims_with_higher_amp <- (sum(ampsum <= simampsum, na.rm = TRUE) / u.nsims) * 100  # Percentage
   
   fftbf.out <- list(
     Amplitude_sum = ampsum,
@@ -322,9 +322,12 @@ coe <- function(data, sims.df) {
     p_fft <- ffttest_result$Sims_with_higher_Amplitude / 100
 
     # Calculate harmonic mean: n / sum(1/p_i)
-    # Handle edge case where any p-value is 0
+    # Handle edge cases where any p-value is 0 or NA
     p_values <- c(p_maxbf, p_energy, p_fft)
-    if (any(p_values == 0)) {
+    if (any(is.na(p_values))) {
+      warning("One or more p-values are NA. Check your simulation data.")
+      harmonic_p <- NA
+    } else if (any(p_values == 0)) {
       harmonic_p <- 0
     } else {
       harmonic_p <- 3 / sum(1 / p_values)
