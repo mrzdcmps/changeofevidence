@@ -389,10 +389,17 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
     df <- NULL
     for(i in 1:length(data)){
       ydat <- data[[i]]
+      # Ensure ydat is a simple numeric vector
+      if (is.data.frame(ydat)) {
+        ydat <- as.vector(as.matrix(ydat))
+      } else if (is.list(ydat) && !is.data.frame(ydat)) {
+        ydat <- unlist(ydat)
+      }
+      ydat <- as.numeric(ydat)
       if(!is.null(names(data))){
-        ndf <- data.frame(element = as.factor(names(data)[i]), x = 1:length(ydat), y = ydat)
+        ndf <- data.frame(element = as.factor(rep(names(data)[i], length(ydat))), x = 1:length(ydat), y = ydat)
       } else{
-        ndf <- data.frame(element = paste0("data ", i), x = 1:length(ydat), y = ydat)
+        ndf <- data.frame(element = rep(paste0("data ", i), length(ydat)), x = 1:length(ydat), y = ydat)
       }
       df <- rbind(df, ndf)
       df <- df[!is.na(df$y), ]

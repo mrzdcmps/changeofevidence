@@ -22,9 +22,15 @@ maxbf <- function(data, sims.df = NULL) {
 
   simids <- unique(sims.df$simid)
   u.nsims <- length(simids)
-  
+
   if (!is.numeric(data)) stop("Data must be a numeric vector!")
   if (length(data) != nrow(sims.df[sims.df$simid == simids[1], ])) stop("Data is not the same length as simulations!")
+
+  # Replace early NAs with BF=1
+  data <- .replace_early_na(data)
+  if ("bf" %in% names(sims.df)) {
+    sims.df$bf <- unlist(tapply(sims.df$bf, sims.df$simid, .replace_early_na))
+  }
   
   sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm = TRUE)
   max_data_bf <- max(data)
@@ -43,6 +49,18 @@ maxbf <- function(data, sims.df = NULL) {
   return(maxbf.out)
 }
 
+
+### Helper function: Replace early NAs with BF=1
+.replace_early_na <- function(bf_vector) {
+  if (!any(is.na(bf_vector))) {
+    return(bf_vector)
+  }
+  # Find the last position with NA
+  last_na_pos <- max(which(is.na(bf_vector)))
+  # Replace all values up to and including last NA with 1
+  bf_vector[1:last_na_pos] <- 1
+  return(bf_vector)
+}
 
 ### Helper function: Calculate Energy
 .energycount <- function(data, nullenergy = nullenergy){
@@ -75,9 +93,15 @@ energybf <- function(data, sims.df = NULL) {
   simids <- unique(sims.df$simid)
   u.nsims <- length(simids)
   nullenergy <- length(data) - 1
-  
+
   if (!is.numeric(data)) stop("Data must be a numeric vector!")
   if (length(data) != nrow(sims.df[sims.df$simid == simids[1], ])) stop("Data is not the same length as simulations!")
+
+  # Replace early NAs with BF=1
+  data <- .replace_early_na(data)
+  if ("bf" %in% names(sims.df)) {
+    sims.df$bf <- unlist(tapply(sims.df$bf, sims.df$simid, .replace_early_na))
+  }
   
   #sim.energy <- pbapply::pbtapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
   sim.energy <- tapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
@@ -256,18 +280,26 @@ coe <- function(data, sims.df) {
   if (inherits(data, "seqbf")) {
     data <- data$BF
   }
-  
+
   # Validate inputs
   if (!is.numeric(data)) {
     stop("data must be a numeric vector or seqbf object")
   }
-  
+
   if (!is.data.frame(sims.df)) {
     stop("sims.df must be a dataframe")
   }
-  
+
   if (!"simid" %in% names(sims.df)) {
     stop("sims.df must contain a 'simid' column")
+  }
+
+  # Step 1a: Replace early NAs with BF=1 in empirical data
+  data <- .replace_early_na(data)
+
+  # Step 1b: Replace early NAs with BF=1 in simulation data
+  if ("bf" %in% names(sims.df)) {
+    sims.df$bf <- unlist(tapply(sims.df$bf, sims.df$simid, .replace_early_na))
   }
   
   # Step 2: Check if sims.df matches the data length
@@ -418,63 +450,163 @@ print.coe <- function(x, ..., header = TRUE) {
 
 #' @export
 #' @method plot coe
-plot.coe <- function(x, sims = NULL, ...) {
+plot.coe <- function(x, sims.df = NULL, ...) {
   if (!inherits(x, "coe")) {
     stop("Object must be of class 'coe' to plot.")
   }
-  
-  # Aggregate coe object \u2014 build plots
+
+  # Helper function to convert percentage to p-value
+  percentile_to_pvalue <- function(percentile) {
+    percentile / 100
+  }
+
+  # Aggregate coe object — build plots
   if (!is.null(x$maxbf) || !is.null(x$energybf) || !is.null(x$ffttest)) {
-    plots_row1 <- list()
-    plot_row2 <- NULL
-    
-    common_theme <- ggplot2::theme(text = ggplot2::element_text(size = 10))
-    
+
+    common_theme <- ggplot2::theme(
+      text = ggplot2::element_text(size = 10),
+      plot.title = ggplot2::element_text(size = 10, face = "bold")
+    )
+
+    plots <- list()
+
+    # Panel 1: BF trajectory with MaxBF marked
     if (!is.null(x$maxbf)) {
-      p1 <- plotbf(x$maxbf$data, sims, show_annotations = FALSE) +
-        ggplot2::geom_point(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF), color = "red", size = 3) +
-        ggplot2::geom_text(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF,
-                      label = paste("Max BF:", round(x$maxbf$MaxBF, 2))), vjust = -1, size = 3) +
-        ggplot2::ggtitle("Maximum BF") +
+      p_maxbf <- percentile_to_pvalue(x$maxbf$Sims_with_higher_BFs)
+      # Only add simulations if sims argument is provided
+      # Filter out non-positive BF values to avoid log scale issues
+      if (!is.null(sims.df)) {
+        sims_subset <- subset(sims.df, simid <= 100 & !is.na(bf) & bf > 0)
+      } else {
+        sims_subset <- NULL
+      }
+      p1 <- plotbf(x$maxbf$data, sims.df = sims_subset, show_annotations = FALSE) +
+        ggplot2::geom_point(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF),
+                           color = "red", size = 3) +
+        ggplot2::ggtitle(sprintf("Sequential BF (Max = %.2f, p = %.3f)",
+                                x$maxbf$MaxBF, p_maxbf)) +
         ggplot2::theme(legend.position = "none") +
         common_theme
-      plots_row1 <- c(plots_row1, list(p1))
+      plots <- c(plots, list(p1))
     }
-    
-    if (!is.null(x$energybf)) {
-      p2 <- plotbf(x$energybf$data, show_annotations = FALSE) +
-        ggplot2::geom_ribbon(
-          aes(x = 1:length(x$energybf$data), ymin = pmin(x$energybf$data, 1), ymax = 1),
-          fill = "red", alpha = 0.3
-        ) +
-        ggplot2::geom_ribbon(
-          aes(x = 1:length(x$energybf$data), ymin = 1, ymax = pmax(x$energybf$data, 1)),
-          fill = "green", alpha = 0.3
-        ) +
-        ggplot2::ggtitle("Energy of BF") +
-        ggplot2::theme(axis.title.y = element_blank()) +  # remove y-axis label
+
+    # Panel 2: MaxBF distribution comparison (if sims available)
+    if (!is.null(x$maxbf) && !is.null(sims.df)) {
+      # Calculate simulation max BFs, filtering out non-positive and non-finite values
+      sim_maxbfs <- tapply(sims.df$bf, sims.df$simid, function(x) {
+        valid_bfs <- x[!is.na(x) & is.finite(x) & x > 0]
+        if (length(valid_bfs) > 0) max(valid_bfs) else NA
+      })
+      # Remove NA and non-positive values
+      sim_maxbfs <- sim_maxbfs[!is.na(sim_maxbfs) & is.finite(sim_maxbfs) & sim_maxbfs > 0]
+      p_maxbf <- percentile_to_pvalue(x$maxbf$Sims_with_higher_BFs)
+
+      p2 <- ggplot2::ggplot() +
+        ggplot2::geom_histogram(aes(x = sim_maxbfs), bins = 30,
+                               fill = "gray70", color = "gray30", alpha = 0.7) +
+        ggplot2::geom_vline(xintercept = x$maxbf$MaxBF, color = "red",
+                           linewidth = 1.5, linetype = "solid") +
+        ggplot2::geom_text(aes(x = x$maxbf$MaxBF, y = Inf,
+                              label = sprintf("Observed\n%.2f", x$maxbf$MaxBF)),
+                          vjust = 1.5, hjust = -0.1, color = "red", size = 3) +
+        ggplot2::scale_x_log10() +
+        ggplot2::labs(x = "Maximum BF (log scale)", y = "Count",
+                     title = sprintf("Max BF Distribution (p = %.3f)", p_maxbf)) +
+        ggplot2::theme_minimal() +
         common_theme
-      plots_row1 <- c(plots_row1, list(p2))
+      plots <- c(plots, list(p2))
     }
-    
-    if (!is.null(x$ffttest)) {
-      p3 <- plotfft(x$ffttest$data, sims) +
-        ggplot2::ggtitle("FFT Test") +
+
+    # Panel 3: Energy distribution comparison (if sims available)
+    if (!is.null(x$energybf) && !is.null(sims.df)) {
+      # Calculate simulation energies
+      nullenergy <- length(x$energybf$data) - 1
+      # Clean simulation BFs before calculating energies
+      sims_clean <- sims.df
+      sims_clean$bf <- unlist(tapply(sims.df$bf, sims.df$simid, .replace_early_na))
+
+      sim_energies <- tapply(sims_clean$bf, sims_clean$simid, function(bf) {
+        pracma::trapz(as.numeric(1:length(bf)), bf) - nullenergy
+      })
+      # Remove non-finite values
+      sim_energies <- sim_energies[is.finite(sim_energies)]
+      p_energy <- percentile_to_pvalue(x$energybf$Sims_with_higher_energy)
+
+      # Determine if we can use log scale (all values positive) or need pseudo-log
+      all_positive <- all(sim_energies > 0) && x$energybf$Energy > 0
+
+      p3 <- ggplot2::ggplot() +
+        ggplot2::geom_histogram(aes(x = sim_energies), bins = 30,
+                               fill = "gray70", color = "gray30", alpha = 0.7) +
+        ggplot2::geom_vline(xintercept = x$energybf$Energy, color = "red",
+                           linewidth = 1.5, linetype = "solid") +
+        ggplot2::geom_text(aes(x = x$energybf$Energy, y = Inf,
+                              label = sprintf("Observed\n%.1f", x$energybf$Energy)),
+                          vjust = 1.5, hjust = ifelse(x$energybf$Energy > median(sim_energies, na.rm = TRUE), -0.1, 1.1),
+                          color = "red", size = 3) +
+        ggplot2::labs(x = "Energy (log scale)", y = "Count",
+                     title = sprintf("Energy Distribution (p = %.3f)", p_energy)) +
+        ggplot2::theme_minimal() +
         common_theme
-      plot_row2 <- p3
+
+      # Use appropriate scale based on data
+      if (all_positive) {
+        p3 <- p3 + ggplot2::scale_x_log10()
+      } else {
+        # Use pseudo-log for data containing zero or negative values
+        p3 <- p3 + ggplot2::scale_x_continuous(
+          trans = scales::pseudo_log_trans(base = 10),
+          labels = function(x) sprintf("%.1f", x)
+        )
+      }
+
+      plots <- c(plots, list(p3))
     }
-    
-    # Combine layout
-    if (length(plots_row1) > 0 && !is.null(plot_row2)) {
-      combined <- (patchwork::wrap_plots(plots_row1) / plot_row2)
-    } else if (length(plots_row1) > 0) {
-      combined <- patchwork::wrap_plots(plots_row1)
-    } else if (!is.null(plot_row2)) {
-      combined <- plot_row2
+
+    # Panel 4: P-value summary
+    if (!is.null(x$harmonic_p)) {
+      p_data <- data.frame(
+        Test = c("MaxBF", "Energy", "FFT", "Harmonic\nMean"),
+        p_value = c(
+          percentile_to_pvalue(x$maxbf$Sims_with_higher_BFs),
+          percentile_to_pvalue(x$energybf$Sims_with_higher_energy),
+          percentile_to_pvalue(x$ffttest$Sims_with_higher_Amplitude),
+          x$harmonic_p
+        ),
+        Type = c("Individual", "Individual", "Individual", "Combined")
+      )
+      p_data$Test <- factor(p_data$Test, levels = p_data$Test)
+
+      p4 <- ggplot2::ggplot(p_data, aes(x = Test, y = p_value, fill = Type)) +
+        ggplot2::geom_col(color = "black", width = 0.7) +
+        ggplot2::geom_hline(yintercept = 0.05, linetype = "dashed",
+                           color = "red", linewidth = 0.8) +
+        ggplot2::geom_text(aes(label = sprintf("%.3f", p_value)),
+                          vjust = -0.5, size = 3) +
+        ggplot2::scale_fill_manual(values = c("Individual" = "steelblue",
+                                               "Combined" = "darkorange")) +
+        ggplot2::labs(x = "", y = "p-value",
+                     title = "CoE p-values") +
+        ggplot2::ylim(0, max(0.15, max(p_data$p_value) * 1.2)) +
+        ggplot2::theme_minimal() +
+        ggplot2::theme(legend.position = "none") +
+        common_theme
+      plots <- c(plots, list(p4))
+    }
+
+    # Arrange plots in 2x2 grid
+    if (length(plots) == 4) {
+      combined <- (plots[[1]] + plots[[2]]) / (plots[[3]] + plots[[4]])
+    } else if (length(plots) == 3) {
+      combined <- (plots[[1]] + plots[[2]]) / plots[[3]]
+    } else if (length(plots) == 2) {
+      combined <- plots[[1]] + plots[[2]]
+    } else if (length(plots) == 1) {
+      combined <- plots[[1]]
     } else {
       stop("No plots available to display.")
     }
-    
+
     print(combined)
     return(invisible())
   }
