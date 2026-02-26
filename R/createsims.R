@@ -642,6 +642,22 @@ simcreate_bin <- function(N,
   # FFT processing (suppress all messages and output)
   sims_df <- .quiet(simredo(sims_df, N, rw = TRUE))
 
+  # Add metadata as attributes
+  attr(sims_df, "test_type") <- "binomial"
+  attr(sims_df, "N") <- N
+  attr(sims_df, "n.sims") <- n.sims
+  attr(sims_df, "p") <- p
+  attr(sims_df, "method") <- method
+  attr(sims_df, "prior.r") <- prior.r
+  attr(sims_df, "alternative") <- alternative
+  attr(sims_df, "nstart") <- nstart
+  attr(sims_df, "exact") <- exact
+  attr(sims_df, "creation_date") <- Sys.time()
+  attr(sims_df, "package_version") <- utils::packageVersion("changeofevidence")
+
+  # Add coe_sim class
+  class(sims_df) <- c("coe_sim", "data.frame")
+
   return(sims_df)
 }
 #' Generate T-Test Simulations
@@ -947,6 +963,32 @@ simcreate_t <- function(N,
   # FFT processing (suppress all messages and output)
   sims_df <- .quiet(simredo(sims_df, N, rw = TRUE))
 
+  # Add metadata as attributes
+  attr(sims_df, "test_type") <- "t-test"
+  attr(sims_df, "N") <- N
+  attr(sims_df, "n.sims") <- n.sims
+  attr(sims_df, "mu") <- mu
+  attr(sims_df, "data_type") <- data_type
+  attr(sims_df, "method") <- method
+  attr(sims_df, "prior.loc") <- prior.loc
+  attr(sims_df, "prior.r") <- prior.r
+  attr(sims_df, "alternative") <- alternative
+  attr(sims_df, "nstart") <- nstart
+  attr(sims_df, "exact") <- exact
+  if (data_type == "summed_bits") {
+    attr(sims_df, "n_bits") <- n_bits
+    attr(sims_df, "p") <- p
+  }
+  if (data_type == "integer") {
+    attr(sims_df, "int_min") <- int_min
+    attr(sims_df, "int_max") <- int_max
+  }
+  attr(sims_df, "creation_date") <- Sys.time()
+  attr(sims_df, "package_version") <- utils::packageVersion("changeofevidence")
+
+  # Add coe_sim class
+  class(sims_df) <- c("coe_sim", "data.frame")
+
   return(sims_df)
 }
 
@@ -1056,6 +1098,21 @@ simcreate_cor <- function(N,
   # FFT processing (suppress all messages and output)
   sims_df <- .quiet(simredo(sims_df, N, rw = TRUE))
 
+  # Add metadata as attributes
+  attr(sims_df, "test_type") <- "correlation"
+  attr(sims_df, "N") <- N
+  attr(sims_df, "n.sims") <- n.sims
+  attr(sims_df, "rho") <- rho
+  attr(sims_df, "method") <- method
+  attr(sims_df, "prior.r") <- prior.r
+  attr(sims_df, "nstart") <- nstart
+  attr(sims_df, "exact") <- exact
+  attr(sims_df, "creation_date") <- Sys.time()
+  attr(sims_df, "package_version") <- utils::packageVersion("changeofevidence")
+
+  # Add coe_sim class
+  class(sims_df) <- c("coe_sim", "data.frame")
+
   return(sims_df)
 }
 
@@ -1135,4 +1192,85 @@ download_quantum_data <- function(path = NULL, force = FALSE) {
   })
 
   invisible(dest_file)
+}
+
+
+#' Check if object is a coe_sim
+#'
+#' Validates whether an object is a properly formatted simulation dataframe
+#' from simcreate functions.
+#'
+#' @param x Object to check
+#' @return Logical indicating if object is a coe_sim
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' sims <- simcreate_bin(N = 100, n.sims = 10)
+#' is.coe_sim(sims)  # TRUE
+#' is.coe_sim(data.frame(a = 1:10))  # FALSE
+#' }
+is.coe_sim <- function(x) {
+  inherits(x, "coe_sim")
+}
+
+
+#' Print method for coe_sim objects
+#'
+#' Displays simulation metadata and first few rows of data
+#'
+#' @param x A coe_sim object
+#' @param ... Additional arguments passed to print.data.frame
+#' @export
+#' @method print coe_sim
+print.coe_sim <- function(x, ...) {
+  cat("*** Change of Evidence Simulation Data ***\n\n")
+
+  # Display key metadata
+  cat("Test Type:", attr(x, "test_type"), "\n")
+  cat("Sample Size (N):", attr(x, "N"), "\n")
+  cat("Number of Simulations:", attr(x, "n.sims"), "\n")
+  cat("Method:", attr(x, "method"), "\n")
+
+  # Test-specific parameters
+  test_type <- attr(x, "test_type")
+
+  if (test_type == "binomial") {
+    cat("Null Probability (p):", attr(x, "p"), "\n")
+    cat("Prior Scale (prior.r):", attr(x, "prior.r"), "\n")
+    cat("Alternative:", attr(x, "alternative"), "\n")
+
+  } else if (test_type == "t-test") {
+    cat("Null Mean (mu):", attr(x, "mu"), "\n")
+    cat("Data Type:", attr(x, "data_type"), "\n")
+    if (attr(x, "data_type") == "summed_bits") {
+      cat("Bits per Observation (n_bits):", attr(x, "n_bits"), "\n")
+      cat("Bit Probability (p):", attr(x, "p"), "\n")
+    }
+    if (attr(x, "data_type") == "integer") {
+      cat("Integer Range: [", attr(x, "int_min"), ", ", attr(x, "int_max"), "]\n", sep = "")
+    }
+    cat("Prior Location (prior.loc):", attr(x, "prior.loc"), "\n")
+    cat("Prior Scale (prior.r):", attr(x, "prior.r"), "\n")
+    cat("Alternative:", attr(x, "alternative"), "\n")
+
+  } else if (test_type == "correlation") {
+    cat("Null Correlation (rho):", attr(x, "rho"), "\n")
+    cat("Prior Scale (prior.r):", attr(x, "prior.r"), "\n")
+  }
+
+  cat("nstart:", attr(x, "nstart"), "\n")
+  cat("Exact BF calculation:", attr(x, "exact"), "\n")
+  cat("Created:", format(attr(x, "creation_date"), "%Y-%m-%d %H:%M:%S"), "\n")
+  cat("Package Version:", as.character(attr(x, "package_version")), "\n\n")
+
+  # Show data preview
+  cat("Data Preview (first 10 rows):\n")
+  print(head(as.data.frame(x), 10), ...)
+
+  if (nrow(x) > 10) {
+    cat("\n... with", nrow(x) - 10, "more rows\n")
+  }
+
+  invisible(x)
 }

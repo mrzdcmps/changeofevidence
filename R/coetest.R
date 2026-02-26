@@ -244,6 +244,12 @@ ffttest <- function(data, sims.df = NULL, sims.df.col = "density.bf", top5 = FAL
 #' @export
 simredo <- function(df, n, rw = TRUE){
   if(n > max(df$index)) stop("Amount of trials (n) is larger than in the provided simulation dataframe!")
+
+  # Preserve attributes before subsetting
+  attrs_to_preserve <- attributes(df)
+  attrs_to_preserve$names <- NULL  # Will be set by subset
+  attrs_to_preserve$row.names <- NULL  # Will be set by subset
+
   df.new <- subset(df, index <= n)
   cat("Recalculating BF FFT:\n")
   df.new$density.bf <- unlist(pbapply::pbtapply(df.new$bf, df.new$simid, .fftcreatefull, simplify = T))
@@ -251,6 +257,22 @@ simredo <- function(df, n, rw = TRUE){
     cat("Recalculating RW FFT:\n")
     df.new$density.rw <- unlist(pbapply::pbtapply(df.new$rw, df.new$simid, .fftcreatefull, simplify = T))
   }
+
+  # Restore attributes (updating N to reflect new length)
+  if (!is.null(attrs_to_preserve$N)) {
+    attrs_to_preserve$N <- n
+  }
+  for (attr_name in names(attrs_to_preserve)) {
+    if (!attr_name %in% c("names", "row.names", "class")) {
+      attr(df.new, attr_name) <- attrs_to_preserve[[attr_name]]
+    }
+  }
+
+  # Restore coe_sim class if it was present
+  if ("coe_sim" %in% attrs_to_preserve$class) {
+    class(df.new) <- c("coe_sim", "data.frame")
+  }
+
   df.new
 }
 
@@ -483,88 +505,109 @@ plot.coe <- function(x, sims.df = NULL, ...) {
       p1 <- plotbf(x$maxbf$data, sims.df = sims_subset, show_annotations = FALSE) +
         ggplot2::geom_point(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF),
                            color = "red", size = 3) +
-        ggplot2::ggtitle(sprintf("Sequential BF (Max = %.2f, p = %.3f)",
-                                x$maxbf$MaxBF, p_maxbf)) +
+        ggplot2::ggtitle(sprintf("Sequential BF (Max = %.2f at n = %d)",
+                                x$maxbf$MaxBF, x$maxbf$MaxBF_N)) +
         ggplot2::theme(legend.position = "none") +
         common_theme
       plots <- c(plots, list(p1))
     }
 
-    # Panel 2: MaxBF distribution comparison (if sims available)
-    if (!is.null(x$maxbf) && !is.null(sims.df)) {
-      # Calculate simulation max BFs, filtering out non-positive and non-finite values
+
+    # Panel 4: Ridgeline plot of all three distributions
+    if (!is.null(x$harmonic_p) && !is.null(sims.df)) {
+      # Calculate simulation max BFs
       sim_maxbfs <- tapply(sims.df$bf, sims.df$simid, function(x) {
         valid_bfs <- x[!is.na(x) & is.finite(x) & x > 0]
         if (length(valid_bfs) > 0) max(valid_bfs) else NA
       })
-      # Remove NA and non-positive values
       sim_maxbfs <- sim_maxbfs[!is.na(sim_maxbfs) & is.finite(sim_maxbfs) & sim_maxbfs > 0]
-      p_maxbf <- percentile_to_pvalue(x$maxbf$Sims_with_higher_BFs)
 
-      p2 <- ggplot2::ggplot() +
-        ggplot2::geom_histogram(aes(x = sim_maxbfs), bins = 30,
-                               fill = "gray70", color = "gray30", alpha = 0.7) +
-        ggplot2::geom_vline(xintercept = x$maxbf$MaxBF, color = "red",
-                           linewidth = 1.5, linetype = "solid") +
-        ggplot2::geom_text(aes(x = x$maxbf$MaxBF, y = Inf,
-                              label = sprintf("Observed\n%.2f", x$maxbf$MaxBF)),
-                          vjust = 1.5, hjust = -0.1, color = "red", size = 3) +
-        ggplot2::scale_x_log10() +
-        ggplot2::labs(x = "Maximum BF (log scale)", y = "Count",
-                     title = sprintf("Max BF Distribution (p = %.3f)", p_maxbf)) +
-        ggplot2::theme_minimal() +
-        common_theme
-      plots <- c(plots, list(p2))
-    }
-
-    # Panel 3: Energy distribution comparison (if sims available)
-    if (!is.null(x$energybf) && !is.null(sims.df)) {
       # Calculate simulation energies
       nullenergy <- length(x$energybf$data) - 1
-      # Clean simulation BFs before calculating energies
       sims_clean <- sims.df
       sims_clean$bf <- unlist(tapply(sims.df$bf, sims.df$simid, .replace_early_na))
-
       sim_energies <- tapply(sims_clean$bf, sims_clean$simid, function(bf) {
         pracma::trapz(as.numeric(1:length(bf)), bf) - nullenergy
       })
-      # Remove non-finite values
       sim_energies <- sim_energies[is.finite(sim_energies)]
-      p_energy <- percentile_to_pvalue(x$energybf$Sims_with_higher_energy)
 
-      # Determine if we can use log scale (all values positive) or need pseudo-log
-      all_positive <- all(sim_energies > 0) && x$energybf$Energy > 0
+      # Calculate simulation FFT amplitudes
+      sim_amplitudes <- tapply(sims.df$density.bf, sims.df$simid, sum, na.rm = TRUE)
+      sim_amplitudes <- sim_amplitudes[is.finite(sim_amplitudes)]
 
-      p3 <- ggplot2::ggplot() +
-        ggplot2::geom_histogram(aes(x = sim_energies), bins = 30,
-                               fill = "gray70", color = "gray30", alpha = 0.7) +
-        ggplot2::geom_vline(xintercept = x$energybf$Energy, color = "red",
-                           linewidth = 1.5, linetype = "solid") +
-        ggplot2::geom_text(aes(x = x$energybf$Energy, y = Inf,
-                              label = sprintf("Observed\n%.1f", x$energybf$Energy)),
-                          vjust = 1.5, hjust = ifelse(x$energybf$Energy > median(sim_energies, na.rm = TRUE), -0.1, 1.1),
-                          color = "red", size = 3) +
-        ggplot2::labs(x = "Energy (log scale)", y = "Count",
-                     title = sprintf("Energy Distribution (p = %.3f)", p_energy)) +
+      # Convert to percentile ranks (0-100 scale)
+      maxbf_percentiles <- ecdf(sim_maxbfs)(sim_maxbfs) * 100
+      energy_percentiles <- ecdf(sim_energies)(sim_energies) * 100
+      fft_percentiles <- ecdf(sim_amplitudes)(sim_amplitudes) * 100
+
+      # Calculate observed percentiles
+      obs_maxbf_pct <- ecdf(sim_maxbfs)(x$maxbf$MaxBF) * 100
+      obs_energy_pct <- ecdf(sim_energies)(x$energybf$Energy) * 100
+      obs_fft_pct <- ecdf(sim_amplitudes)(x$ffttest$Amplitude_sum) * 100
+
+      # Create data frame for ridgeline plot
+      ridge_data <- data.frame(
+        percentile = c(maxbf_percentiles, energy_percentiles, fft_percentiles),
+        test = factor(
+          rep(c("MaxBF", "Energy", "FFT"),
+              c(length(maxbf_percentiles), length(energy_percentiles), length(fft_percentiles))),
+          levels = c("FFT", "Energy", "MaxBF")  # Reverse order for bottom-to-top display
+        )
+      )
+
+      # Observed values for annotations
+      obs_data <- data.frame(
+        test = factor(c("MaxBF", "Energy", "FFT"), levels = c("FFT", "Energy", "MaxBF")),
+        percentile = c(obs_maxbf_pct, obs_energy_pct, obs_fft_pct),
+        p_value = c(
+          percentile_to_pvalue(x$maxbf$Sims_with_higher_BFs),
+          percentile_to_pvalue(x$energybf$Sims_with_higher_energy),
+          percentile_to_pvalue(x$ffttest$Sims_with_higher_Amplitude)
+        )
+      )
+
+      # Adjust text position based on percentile to avoid clipping
+      obs_data$hjust_val <- ifelse(obs_data$percentile > 80, 1.15, -0.15)
+
+      p4 <- ggplot2::ggplot(ridge_data, aes(x = percentile, y = test)) +
+        ggridges::geom_density_ridges(
+          aes(fill = test),
+          alpha = 0.7,
+          scale = 0.9,
+          rel_min_height = 0.01
+        ) +
+        ggplot2::geom_segment(
+          data = obs_data,
+          aes(x = percentile, xend = percentile, y = as.numeric(test), yend = as.numeric(test) + 0.85),
+          color = "red",
+          linewidth = 1.2,
+          linetype = "solid"
+        ) +
+        ggplot2::geom_text(
+          data = obs_data,
+          aes(x = percentile, y = as.numeric(test) + 0.5,
+              label = sprintf("p=%.3f", p_value),
+              hjust = hjust_val),
+          size = 3,
+          color = "red",
+          fontface = "bold"
+        ) +
+        ggplot2::scale_fill_manual(
+          values = c("MaxBF" = "#619CFF", "Energy" = "#00BA38", "FFT" = "#F8766D")
+        ) +
+        ggplot2::labs(
+          x = "Percentile Rank",
+          y = "",
+          title = sprintf("CoE Distributions (Harmonic p = %.3f)", x$harmonic_p)
+        ) +
+        ggplot2::scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, 25)) +
         ggplot2::theme_minimal() +
+        ggplot2::theme(legend.position = "none") +
         common_theme
 
-      # Use appropriate scale based on data
-      if (all_positive) {
-        p3 <- p3 + ggplot2::scale_x_log10()
-      } else {
-        # Use pseudo-log for data containing zero or negative values
-        p3 <- p3 + ggplot2::scale_x_continuous(
-          trans = scales::pseudo_log_trans(base = 10),
-          labels = function(x) sprintf("%.1f", x)
-        )
-      }
-
-      plots <- c(plots, list(p3))
-    }
-
-    # Panel 4: P-value summary
-    if (!is.null(x$harmonic_p)) {
+      plots <- c(plots, list(p4))
+    } else if (!is.null(x$harmonic_p)) {
+      # Fallback: bar chart if no sims available
       p_data <- data.frame(
         Test = c("MaxBF", "Energy", "FFT", "Harmonic\nMean"),
         p_value = c(
@@ -594,13 +637,9 @@ plot.coe <- function(x, sims.df = NULL, ...) {
       plots <- c(plots, list(p4))
     }
 
-    # Arrange plots in 2x2 grid
-    if (length(plots) == 4) {
-      combined <- (plots[[1]] + plots[[2]]) / (plots[[3]] + plots[[4]])
-    } else if (length(plots) == 3) {
-      combined <- (plots[[1]] + plots[[2]]) / plots[[3]]
-    } else if (length(plots) == 2) {
-      combined <- plots[[1]] + plots[[2]]
+    # Arrange plots (typically 2: BF trajectory + ridgeline)
+    if (length(plots) == 2) {
+      combined <- plots[[1]] / plots[[2]]
     } else if (length(plots) == 1) {
       combined <- plots[[1]]
     } else {
