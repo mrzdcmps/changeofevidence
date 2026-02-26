@@ -1147,6 +1147,42 @@ print.seqbf <- function(x, ...) {
 
 
 #' @export
+#' @method print cauchyFit
+print.cauchyFit <- function(x, ...) {
+
+  cat(sprintf("
+  Cauchy Fit to Posterior Distribution
+  --------------------------------
+  Test type: %s
+  Sample size: %s
+
+  Fitted Cauchy parameters:
+    Location: %.4f
+    Scale:    %.4f
+
+  Original prior:
+    Location: %g
+    Scale:    %g
+
+  Goodness of fit:
+    R-squared:          %.6f
+    Max abs. deviation: %.6f
+  \n",
+              x$test_type,
+              paste(x$sample_size, collapse = ", "),
+              x$location,
+              x$scale,
+              x$prior$location,
+              x$prior$scale,
+              x$r_squared,
+              x$max_abs_deviation
+  ))
+
+  invisible(x)
+}
+
+
+#' @export
 #' @method print bfRobustness
 print.bfRobustness <- function(x, ...) {
   

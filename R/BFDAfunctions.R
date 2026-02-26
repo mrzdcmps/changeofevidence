@@ -159,6 +159,270 @@ bf10_t <- function(t, n1, n2 = NULL, independentSamples = FALSE, prior.location,
 }
 
 
+#' Extract Cauchy Prior from Posterior of a Bayesian t-Test
+#'
+#' Fits a Cauchy distribution to the posterior distribution of a parametric
+#' Bayesian t-test. The fitted Cauchy location and scale can be used as informed
+#' prior parameters for an exact replication study.
+#'
+#' @param x A \code{seqbf} object created with \code{bfttest()} (parametric only)
+#' @param n.points Number of grid points for fitting (default: 1000)
+#' @param delta.range Optional numeric vector of length 2 specifying the range
+#'   of delta values for the fitting grid. If NULL (default), automatically
+#'   determined from the posterior mode and width.
+#' @return An object of class \code{"cauchyFit"} containing:
+#'   \itemize{
+#'     \item \code{location}: Fitted Cauchy location parameter
+#'     \item \code{scale}: Fitted Cauchy scale parameter
+#'     \item \code{r_squared}: R-squared goodness-of-fit measure
+#'     \item \code{max_abs_deviation}: Maximum absolute deviation between
+#'       posterior and fitted Cauchy
+#'     \item \code{prior}: List with original prior location and scale
+#'     \item \code{test_type}: Type of t-test (one-sample, paired, independent)
+#'     \item \code{sample_size}: Sample size(s) from the original test
+#'   }
+#' @details
+#' The function extracts the final t-statistic and sample sizes from the
+#' \code{seqbf} object, evaluates the analytical posterior distribution using
+#' \code{posterior_t()}, and fits a Cauchy distribution by minimizing the
+#' integrated squared error via Nelder-Mead optimization. The posterior mode
+#' and half-width at half-maximum are used as starting values.
+#'
+#' Only parametric t-tests are supported. Non-parametric tests do not have an
+#' analytically available posterior, and binomial/correlation tests use different
+#' prior families.
+#' @examples
+#' \dontrun{
+#' # Original study
+#' original <- bfttest(rnorm(30, 0.5), prior.loc = 0, prior.r = 0.1)
+#' fit <- extractPrior(original)
+#' print(fit)
+#'
+#' # Use fitted parameters as informed prior for replication
+#' replication <- bfttest(new_data, prior.loc = fit$location, prior.r = fit$scale)
+#' }
+#' @importFrom stats optim optimize uniroot dcauchy
+#' @export
+extractPrior <- function(x, n.points = 1000, delta.range = NULL) {
+
+  # Validate input
+
+  if (!inherits(x, "seqbf")) {
+    stop("x must be a seqbf object created with bfttest()")
+  }
+
+  test_type <- x$`test type`
+
+  if (test_type %in% c("binomial")) {
+    stop("extractPrior() is not available for binomial tests. ",
+         "Binomial tests use a Logistic prior, not a Cauchy prior.")
+  }
+  if (test_type %in% c("correlation")) {
+    stop("extractPrior() is not available for correlation tests. ",
+         "Correlation tests use a Beta prior, not a Cauchy prior.")
+  }
+  if (!test_type %in% c("one-sample", "paired", "independent")) {
+    stop("Unsupported test type: ", test_type)
+  }
+
+  # Handle backward compatibility: old seqbf objects don't have 'parametric' field
+  # If missing, assume parametric (old versions only supported parametric tests)
+  is_parametric <- if (is.null(x$parametric)) TRUE else x$parametric
+
+  if (!isTRUE(is_parametric)) {
+    stop("extractPrior() requires a parametric t-test. ",
+         "Non-parametric tests do not have an analytically available posterior.")
+  }
+
+  # Extract test parameters
+  t_val <- tail(na.omit(x[[1]]), n = 1)
+  prior_loc <- x$prior$location
+  prior_scale <- x$prior$scale
+
+  # Validate t-value
+  if (length(t_val) == 0 || !is.finite(t_val)) {
+    stop("Could not extract a valid t-statistic from the seqbf object. ",
+         "t-value: ", if(length(t_val) == 0) "missing" else t_val)
+  }
+
+  # Check for extreme t-values that may cause numerical issues
+  if (abs(t_val) > 100) {
+    warning("Extremely large t-statistic (|t| = ", round(abs(t_val), 2), "). ",
+            "This may cause numerical precision issues in posterior calculation.")
+  }
+
+  # Check for very large sample sizes that may cause numerical issues
+  sample_size_check <- if (test_type == "independent") {
+    min(x$`sample size`[1], x$`sample size`[2])
+  } else {
+    x$`sample size`[1]
+  }
+
+  if (sample_size_check > 1000) {
+    warning("Very large sample size (n = ", sample_size_check, "). ",
+            "With narrow priors, this may cause numerical underflow in posterior calculations. ",
+            "Consider using a wider prior (e.g., prior.r = 1) if you encounter errors.")
+  }
+
+  # Validate prior parameters
+  if (!is.finite(prior_loc)) {
+    stop("Invalid prior location: ", prior_loc, ". ",
+         "Prior location must be a finite number.")
+  }
+  if (!is.finite(prior_scale) || prior_scale <= 0) {
+    stop("Invalid prior scale: ", prior_scale, ". ",
+         "Prior scale must be a positive finite number.")
+  }
+
+  if (test_type == "independent") {
+    n1 <- x$`sample size`[1]
+    n2 <- x$`sample size`[2]
+    indep <- TRUE
+  } else {
+    n1 <- if (length(x$`sample size`) == 1) x$`sample size` else x$`sample size`[1]
+    n2 <- NULL
+    indep <- FALSE
+  }
+
+  # Wrapper around posterior_t
+  post_density <- function(delta) {
+    posterior_t(delta, t = t_val, n1 = n1, n2 = n2,
+                independentSamples = indep,
+                prior.location = prior_loc,
+                prior.scale = prior_scale,
+                prior.df = 1)
+  }
+
+  # Estimate reasonable search interval based on t-value and sample size
+  # For large samples, posterior concentrates near delta ≈ t/sqrt(n)
+  neff <- if (indep) n1 * n2 / (n1 + n2) else n1
+  delta_estimate <- t_val / sqrt(neff)
+
+  # Test if posterior can be evaluated at the expected location
+  test_vals <- post_density(c(0, delta_estimate, prior_loc))
+  if (all(!is.finite(test_vals)) || all(test_vals == 0)) {
+    stop("Posterior density function returns only zeros or non-finite values. ",
+         "This indicates severe numerical underflow, likely due to:\n",
+         "  - Very large sample size (n = ", neff, ")\n",
+         "  - Very narrow prior (scale = ", prior_scale, ")\n",
+         "Suggestions:\n",
+         "  1. Use a wider prior: re-run bfttest() with prior.r >= 0.5\n",
+         "  2. Use fewer observations for extractPrior()\n",
+         "  3. This function may not be suitable for very large datasets")
+  }
+
+  # Use a wide interval centered on the estimate
+  search_interval <- c(delta_estimate - 20, delta_estimate + 20)
+
+  # Find posterior mode
+  mode_result <- optimize(post_density, interval = search_interval, maximum = TRUE)
+  post_mode <- mode_result$maximum
+  half_max <- mode_result$objective / 2
+
+  # Validate posterior mode
+  if (!is.finite(post_mode)) {
+    stop("Could not find a finite posterior mode. ",
+         "This may indicate numerical issues with the posterior distribution.")
+  }
+
+  # Check if mode is at boundary (within 1% of interval endpoints)
+  interval_width <- diff(search_interval)
+  if (abs(post_mode - search_interval[1]) < 0.01 * interval_width ||
+      abs(post_mode - search_interval[2]) < 0.01 * interval_width) {
+    warning("Posterior mode found at search interval boundary (mode = ",
+            round(post_mode, 4), ", interval = [",
+            round(search_interval[1], 2), ", ", round(search_interval[2], 2), "]). ",
+            "Results may be unreliable.")
+  }
+
+  # Find HWHM (half-width at half-maximum) for scale starting value
+  hwhm <- tryCatch({
+    root_result <- uniroot(function(d) post_density(d) - half_max,
+                           interval = c(post_mode, post_mode + 10),
+                           extendInt = "upX")
+    abs(root_result$root - post_mode)
+  }, error = function(e) {
+    # Fallback: use prior scale as starting value
+    prior_scale
+  })
+
+  # Validate HWHM: ensure it's positive and finite
+  if (!is.finite(hwhm) || hwhm <= 0) {
+    warning("Could not determine a valid HWHM. Using prior scale as fallback.")
+    hwhm <- prior_scale
+  }
+
+  # Safety check: ensure hwhm has a minimum value to prevent numerical issues
+  hwhm <- max(hwhm, 1e-6)
+
+  # Determine delta range if not specified
+  if (is.null(delta.range)) {
+    delta.range <- c(post_mode - 5 * hwhm, post_mode + 5 * hwhm)
+  }
+
+  # Create evaluation grid
+  delta_grid <- seq(delta.range[1], delta.range[2], length.out = n.points)
+  post_vals <- post_density(delta_grid)
+
+  # Validate posterior density values
+  if (all(!is.finite(post_vals)) || all(post_vals == 0)) {
+    stop("Could not evaluate posterior density. ",
+         "All values are either non-finite or zero. ",
+         "This may indicate numerical issues with the prior/posterior calculation.\n",
+         "Diagnostics:\n",
+         "  t-value: ", round(t_val, 4), "\n",
+         "  Sample size: ", if(indep) paste0(n1, ", ", n2) else n1, "\n",
+         "  Prior: location=", prior_loc, ", scale=", prior_scale, "\n",
+         "  Posterior mode: ", round(post_mode, 4), "\n",
+         "  Delta range: [", round(delta.range[1], 4), ", ", round(delta.range[2], 4), "]\n",
+         "Try adjusting delta.range manually or check if your data produces extreme statistics.")
+  }
+
+  if (any(!is.finite(post_vals))) {
+    warning("Some posterior density values are non-finite. ",
+            "These will be set to zero for fitting.")
+    post_vals[!is.finite(post_vals)] <- 0
+  }
+
+  # Fit Cauchy via minimizing integrated squared error
+  # Optimize on log-scale for scale to enforce positivity
+  objective <- function(par) {
+    loc <- par[1]
+    sc <- exp(par[2])  # log-scale
+    cauchy_vals <- dcauchy(delta_grid, location = loc, scale = sc)
+    sum((post_vals - cauchy_vals)^2)
+  }
+
+  fit <- optim(par = c(post_mode, log(hwhm)),
+               fn = objective,
+               method = "Nelder-Mead")
+
+  fitted_loc <- fit$par[1]
+  fitted_scale <- exp(fit$par[2])
+
+  # Compute diagnostics
+  cauchy_fitted <- dcauchy(delta_grid, location = fitted_loc, scale = fitted_scale)
+
+  ss_res <- sum((post_vals - cauchy_fitted)^2)
+  ss_tot <- sum((post_vals - mean(post_vals))^2)
+  r_sq <- 1 - ss_res / ss_tot
+
+  max_dev <- max(abs(post_vals - cauchy_fitted))
+
+  result <- list(
+    location = fitted_loc,
+    scale = fitted_scale,
+    r_squared = r_sq,
+    max_abs_deviation = max_dev,
+    prior = list(location = prior_loc, scale = prior_scale),
+    test_type = test_type,
+    sample_size = x$`sample size`
+  )
+  class(result) <- "cauchyFit"
+  return(result)
+}
+
+
 # ==============================================================================
 # These are functions for nonparametric t-tests
 # ==============================================================================
