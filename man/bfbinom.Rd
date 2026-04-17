@@ -15,7 +15,7 @@ bfbinom(
 )
 }
 \arguments{
-\item{data}{A vector containing binary data (0s and 1s)}
+\item{data}{A vector containing binary data (0s and 1s, or logical TRUE/FALSE)}
 
 \item{p}{Probability of success under the null hypothesis (default: 0.5)}
 
