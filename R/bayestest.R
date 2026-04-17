@@ -4,7 +4,7 @@
 #' Uses 'proportionBF' from the BayesFactor package to compute Bayes Factors starting from a minimum
 #' number of observations and updating with each new data point.
 #'
-#' @param data A vector containing binary data (0s and 1s)
+#' @param data A vector containing binary data (0s and 1s, or logical TRUE/FALSE)
 #' @param p Probability of success under the null hypothesis (default: 0.5)
 #' @param prior.r Scale parameter for the prior distribution (default: 0.1)
 #' @param alternative Direction of alternative hypothesis: "two.sided", "greater", or "less"
@@ -33,9 +33,14 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
                     alternative = c("two.sided", "greater", "less"), 
                     nstart = 5, exact = TRUE, nullInterval = NULL) {
   
+  # Convert logical to integer
+  if (is.logical(data)) {
+    data <- as.integer(data)
+  }
+
   # Input validation
   if (!is.numeric(data) || !all(data %in% c(0, 1, NA))) {
-    stop("Data must be binary (0s and 1s)")
+    stop("Data must be binary (0s and 1s) or logical (TRUE/FALSE)")
   }
   
   data <- na.omit(data)
