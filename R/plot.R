@@ -322,12 +322,13 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
                        " (N = ", sum(data$`sample size`), ")")
     
     # Create caption with test info
-    caption <- paste0(
-      testtype, "; ",
-      tails, "; ",
-      data$prior$distribution, "(", 
-      round(data$prior[[2]], 3), ", ", 
-      round(data$prior[[3]], 3), ")")
+    prior_args <- data$prior[setdiff(names(data$prior), "distribution")]
+    prior_str <- paste0(
+      data$prior$distribution, "(",
+      paste(round(unlist(prior_args), 3), collapse = ", "),
+      ")"
+    )
+    caption <- paste0(testtype, "; ", tails, "; ", prior_str)
     
     # Add delta to caption if available
     final_delta <- tail(na.omit(data$delta), n = 1)

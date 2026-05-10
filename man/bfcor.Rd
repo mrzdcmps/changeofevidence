@@ -20,7 +20,7 @@ bfcor(
 
 \item{alternative}{Direction of alternative hypothesis: "two.sided", "greater", or "less"}
 
-\item{prior.r}{Scale parameter for the prior distribution (default: 0.1)}
+\item{prior.r}{Scale parameter (rscale) for the stretched-beta prior on rho (default: 0.1)}
 
 \item{nstart}{Minimum number of data points before first BF calculation (>= 2)}
 

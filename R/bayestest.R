@@ -786,7 +786,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
 #' @param x A vector containing continuous data
 #' @param y A vector containing continuous data
 #' @param alternative Direction of alternative hypothesis: "two.sided", "greater", or "less"
-#' @param prior.r Scale parameter for the prior distribution (default: 0.1)
+#' @param prior.r Scale parameter (rscale) for the stretched-beta prior on rho (default: 0.1)
 #' @param nstart Minimum number of data points before first BF calculation (>= 2)
 #' @param exact Logical. If TRUE, calculates BF for all points; if FALSE, uses steps for efficiency
 #' @return A list of class "seqbf" containing:
@@ -901,9 +901,8 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
     "BF" = bf,
     "test type" = "correlation",
     "prior" = list(
-      "distribution" = "Beta",
-      "alpha" = 1/prior.r,
-      "beta" = 1/prior.r
+      "distribution" = "stretched-beta",
+      "rscale" = prior.r
     ),
     "sample size" = n_data,
     "alternative" = alternative,
@@ -1059,7 +1058,7 @@ print.seqbf <- function(x, ...) {
   Test: Pearson correlation test
   Sample size: %d
   Final Bayes Factor: BF10 = %.3f; BF01 = %.3f
-  Prior: %s(%g, %g)
+  Prior: %s(%g)
   Alternative hypothesis: %s
   Correlation: r = %.3f; p = %.3f
   \n",
@@ -1067,8 +1066,7 @@ print.seqbf <- function(x, ...) {
                 final_bf,
                 1 / final_bf,
                 x$prior$distribution,
-                x$prior$location,
-                x$prior$scale,
+                x$prior$rscale,
                 x$alternative,
                 final_r,
                 final_p
