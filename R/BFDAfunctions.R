@@ -140,7 +140,13 @@ bf10_t <- function(t, n1, n2 = NULL, independentSamples = FALSE, prior.location,
                          r = r, kappa = kappa,
                          rel.tol = rel.tol)$value
   denominator <- (1 + t^2/nu)^(-(nu + 1)/2)
-  
+
+  # Numerical underflow: integrand collapsed to 0 across the whole range.
+  # Return NA rather than the spurious 0 that would propagate to BFplus0/BFmin0.
+  if (!is.finite(numerator) || numerator == 0 || !is.finite(denominator) || denominator == 0) {
+    return(list(BF10 = NA, BFplus0 = NA, BFmin0 = NA))
+  }
+
   BF10 <- numerator/denominator
   priorAreaSmaller0 <- integrate(dtss, lower = -Inf, upper = 0,
                                  mu.delta = prior.location, r = prior.scale,
@@ -153,7 +159,13 @@ bf10_t <- function(t, n1, n2 = NULL, independentSamples = FALSE, prior.location,
   BFplus1 <- (1 - postAreaSmaller0)/(1 - priorAreaSmaller0)
   BFmin0 <- BFmin1 * BF10
   BFplus0 <- BFplus1 * BF10
-  
+
+  # postAreaSmaller0 collapsing to exactly 0 or 1 (floating-point) makes the
+  # directional BF exactly 0, which is impossible for any finite dataset.
+  # Return NA to signal numerical failure rather than a true zero.
+  if (!is.na(BFplus0) && BFplus0 == 0) BFplus0 <- NA_real_
+  if (!is.na(BFmin0) && BFmin0 == 0) BFmin0 <- NA_real_
+
   return(list(BF10 = BF10, BFplus0 = BFplus0, BFmin0 = BFmin0))
   
 }
