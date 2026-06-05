@@ -967,12 +967,12 @@ bfRobustness <- function(x = NULL, informed = TRUE, prior.loc = NULL, prior.r = 
   # specify prior parameters if not set by user
   
   if (is.null(prior.loc)) {
-    if (informed == TRUE) prior.loc <- seq(0,1,0.05)
+    if (informed == TRUE) prior.loc <- sort(unique(c(seq(0, 1, 0.05), x$prior[[2]])))
     else prior.loc <- 0
   }
   if (is.null(prior.r)) {
-    if (informed == TRUE) prior.r <- seq(0.05, 1, 0.05)
-    else prior.r <- seq(0.01, 1.41, 0.01)
+    if (informed == TRUE) prior.r <- sort(unique(c(seq(0.05, 1, 0.05), x$prior[[3]])))
+    else prior.r <- sort(unique(c(seq(0.01, 1.41, 0.01), x$prior[[3]])))
   }
   
   if(x$alternative == "two.sided") aa <- 1
