@@ -1188,22 +1188,39 @@ print.cauchyFit <- function(x, ...) {
 #' @export
 #' @method print bfRobustness
 print.bfRobustness <- function(x, ...) {
-  
+
   grid <- x$BFMatrix
-  
+  loc_vals <- unique(grid$prior.loc)
+  r_vals <- unique(grid$prior.r)
+
+  loc_str <- if (length(loc_vals) == 1) {
+    as.character(loc_vals)
+  } else {
+    sprintf("%g \u2013 %g (%d steps)", min(loc_vals), max(loc_vals), length(loc_vals))
+  }
+
+  r_str <- if (length(r_vals) == 1) {
+    as.character(r_vals)
+  } else {
+    sprintf("%g \u2013 %g (%d steps)", min(r_vals), max(r_vals), length(r_vals))
+  }
+
+  user_bf <- grid$bf[abs(grid$prior.loc - x$prior[[2]]) < 1e-9 & abs(grid$prior.r - x$prior[[3]]) < 1e-9]
+
   cat(paste0("
   Prior Robustness Analysis
-  --------------------------------	
+  --------------------------------
   Test type: ", x$`test type`, "
-  Sample size: ", paste(x$`sample size`, collapse=", "), "
-  Tested priors: 
-  -- distribution: ", x$prior[1], "
-  -- location: ", paste(unique(grid$prior.loc), collapse=","), "
-  -- scale: ", paste(unique(grid$prior.r), collapse=","), "
-  Highest Bayes Factor: ", round(max(grid$bf),3), " with prior: Cauchy(",grid$prior.loc[grid$bf==max(grid$bf)],", ",grid$prior.r[grid$bf==max(grid$bf)],")
-  Lowest Bayes Factor: ", round(min(grid$bf),3), " with prior: Cauchy(",grid$prior.loc[grid$bf==min(grid$bf)],", ",grid$prior.r[grid$bf==min(grid$bf)],")
-  Median Bayes Factor: ", round(median(grid$bf),3), " 
-              \n"
+  Sample size: ", paste(x$`sample size`, collapse = ", "), "
+  Distribution: ", x$prior[[1]], "
+  Location: ", loc_str, "
+  Scale: ", r_str, "
+  --------------------------------
+  User BF:    ", round(user_bf, 3), " at (", x$prior[[2]], ", ", x$prior[[3]], ")
+  Highest BF: ", round(max(grid$bf), 3), " at (", grid$prior.loc[grid$bf == max(grid$bf)], ", ", grid$prior.r[grid$bf == max(grid$bf)], ")
+  Lowest BF:  ", round(min(grid$bf), 3), " at (", grid$prior.loc[grid$bf == min(grid$bf)], ", ", grid$prior.r[grid$bf == min(grid$bf)], ")
+  Median BF:  ", round(median(grid$bf), 3), "
+  \n"
   ))
 }
 
