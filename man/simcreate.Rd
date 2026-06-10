@@ -22,7 +22,7 @@ simcreate(
   filespath = NULL,
   parallel = TRUE,
   nstart = NULL,
-  exact = TRUE,
+  exact = NULL,
   alternative = NULL,
   prior.loc = NULL,
   prior.r = NULL,
