@@ -295,7 +295,14 @@ simcreate <- function(x = NULL,
     test_type <- x$`test type`
 
     # Warn if exact levels may not match
-    if (!exact && length(na.omit(x$BF)) > 100) {
+    # Exclude the hardcoded leading 1s (positions 1:(nstart-1)) from the count,
+    # since those are always present regardless of exact=TRUE/FALSE.
+    bf_vals <- x$BF
+    n_non_na <- length(na.omit(bf_vals))
+    first_real_idx <- which(!is.na(bf_vals) & bf_vals != 1)[1]
+    n_leading_ones <- if (!is.na(first_real_idx)) first_real_idx - 1L else n_non_na
+    n_computed_steps <- n_non_na - n_leading_ones
+    if (!exact && n_computed_steps > 100) {
       warning(paste(
         "The seqbf object has more than 100 calculated BF values (exact=TRUE data),",
         "but simulations will use exact=FALSE (~100 steps).",
