@@ -132,6 +132,7 @@ bfbinom <- function(data, p = 0.5, prior.r = 0.1,
     "alternative" = alternative,
     "null_p" = p,
     "data_type" = "binary",
+    "exact" = exact,
     "data" = list(x = data)
   )
   
@@ -742,6 +743,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     "data_type" = data_type,
     "n_bits" = n_bits,
     "bit_probability" = bit_probability,
+    "exact" = exact,
     "data" = tested_data
   )
   names(bf_out)[1] <- stat_name
@@ -908,6 +910,7 @@ bfcor <- function(x, y, alternative = c("two.sided", "greater", "less"),
     "alternative" = alternative,
     "null_rho" = 0,
     "data_type" = "correlation",
+    "exact" = exact,
     "data" = list(x = x, y = y)
   )
   

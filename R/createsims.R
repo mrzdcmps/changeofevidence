@@ -273,7 +273,7 @@ simcreate <- function(x = NULL,
                      filespath = NULL,
                      parallel = TRUE,
                      nstart = NULL,
-                     exact = TRUE,
+                     exact = NULL,
                      alternative = NULL,
                      prior.loc = NULL,
                      prior.r = NULL,
@@ -294,20 +294,14 @@ simcreate <- function(x = NULL,
   if (inherits(x, "seqbf")) {
     test_type <- x$`test type`
 
-    # Warn if exact levels may not match
-    # Exclude the hardcoded leading 1s (positions 1:(nstart-1)) from the count,
-    # since those are always present regardless of exact=TRUE/FALSE.
-    bf_vals <- x$BF
-    n_non_na <- length(na.omit(bf_vals))
-    first_real_idx <- which(!is.na(bf_vals) & bf_vals != 1)[1]
-    n_leading_ones <- if (!is.na(first_real_idx)) first_real_idx - 1L else n_non_na
-    n_computed_steps <- n_non_na - n_leading_ones
-    if (!exact && n_computed_steps > 100) {
+    # Resolve exact: inherit from seqbf if not explicitly supplied by the user
+    exact_to_use <- exact %||% x$exact %||% TRUE
+
+    # Warn if the user explicitly overrides exact in a way that mismatches the seqbf
+    if (!is.null(exact) && !is.null(x$exact) && exact != x$exact) {
       warning(paste(
-        "The seqbf object has more than 100 calculated BF values (exact=TRUE data),",
-        "but simulations will use exact=FALSE (~100 steps).",
-        "This mismatch may bias CoE statistics. Consider setting exact=TRUE for simulations",
-        "or recomputing the seqbf object with exact=FALSE."
+        sprintf("simcreate exact=%s but the seqbf object was computed with exact=%s.", exact, x$exact),
+        "This mismatch may bias CoE statistics."
       ))
     }
 
@@ -330,7 +324,7 @@ simcreate <- function(x = NULL,
         filespath = filespath,
         parallel = parallel,
         nstart = nstart_to_use,
-        exact = exact,
+        exact = exact_to_use,
         prior.r = prior.r %||% x$prior$scale,
         alternative = alternative %||% x$alternative
       ))
@@ -355,7 +349,7 @@ simcreate <- function(x = NULL,
         filespath = filespath,
         parallel = parallel,
         nstart = nstart_to_use,
-        exact = exact,
+        exact = exact_to_use,
         alternative = alternative %||% x$alternative,
         prior.loc = prior.loc %||% x$prior$location,
         prior.r = prior.r %||% x$prior$scale
@@ -374,7 +368,7 @@ simcreate <- function(x = NULL,
         method = method %||% "pseudo",
         parallel = parallel,
         nstart = nstart_to_use,
-        exact = exact,
+        exact = exact_to_use,
         prior.r = prior_r_cor
       ))
 

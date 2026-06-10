@@ -33,7 +33,7 @@ maxbf <- function(data, sims.df = NULL) {
   }
   
   sim.maxbf <- tapply(sims.df$bf, sims.df$simid, max, na.rm = TRUE)
-  max_data_bf <- max(data)
+  max_data_bf <- max(data, na.rm = TRUE)
   max_data_bf_n <- which.max(data)
   sims_with_higher_bf <- (sum(sim.maxbf >= max_data_bf, na.rm = TRUE) / u.nsims) * 100  # Percentage
   
@@ -51,19 +51,31 @@ maxbf <- function(data, sims.df = NULL) {
 
 
 ### Helper function: Replace early NAs with BF=1
+# Only replaces NAs that appear before the first valid (non-NA) value.
+# For exact=FALSE data, interspersed NAs between computed steps are left intact
+# so that .interpolate_bf can handle them correctly.
 .replace_early_na <- function(bf_vector) {
-  if (!any(is.na(bf_vector))) {
-    return(bf_vector)
-  }
-  # Find the last position with NA
-  last_na_pos <- max(which(is.na(bf_vector)))
-  # Replace all values up to and including last NA with 1
-  bf_vector[1:last_na_pos] <- 1
+  if (!any(is.na(bf_vector))) return(bf_vector)
+  first_valid <- which(!is.na(bf_vector))[1]
+  if (is.na(first_valid) || first_valid <= 1) return(bf_vector)
+  bf_vector[1:(first_valid - 1)] <- 1
   return(bf_vector)
+}
+
+### Helper function: Linear interpolation of interspersed NAs
+# Used before FFT and trapz to handle exact=FALSE BF vectors where only
+# ~100 steps are computed and the remaining positions are NA.
+.interpolate_bf <- function(bf_vector) {
+  if (!any(is.na(bf_vector))) return(bf_vector)
+  idx <- seq_along(bf_vector)
+  valid <- !is.na(bf_vector)
+  if (sum(valid) < 2) return(bf_vector)
+  approx(idx[valid], bf_vector[valid], idx, method = "linear", rule = 2)$y
 }
 
 ### Helper function: Calculate Energy
 .energycount <- function(data, nullenergy = nullenergy){
+  data <- .interpolate_bf(data)
   pracma::trapz(as.numeric(1:length(data)), data)-nullenergy
 }
 
@@ -105,7 +117,8 @@ energybf <- function(data, sims.df = NULL) {
   
   #sim.energy <- pbapply::pbtapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
   sim.energy <- tapply(sims.df$bf, sims.df$simid, .energycount, nullenergy)
-  real_energy <- pracma::trapz(as.numeric(1:length(data)), data) - nullenergy
+  data_interp <- .interpolate_bf(data)
+  real_energy <- pracma::trapz(as.numeric(1:length(data_interp)), data_interp) - nullenergy
 
   sims_with_higher_energy <- (sum(sim.energy >= real_energy, na.rm = TRUE) / u.nsims) * 100  # Percentage
   
@@ -140,9 +153,9 @@ energybf <- function(data, sims.df = NULL) {
 
 # Create FFT
 fftcreate <- function(data){
-  
+
   if(inherits(data,"seqbf") == TRUE) data <- data$BF
-  
+  data <- .interpolate_bf(data)
   L <- length(data) # Length
   L2 <- ceiling(L/2) # Consider only first half, round up
   T <- 1/L # Rate
@@ -152,6 +165,7 @@ fftcreate <- function(data){
 
 ### Helper-Function: Create FFT without cutting frequencies
 .fftcreatefull <- function(data){
+  data <- .interpolate_bf(data)
   L <- length(data) # Length
   T <- 1/L # Rate
   Y <- fft(data) # Fast Fourier Transformation
@@ -527,12 +541,15 @@ plot.coe <- function(x, sims.df = NULL, ...) {
       sims_clean <- sims.df
       sims_clean$bf <- unlist(tapply(sims.df$bf, sims.df$simid, .replace_early_na))
       sim_energies <- tapply(sims_clean$bf, sims_clean$simid, function(bf) {
-        pracma::trapz(as.numeric(1:length(bf)), bf) - nullenergy
+        bf_interp <- .interpolate_bf(bf)
+        pracma::trapz(as.numeric(1:length(bf_interp)), bf_interp) - nullenergy
       })
       sim_energies <- sim_energies[is.finite(sim_energies)]
 
       # Calculate simulation FFT amplitudes
-      sim_amplitudes <- tapply(sims.df$density.bf, sims.df$simid, sum, na.rm = TRUE)
+      sim_amplitudes <- tapply(sims.df$bf, sims.df$simid, function(bf) {
+        sum(.fftcreatefull(bf))
+      })
       sim_amplitudes <- sim_amplitudes[is.finite(sim_amplitudes)]
 
       # Convert to percentile ranks (0-100 scale)
