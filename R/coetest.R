@@ -656,7 +656,7 @@ plot.coe <- function(x, sims.df = NULL, ...) {
 
     # Arrange plots (typically 2: BF trajectory + ridgeline)
     if (length(plots) == 2) {
-      combined <- plots[[1]] / plots[[2]]
+      combined <- patchwork::`/`(plots[[1]], plots[[2]])
     } else if (length(plots) == 1) {
       combined <- plots[[1]]
     } else {
