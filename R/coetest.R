@@ -546,9 +546,10 @@ plot.coe <- function(x, sims.df = NULL, ...) {
       })
       sim_energies <- sim_energies[is.finite(sim_energies)]
 
-      # Calculate simulation FFT amplitudes
+      # Calculate simulation FFT amplitudes using fftcreate (half-frequencies),
+      # matching what ffttest uses so percentile ranks are consistent with p-values.
       sim_amplitudes <- tapply(sims.df$bf, sims.df$simid, function(bf) {
-        sum(.fftcreatefull(bf))
+        sum(fftcreate(bf))
       })
       sim_amplitudes <- sim_amplitudes[is.finite(sim_amplitudes)]
 
