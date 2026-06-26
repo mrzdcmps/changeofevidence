@@ -317,10 +317,13 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
     # Determine tails
     tails <- ifelse(data$alternative == "two.sided", "two-tailed", "one-tailed")
     
-    # Create subtitle with final BF and sample size
-    subtitle <- paste0("BF = ", round(tail(data$BF, n = 1), 3), 
-                       " (N = ", sum(data$`sample size`), ")")
-    
+    # Create subtitle with final BF and sample size (italic N per APA)
+    bf_val <- round(tail(data$BF, n = 1), 3)
+    n_val <- sum(data$`sample size`)
+    subtitle <- as.expression(bquote(
+      "BF = " * .(bf_val) * " (" * italic(N) * " = " * .(n_val) * ")"
+    ))
+
     # Create caption with test info
     prior_args <- data$prior[setdiff(names(data$prior), "distribution")]
     prior_str <- paste0(
@@ -328,12 +331,25 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
       paste(round(unlist(prior_args), 3), collapse = ", "),
       ")"
     )
-    caption <- paste0(testtype, "; ", tails, "; ", prior_str)
-    
-    # Add delta to caption if available
+
+    # Compute delta string upfront so caption can be built as one expression
     final_delta <- tail(na.omit(data$delta), n = 1)
-    if(length(final_delta) > 0 && !is.na(final_delta)) {
-      caption <- paste0(caption, "; \u03b4 = ", round(final_delta, 3))
+    delta_str <- if (length(final_delta) > 0 && !is.na(final_delta)) {
+      paste0("; \u03b4 = ", round(final_delta, 3))
+    } else {
+      ""
+    }
+    caption_suffix <- paste0("; ", tails, "; ", prior_str, delta_str)
+
+    # Italicize the test statistic abbreviation per APA
+    is_parametric_ttest <- data$`test type` %in% c("independent", "paired", "one-sample") &&
+                           (is.null(data$parametric) || data$parametric)
+    if (is_parametric_ttest) {
+      prefix_text <- sub(" t-test$", "", testtype)
+      suffix_with_test <- paste0("-test", caption_suffix)
+      caption <- as.expression(bquote(.(prefix_text) ~ italic(t) * .(suffix_with_test)))
+    } else {
+      caption <- paste0(testtype, caption_suffix)
     }
     
     data <- data$BF
@@ -451,7 +467,8 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
   # Adjust margins based on whether annotations are shown
   right_margin <- if(show_annotations) 70 else 5
 
-  p + ggplot2::labs(x = label.x, y = "Evidence (BF)") +
+  x_label <- if (identical(label.x, "N")) expression(italic(N)) else label.x
+  p + ggplot2::labs(x = x_label, y = "Evidence (BF)") +
     ggplot2::scale_y_log10(breaks = breaks, labels = labels) +
     ggplot2::scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) +
     ggplot2::coord_cartesian(ylim = coordy, clip = if(show_annotations) "off" else "on") +
