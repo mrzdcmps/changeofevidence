@@ -711,9 +711,48 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     delta_upper[n] <- result$delta_upper
   }
   
+  # Reorganise delta storage.
+  # For parametric tests the loop filled delta_values with sequential Cohen's d
+  # (t/sqrt(n)). Move those to d_values, then compute the proper Bayesian δ
+  # (posterior median + 95% CI) for the final t-statistic and store it in
+  # delta_values/delta_lower/delta_upper at the last valid position.
+  # For non-parametric tests the loop already filled delta_values with Bayesian
+  # posterior medians from MCMC, so d_values is left as all-NA.
+  if (parametric) {
+    d_values    <- delta_values
+    delta_values <- rep(NA_real_, total_sample_size)
+    delta_lower  <- rep(NA_real_, total_sample_size)
+    delta_upper  <- rep(NA_real_, total_sample_size)
+
+    final_t_val <- tail(na.omit(stat_values), n = 1)
+    if (length(final_t_val) > 0 && is.finite(final_t_val)) {
+      if (test_type == "independent") {
+        bd <- .compute_bayes_delta(final_t_val,
+                                   n1 = as.integer(sample_size[1]),
+                                   n2 = as.integer(sample_size[2]),
+                                   independentSamples = TRUE,
+                                   prior.loc = prior.loc, prior.r = prior.r)
+      } else {
+        n_val <- if (length(sample_size) == 1) sample_size else sample_size[1]
+        bd <- .compute_bayes_delta(final_t_val,
+                                   n1 = as.integer(n_val),
+                                   independentSamples = FALSE,
+                                   prior.loc = prior.loc, prior.r = prior.r)
+      }
+      if (!is.na(bd$median)) {
+        last_n <- max(which(!is.na(stat_values)))
+        delta_values[last_n] <- bd$median
+        delta_lower[last_n]  <- bd$lower
+        delta_upper[last_n]  <- bd$upper
+      }
+    }
+  } else {
+    d_values <- rep(NA_real_, total_sample_size)
+  }
+
   # Prepare output
   stat_name <- if (parametric) "t-value" else "W-value"
-  
+
   # Store tested data consistently
   tested_data <- if (test_type == "independent") {
     list(data = data, formula = formula)
@@ -727,6 +766,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     stat_name = stat_values,
     "p-value" = p_values,
     "BF" = bf_values,
+    "d" = d_values,
     "delta" = delta_values,
     "delta.lower" = delta_lower,
     "delta.upper" = delta_upper,
@@ -749,28 +789,41 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
   names(bf_out)[1] <- stat_name
   
   # Get final results
-  final_bf <- tail(na.omit(bf_out$BF), n = 1)
-  final_stat <- tail(na.omit(bf_out[[stat_name]]), n = 1)
-  final_p <- tail(na.omit(bf_out$`p-value`), n = 1)
-  final_delta <- tail(na.omit(bf_out$delta), n = 1)
-  
+  final_bf    <- tail(na.omit(bf_out$BF), n = 1)
+  final_stat  <- tail(na.omit(bf_out[[stat_name]]), n = 1)
+  final_p     <- tail(na.omit(bf_out$`p-value`), n = 1)
+  final_delta <- tail(na.omit(bf_out$delta), n = 1)        # Bayesian δ
+  final_d     <- tail(na.omit(bf_out$d), n = 1)            # Cohen's d (parametric only)
+  final_delta_lower <- tail(na.omit(bf_out$delta.lower), n = 1)
+  final_delta_upper <- tail(na.omit(bf_out$delta.upper), n = 1)
+
+  # Format effect size part of progress message
+  if (length(final_delta) > 0 && !is.na(final_delta)) {
+    es_msg <- sprintf("; \u03b4 = %.3f, 95%% CI [%.3f, %.3f]",
+                      final_delta, final_delta_lower, final_delta_upper)
+  } else if (parametric && length(final_d) > 0 && !is.na(final_d)) {
+    es_msg <- sprintf("; d \u2248 %.3f", final_d)
+  } else {
+    es_msg <- ""
+  }
+
   # Report final results
   if (is.na(final_bf)) {
     message("Final Bayes Factor could not be calculated")
   } else if (final_bf > 1) {
     message(sprintf(
-      "Final Bayes Factor: BF10 = %.3f (%s = %.3f; p = %.3f; \u03b4 = %.3f)",
-      final_bf, stat_name, final_stat, final_p, final_delta
+      "Final Bayes Factor: BF10 = %.3f (%s = %.3f; p = %.3f%s)",
+      final_bf, stat_name, final_stat, final_p, es_msg
     ))
   } else if (final_bf == 1) {
     message(sprintf(
-      "Final Bayes Factor: BF10 = 1 (no evidence; %s = %.3f; p = %.3f; \u03b4 = %.3f)",
-      stat_name, final_stat, final_p, final_delta
+      "Final Bayes Factor: BF10 = 1 (no evidence; %s = %.3f; p = %.3f%s)",
+      stat_name, final_stat, final_p, es_msg
     ))
   } else {
     message(sprintf(
-      "Final Bayes Factor: BF10 = %.3f; BF01 = %.3f (%s = %.3f; p = %.3f; \u03b4 = %.3f)",
-      final_bf, 1/final_bf, stat_name, final_stat, final_p, final_delta
+      "Final Bayes Factor: BF10 = %.3f; BF01 = %.3f (%s = %.3f; p = %.3f%s)",
+      final_bf, 1/final_bf, stat_name, final_stat, final_p, es_msg
     ))
   }
   
@@ -1100,28 +1153,32 @@ print.seqbf <- function(x, ...) {
   final_stat <- tail(na.omit(x[[1]]), n = 1)
   final_p <- tail(na.omit(x$`p-value`), n = 1)
   
-  # Build delta string only if delta exists
-  delta_string <- ""
-  if (!is.null(x$delta) && !is.null(x$delta.lower) && !is.null(x$delta.upper)) {
-    final_delta <- tail(na.omit(x$delta), n = 1)
-    final_delta_lower <- tail(na.omit(x$delta.lower), n = 1)
-    final_delta_upper <- tail(na.omit(x$delta.upper), n = 1)
-    
-    if (!is.na(final_delta)) {
-      if (!x$parametric) {
-        delta_string <- sprintf(
-          "  Effect size: \u03b4 = %.3f, 95%% CI [%.3f, %.3f]",
-          final_delta, final_delta_lower, final_delta_upper
-        )
-      } else {
-        delta_string <- sprintf(
-          "  Effect size: \u03b4 \u2248 %.3f (approximation from t-statistic)",
-          final_delta
-        )
-      }
+  # Cohen's d — parametric only, stored in x$d
+  d_string <- ""
+  if (x$parametric && !is.null(x$d)) {
+    final_d <- tail(na.omit(x$d), n = 1)
+    if (length(final_d) > 0 && !is.na(final_d)) {
+      d_string <- sprintf("; d = %.3f", final_d)
     }
   }
-  
+
+  # Bayesian δ — stored in x$delta / x$delta.lower / x$delta.upper
+  # Parametric: posterior median computed via posterior_t after the loop
+  #   (NA when N is too large for the hypergeometric numerics)
+  # Non-parametric: posterior median from MCMC, filled sequentially
+  delta_string <- ""
+  final_delta       <- tail(na.omit(x$delta), n = 1)
+  final_delta_lower <- tail(na.omit(x$delta.lower), n = 1)
+  final_delta_upper <- tail(na.omit(x$delta.upper), n = 1)
+  if (length(final_delta) > 0 && !is.na(final_delta)) {
+    delta_string <- sprintf(
+      "  Bayesian \u03b4:   %.3f, 95%% CI [%.3f, %.3f]",
+      final_delta, final_delta_lower, final_delta_upper
+    )
+  } else if (x$parametric) {
+    delta_string <- "  Bayesian \u03b4:   not available (N too large for numerical posterior; use d above)"
+  }
+
   # Print output
   cat(sprintf("
   Sequential Bayesian Testing
@@ -1131,7 +1188,7 @@ print.seqbf <- function(x, ...) {
   Final Bayes Factor: BF10 = %.3f; BF01 = %.3f
   Prior: %s(%g, %g)
   Alternative hypothesis: %s
-  %s: %.3f; p = %.3f%s
+  Frequentist:  %s = %.3f; p = %.3f%s%s
   \n",
               test_name,
               ifelse(x$parametric, " (parametric)", " (non-parametric)"),
@@ -1145,6 +1202,7 @@ print.seqbf <- function(x, ...) {
               names(x)[1],
               final_stat,
               final_p,
+              d_string,
               ifelse(delta_string != "", paste0("\n", delta_string), "")
   ))
   

@@ -687,3 +687,55 @@ computeBayesFactorOneZero <- function(posteriorSamples, priorParameter = 1, oneS
   
   return(bf10)
 }
+
+# Compute Bayesian posterior median and 95% CI for delta via numerical integration
+# of posterior_t. Used after the sequential loop to provide a proper Bayesian
+# effect size estimate for parametric t-tests (as opposed to the Cohen's d
+# approximation t/sqrt(n) used during sequential tracking).
+.compute_bayes_delta <- function(t_val, n1, n2 = NULL, independentSamples = FALSE,
+                                  prior.loc, prior.r) {
+  neff <- if (independentSamples) n1 * n2 / (n1 + n2) else n1
+  d_approx <- t_val / sqrt(neff)
+
+  # Fast feasibility check: posterior_t uses hypergeometric functions that
+  # numerically underflow for large n (typically > 200-300) with narrow priors.
+  # Evaluate at three plausible δ values — if all are zero or non-finite,
+  # bail out immediately instead of spending many seconds in uniroot.
+  test_pts <- tryCatch(
+    posterior_t(c(d_approx - 0.5, d_approx, d_approx + 0.5),
+                t = t_val, n1 = n1, n2 = n2,
+                independentSamples = independentSamples,
+                prior.location = prior.loc,
+                prior.scale = prior.r,
+                prior.df = 1),
+    error = function(e) rep(0, 3)
+  )
+  if (all(!is.finite(test_pts)) || all(test_pts == 0)) {
+    return(list(median = NA_real_, lower = NA_real_, upper = NA_real_))
+  }
+
+  tryCatch({
+    interval <- c(d_approx - 15, d_approx + 15)
+
+    find_quantile <- function(q) {
+      uniroot(
+        function(d) cdf_t(d, t = t_val, n1 = n1, n2 = n2,
+                          independentSamples = independentSamples,
+                          prior.location = prior.loc,
+                          prior.scale = prior.r,
+                          prior.df = 1) - q,
+        interval = interval,
+        extendInt = "yes",
+        tol = .Machine$double.eps^0.25
+      )$root
+    }
+
+    list(
+      median = find_quantile(0.5),
+      lower  = find_quantile(0.025),
+      upper  = find_quantile(0.975)
+    )
+  }, error = function(e) {
+    list(median = NA_real_, lower = NA_real_, upper = NA_real_)
+  })
+}

@@ -332,10 +332,19 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
       ")"
     )
 
-    # Compute delta string upfront so caption can be built as one expression
+    # delta now always holds Bayesian estimates (posterior_t for parametric,
+    # MCMC for non-parametric). Fall back to Cohen's d (stored in data$d) when
+    # N is too large for the hypergeometric numerics.
     final_delta <- tail(na.omit(data$delta), n = 1)
     delta_str <- if (length(final_delta) > 0 && !is.na(final_delta)) {
       paste0("; \u03b4 = ", round(final_delta, 3))
+    } else if (!is.null(data$d)) {
+      final_d <- tail(na.omit(data$d), n = 1)
+      if (length(final_d) > 0 && !is.na(final_d)) {
+        paste0("; d = ", round(final_d, 3))
+      } else {
+        ""
+      }
     } else {
       ""
     }
