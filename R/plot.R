@@ -320,6 +320,12 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
     # Create subtitle with final BF and sample size (italic N per APA)
     bf_val <- round(tail(data$BF, n = 1), 3)
     n_val <- sum(data$`sample size`)
+
+    # If the BF vector is longer than the sample size, the x-axis represents
+    # trials rather than participants — auto-switch the label unless the caller
+    # already supplied a custom one.
+    if (identical(label.x, "N") && length(data$BF) != n_val) label.x <- "Trials"
+
     subtitle <- as.expression(bquote(
       "BF = " * .(bf_val) * " (" * italic(N) * " = " * .(n_val) * ")"
     ))
@@ -363,8 +369,23 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
     
     data <- data$BF
     showinfo <- TRUE
+  } else if (!is.list(data)) {
+    # Plain numeric vector: show a minimal subtitle.
+    # Only include N when label.x is the default "N"; suppress it when the
+    # caller has signalled that the x-axis is something else (e.g. "Trials").
+    bf_val <- round(tail(na.omit(data), n = 1), 3)
+    if (identical(label.x, "N")) {
+      n_val <- length(na.omit(data))
+      subtitle <- as.expression(bquote(
+        "BF = " * .(bf_val) * " (" * italic(N) * " = " * .(n_val) * ")"
+      ))
+    } else {
+      subtitle <- as.expression(bquote("BF = " * .(bf_val)))
+    }
+    caption <- NULL
+    showinfo <- TRUE
   }
-  
+
   greycol <- rgb(red = 190, green = 190, blue = 190, alpha = 150, maxColorValue = 255)
 
   # Set y coordinates
@@ -469,7 +490,7 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
     }
   }
   
-  # Add subtitle and caption if seqbf object
+  # Add subtitle (and caption for seqbf) when available
   if(exists("showinfo")) p <- p + ggplot2::labs(subtitle = subtitle, caption = caption)
   
   # Finalize plot
@@ -827,7 +848,7 @@ save_plot <- function(plot,
                       units       = "cm",
                       dpi         = 600,
                       tiff_dpi    = 600,
-                      png_dpi     = 150,
+                      png_dpi     = 300,
                       compression = "lzw",
                       background  = "white",
                       create_dir  = TRUE) {
@@ -839,7 +860,12 @@ save_plot <- function(plot,
     stop("ragg is required for the anti-aliased TIFF/PNG devices. ",
          "Install it with install.packages('ragg').", call. = FALSE)
   }
-  
+
+  if (!inherits(plot, c("gg", "patchwork"))) {
+    stop("'plot' must be a ggplot or patchwork object, not a ",
+         paste(class(plot), collapse = "/"), ".", call. = FALSE)
+  }
+
   ext  <- tolower(tools::file_ext(filename))
   stem <- tools::file_path_sans_ext(filename)
   
