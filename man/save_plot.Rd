@@ -15,7 +15,7 @@ save_plot(
   units = "cm",
   dpi = 600,
   tiff_dpi = 600,
-  png_dpi = 150,
+  png_dpi = 300,
   compression = "lzw",
   background = "white",
   create_dir = TRUE

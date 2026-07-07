@@ -715,7 +715,13 @@ computeBayesFactorOneZero <- function(posteriorSamples, priorParameter = 1, oneS
   }
 
   tryCatch({
-    interval <- c(d_approx - 15, d_approx + 15)
+    # Keep the interval proportional to the posterior width.  cdf_t() uses
+    # integrate(posterior_t, -Inf, x) and R's adaptive quadrature misses the
+    # narrow posterior peak when x is too far from it, returning 0 instead of 1.
+    # The posterior SD is bounded above by max(prior.r, 1/sqrt(neff)); ×5 gives
+    # generous headroom for the 95% CI while staying close enough for integrate.
+    hw <- max(5 * max(prior.r, 1 / sqrt(neff)), 0.5)
+    interval <- c(d_approx - hw, d_approx + hw)
 
     find_quantile <- function(q) {
       uniroot(
@@ -725,7 +731,6 @@ computeBayesFactorOneZero <- function(posteriorSamples, priorParameter = 1, oneS
                           prior.scale = prior.r,
                           prior.df = 1) - q,
         interval = interval,
-        extendInt = "yes",
         tol = .Machine$double.eps^0.25
       )$root
     }
