@@ -756,6 +756,182 @@ plot.bfRobustness <- function(x, ...) {
 }
 
 
+#' Save a ggplot or patchwork figure for publication
+#'
+#' @description
+#' Writes a \pkg{ggplot2} or \pkg{patchwork} figure to a raster file using the
+#' anti-aliased \pkg{ragg} devices. The base text size is harmonised across all
+#' panels, and any \code{geom_text} or \code{geom_label} layers are rescaled so
+#' their size matches the theme. The output format follows the extension of
+#' \code{filename}. When \code{filename} carries no extension and \code{format}
+#' is \code{NULL}, a TIFF (for submission) and a PNG (for preview) are written
+#' from the single call.
+#'
+#' @param plot A \code{ggplot} or \code{patchwork} object.
+#' @param filename Output path. If it ends in \code{.tiff}, \code{.tif}, or
+#'   \code{.png}, a single file of that type is written. If it has no extension
+#'   and \code{format} is \code{NULL}, both a TIFF and a PNG are written using
+#'   the same stem.
+#' @param format Optional explicit format, one of \code{"tiff"} or \code{"png"}.
+#'   When supplied it overrides the extension and forces a single file. When
+#'   \code{NULL} (default) the format is taken from the extension, or both files
+#'   are written if there is no extension.
+#' @param base_size Root font size in points applied to the theme text element,
+#'   propagated to every panel of a patchwork. Defaults to \code{10}.
+#' @param text_size Size in points for \code{geom_text} and \code{geom_label}
+#'   layers, converted internally to the millimetre unit those geoms use.
+#'   Defaults to \code{8}.
+#' @param width,height Figure dimensions in \code{units}. Defaults to
+#'   \code{17.4} and \code{10}, the full text width of many journals in
+#'   centimetres.
+#' @param units Unit for \code{width} and \code{height}, passed to
+#'   \code{\link[ggplot2]{ggsave}}. Defaults to \code{"cm"}.
+#' @param dpi Resolution for a single-file save. Defaults to \code{600}.
+#' @param tiff_dpi,png_dpi Resolutions used in the two-file case, where the TIFF
+#'   is meant for submission and the PNG for a quick preview. Default to
+#'   \code{600} and \code{150}. Ignored when a single file is written.
+#' @param compression TIFF compression passed to \code{ragg::agg_tiff}, for
+#'   example \code{"lzw"} or \code{"zip"}. Ignored for PNG output. Defaults to
+#'   \code{"lzw"}.
+#' @param background Device background colour. Defaults to \code{"white"} because
+#'   \pkg{ragg} draws on a transparent canvas by default and many journals reject
+#'   TIFFs with an alpha channel. Set to \code{NA} to keep transparency.
+#' @param create_dir Whether to create the output directory if it does not
+#'   exist. Defaults to \code{TRUE}.
+#'
+#' @return Invisibly, a character vector of the file path(s) written.
+#'
+#' @examples
+#' \dontrun{
+#' library(ggplot2)
+#' p <- ggplot(mtcars, aes(wt, mpg)) + geom_point()
+#'
+#' # single TIFF, format taken from the extension
+#' save_plot(p, "figure1.tiff")
+#'
+#' # single PNG at 300 dpi
+#' save_plot(p, "figure1.png", dpi = 300)
+#'
+#' # no extension writes figure1.tiff and figure1.png in one call
+#' save_plot(p, "figure1")
+#' }
+#'
+#' @export
+save_plot <- function(plot,
+                      filename,
+                      format      = NULL,
+                      base_size   = 10,
+                      text_size   = 8,
+                      width       = 17.4,
+                      height      = 10,
+                      units       = "cm",
+                      dpi         = 600,
+                      tiff_dpi    = 600,
+                      png_dpi     = 150,
+                      compression = "lzw",
+                      background  = "white",
+                      create_dir  = TRUE) {
+  
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("ggplot2 is required.", call. = FALSE)
+  }
+  if (!requireNamespace("ragg", quietly = TRUE)) {
+    stop("ragg is required for the anti-aliased TIFF/PNG devices. ",
+         "Install it with install.packages('ragg').", call. = FALSE)
+  }
+  
+  ext  <- tolower(tools::file_ext(filename))
+  stem <- tools::file_path_sans_ext(filename)
+  
+  # Decide between a single file and the two-file (both) case.
+  write_both <- is.null(format) && !nzchar(ext)
+  
+  if (write_both) {
+    paths <- c(
+      tiff = .save_plot_one(plot, paste0(stem, ".tiff"), "tiff",
+                            base_size, text_size, width, height, units,
+                            tiff_dpi, compression, background, create_dir),
+      png  = .save_plot_one(plot, paste0(stem, ".png"), "png",
+                            base_size, text_size, width, height, units,
+                            png_dpi, compression, background, create_dir)
+    )
+    return(invisible(paths))
+  }
+  
+  # Single file: resolve the format from the explicit argument or the extension.
+  if (is.null(format)) {
+    format <- switch(ext,
+                     tif  = ,
+                     tiff = "tiff",
+                     png  = "png",
+                     stop("Cannot infer format from '", filename,
+                          "'. Pass format = 'tiff' or 'png', or use a ",
+                          ".tiff/.png extension.", call. = FALSE))
+  }
+  format <- match.arg(tolower(format), c("tiff", "png"))
+  path   <- paste0(stem, ".", format)
+  
+  out <- .save_plot_one(plot, path, format,
+                        base_size, text_size, width, height, units,
+                        dpi, compression, background, create_dir)
+  names(out) <- format
+  invisible(out)
+}
+
+#' Write one figure to disk
+#'
+#' Internal worker shared by both branches of \code{save_plot}. Handles the
+#' theme harmonisation, text-layer rescaling, and the \code{ggsave} call for a
+#' single already-resolved format.
+#'
+#' @return The path written.
+#' @noRd
+.save_plot_one <- function(plot, path, format,
+                           base_size, text_size, width, height, units,
+                           dpi, compression, background, create_dir) {
+  
+  if (isTRUE(create_dir)) {
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  }
+  
+  theme_patch  <- ggplot2::theme(text = ggplot2::element_text(size = base_size))
+  is_patchwork <- inherits(plot, "patchwork")
+  # & propagates to every panel of a patchwork; + only reaches the wrapper.
+  p <- if (is_patchwork) plot & theme_patch else plot + theme_patch
+  
+  # geom_text / geom_label size is in mm, so convert the point value via .pt.
+  fix_layers <- function(layers) {
+    for (i in seq_along(layers)) {
+      g <- layers[[i]]$geom
+      if (inherits(g, "GeomText") || inherits(g, "GeomLabel")) {
+        layers[[i]]$aes_params$size <- text_size / ggplot2::.pt
+      }
+    }
+    layers
+  }
+  fix_plot <- function(obj) {
+    if (inherits(obj, "patchwork")) {
+      obj$layers <- fix_layers(obj$layers)
+      for (j in seq_along(obj$patches$plots)) {
+        obj$patches$plots[[j]] <- fix_plot(obj$patches$plots[[j]])
+      }
+    } else if (inherits(obj, "ggplot")) {
+      obj$layers <- fix_layers(obj$layers)
+    }
+    obj
+  }
+  p <- fix_plot(p)
+  
+  device <- if (format == "tiff") ragg::agg_tiff else ragg::agg_png
+  args <- list(filename = path, plot = p, width = width, height = height,
+               units = units, dpi = dpi, device = device, background = background)
+  if (format == "tiff") args$compression <- compression
+  
+  do.call(ggplot2::ggsave, args)
+  path
+}
+
+
 # Helper functions
 .annotations <- function(coordy){
   

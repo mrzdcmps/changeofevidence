@@ -10,6 +10,7 @@ Imports:
     ggplot2,
     ggridges,
     patchwork,
+    ragg,
     pracma,
     parallel,
     pbapply,
