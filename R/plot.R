@@ -206,9 +206,10 @@ plotrw <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "rw",
 #' @param coordy A vector containing the minimum and maximum value of the y-coordinates to be drawn. If NULL, automatically determined.
 #' @param label.x A character that overrides the label for the x-axis. Default is "N" (automatically set to "Trials" for binomial data).
 #' @param show_annotations Logical. If TRUE (default), displays evidence strength annotations (e.g., "Moderate H1", "Strong H0"). Set to FALSE to hide annotations and use full plot width.
-#' 
+#' @param max_sims Maximum number of simulations to draw. Drawing thousands of simulation lines over long data can be very slow. Defaults to 200. Set to NULL to draw all simulations (not recommended for large datasets).
+#'
 #' @return A ggplot2 object.
-#' 
+#'
 #' @examples
 #' \dontrun{
 #' # Single seqbf object
@@ -241,7 +242,7 @@ plotrw <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "rw",
 #' @export
 
 # Plot Sequential BF
-plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N", show_annotations = TRUE){
+plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color = "black", coordy = NULL, label.x = "N", show_annotations = TRUE, max_sims = 200){
 
   # Capture all arguments passed via ...
   args <- list(...)
@@ -418,12 +419,30 @@ plotbf <- function(..., labels = NULL, sims.df = NULL, sims.df.col = "bf", color
   labels <- annotationlist[[4]]
   breaks_filtered <- annotationlist[[5]]
   
-  # Print message if simulations are drawn
-  if(!is.null(sims.df)) print("Depending on the amount of simulations to be drawn, this might take a while!")
-  
+  # Drop NA / non-positive rows for the plotted column. For exact=FALSE sims
+  # only ~100 steps per simulation are computed; the rest are NA. Filtering
+  # here keeps row counts manageable and avoids log-scale warnings.
+  # Also clip to coordy: with clip="off" (needed for annotations), out-of-range
+  # simulation lines would otherwise bleed into the title/caption area.
+  if (!is.null(sims.df) && sims.df.col %in% names(sims.df)) {
+    col_vals <- sims.df[[sims.df.col]]
+    sims.df <- sims.df[!is.na(col_vals) & col_vals > 0 &
+                       col_vals >= coordy[1] & col_vals <= coordy[2], ]
+  }
+
+  # Optionally cap the number of simulation lines drawn (safety net for large
+  # exact=TRUE datasets where all rows are populated).
+  if (!is.null(sims.df) && !is.null(max_sims)) {
+    n_sims <- length(unique(sims.df$simid))
+    if (n_sims > max_sims) {
+      message(sprintf("plotbf: drawing %d of %d simulations (set max_sims = NULL to draw all).", max_sims, n_sims))
+      sims.df <- sims.df[sims.df$simid <= max_sims, ]
+    }
+  }
+
   # Initialize plot
   p <- ggplot2::ggplot()
-  
+
   # Add simulations
   if(!is.null(sims.df)) p <- p + ggplot2::geom_line(data = sims.df, aes(x = index, y = .data[[sims.df.col]], group = simid), color = greycol)
   

@@ -509,18 +509,14 @@ plot.coe <- function(x, sims.df = NULL, ...) {
     # Panel 1: BF trajectory with MaxBF marked
     if (!is.null(x$maxbf)) {
       p_maxbf <- percentile_to_pvalue(x$maxbf$Sims_with_higher_BFs)
-      # Only add simulations if sims argument is provided
-      # Filter out non-positive BF values to avoid log scale issues
-      if (!is.null(sims.df)) {
-        sims_subset <- subset(sims.df, simid <= 100 & !is.na(bf) & bf > 0)
-      } else {
-        sims_subset <- NULL
-      }
-      p1 <- plotbf(x$maxbf$data, sims.df = sims_subset, show_annotations = FALSE) +
+      bf_val <- round(tail(na.omit(x$maxbf$data), 1), 3)
+      n_val  <- if (!is.null(x$Data_Length)) x$Data_Length else length(na.omit(x$maxbf$data))
+      p1 <- plotbf(x$maxbf$data, sims.df = sims.df, show_annotations = FALSE, max_sims = 100) +
         ggplot2::geom_point(aes(x = x$maxbf$MaxBF_N, y = x$maxbf$MaxBF),
                            color = "red", size = 3) +
         ggplot2::ggtitle(sprintf("Sequential BF (Max = %.2f at n = %d)",
                                 x$maxbf$MaxBF, x$maxbf$MaxBF_N)) +
+        ggplot2::labs(subtitle = bquote("BF = " * .(bf_val) * " (" * italic(N) * " = " * .(n_val) * ")")) +
         ggplot2::theme(legend.position = "none") +
         common_theme
       plots <- c(plots, list(p1))
