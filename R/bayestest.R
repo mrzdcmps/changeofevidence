@@ -1215,27 +1215,36 @@ print.seqbf <- function(x, ...) {
 print.cauchyFit <- function(x, ...) {
 
   cat(sprintf("
-  Cauchy Fit to Posterior Distribution
-  --------------------------------
+  Cauchy Prior from Posterior of a Bayesian t-Test
+  ------------------------------------------------
   Test type: %s
   Sample size: %s
 
-  Fitted Cauchy parameters:
-    Location: %.4f
-    Scale:    %.4f
+  Location: %.4f
+
+  Cauchy scale (prior.r for a replication):
+    Exact fit:              %.4f
+    Mild inflation  (x%-4.3g) %.4f
+    Broad inflation (x%-4.3g) %.4f
 
   Original prior:
     Location: %g
     Scale:    %g
 
-  Goodness of fit:
+  Goodness of fit (exact):
     R-squared:          %.6f
     Max abs. deviation: %.6f
+
+  The exact fit reproduces the posterior as closely as a Cauchy can. For a
+  replication the mild inflation is usually the safer default; the broad
+  inflation is more conservative about between-study heterogeneity.
   \n",
               x$test_type,
               paste(x$sample_size, collapse = ", "),
               x$location,
               x$scale,
+              x$inflation[["mild"]],  x$scale_mild,
+              x$inflation[["broad"]], x$scale_broad,
               x$prior$location,
               x$prior$scale,
               x$r_squared,

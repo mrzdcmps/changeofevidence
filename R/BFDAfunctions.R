@@ -171,27 +171,49 @@ bf10_t <- function(t, n1, n2 = NULL, independentSamples = FALSE, prior.location,
 }
 
 
-#' Extract Cauchy Prior from Posterior of a Bayesian t-Test
+#' Turn the Posterior of a Bayesian t-Test into an Informed Prior
 #'
-#' Fits a Cauchy distribution to the posterior distribution of a parametric
-#' Bayesian t-test. The fitted Cauchy location and scale can be used as informed
-#' prior parameters for an exact replication study.
+#' Approximates the posterior distribution of a parametric Bayesian t-test with
+#' a Cauchy distribution, so it can be re-used as an informed prior for a
+#' replication study. Because \code{bfttest()} only accepts a Cauchy prior
+#' family (\code{prior.loc}, \code{prior.r}), the analytical posterior — which is
+#' not itself a Cauchy — is fitted with the closest Cauchy in a least-squares
+#' sense.
+#'
+#' The fitted scale describes the original posterior as tightly as a Cauchy can.
+#' For a replication it is usually sensible to widen it: the least-squares fit of
+#' a heavy-tailed Cauchy to a near-normal posterior tends to under-state the
+#' spread, and an exact-posterior prior asserts the replication measures an
+#' identical effect with no between-study heterogeneity. The returned object
+#' therefore also carries a \emph{mild} and a \emph{broad} inflation of the
+#' scale (see \code{inflate.mild} / \code{inflate.broad}); \code{print()} shows
+#' all three and \code{plot()} draws them against the posterior.
 #'
 #' @param x A \code{seqbf} object created with \code{bfttest()} (parametric only)
 #' @param n.points Number of grid points for fitting (default: 1000)
 #' @param delta.range Optional numeric vector of length 2 specifying the range
 #'   of delta values for the fitting grid. If NULL (default), automatically
 #'   determined from the posterior mode and width.
+#' @param inflate.mild Multiplicative factor applied to the fitted scale to give
+#'   a mildly widened replication prior (default: 1.25). Must be >= 1.
+#' @param inflate.broad Multiplicative factor applied to the fitted scale to give
+#'   a broadly widened, more conservative replication prior (default: 2). Must be
+#'   >= 1.
 #' @return An object of class \code{"cauchyFit"} containing:
 #'   \itemize{
 #'     \item \code{location}: Fitted Cauchy location parameter
-#'     \item \code{scale}: Fitted Cauchy scale parameter
+#'     \item \code{scale}: Fitted Cauchy scale parameter (exact fit)
+#'     \item \code{scale_mild}: Fitted scale times \code{inflate.mild}
+#'     \item \code{scale_broad}: Fitted scale times \code{inflate.broad}
+#'     \item \code{inflation}: Named vector of the two inflation factors
 #'     \item \code{r_squared}: R-squared goodness-of-fit measure
 #'     \item \code{max_abs_deviation}: Maximum absolute deviation between
 #'       posterior and fitted Cauchy
 #'     \item \code{prior}: List with original prior location and scale
 #'     \item \code{test_type}: Type of t-test (one-sample, paired, independent)
 #'     \item \code{sample_size}: Sample size(s) from the original test
+#'     \item \code{t}, \code{n1}, \code{n2}, \code{independentSamples}: The test
+#'       statistics needed to redraw the posterior (used by \code{plot()})
 #'   }
 #' @details
 #' The function extracts the final t-statistic and sample sizes from the
@@ -207,15 +229,19 @@ bf10_t <- function(t, n1, n2 = NULL, independentSamples = FALSE, prior.location,
 #' \dontrun{
 #' # Original study
 #' original <- bfttest(rnorm(30, 0.5), prior.loc = 0, prior.r = 0.1)
-#' fit <- extractPrior(original)
+#' fit <- posteriorToPrior(original)
 #' print(fit)
+#' plot(fit)
 #'
-#' # Use fitted parameters as informed prior for replication
+#' # Use the exact fit as an informed prior for a replication ...
 #' replication <- bfttest(new_data, prior.loc = fit$location, prior.r = fit$scale)
+#' # ... or a mildly widened version, which is usually the safer default
+#' replication <- bfttest(new_data, prior.loc = fit$location, prior.r = fit$scale_mild)
 #' }
 #' @importFrom stats optim optimize uniroot dcauchy
 #' @export
-extractPrior <- function(x, n.points = 1000, delta.range = NULL) {
+posteriorToPrior <- function(x, n.points = 1000, delta.range = NULL,
+                             inflate.mild = 1.25, inflate.broad = 2) {
 
   # Validate input
 
@@ -223,14 +249,19 @@ extractPrior <- function(x, n.points = 1000, delta.range = NULL) {
     stop("x must be a seqbf object created with bfttest()")
   }
 
+  if (!is.finite(inflate.mild) || inflate.mild < 1 ||
+      !is.finite(inflate.broad) || inflate.broad < 1) {
+    stop("inflate.mild and inflate.broad must be finite numbers >= 1.")
+  }
+
   test_type <- x$`test type`
 
   if (test_type %in% c("binomial")) {
-    stop("extractPrior() is not available for binomial tests. ",
+    stop("posteriorToPrior() is not available for binomial tests. ",
          "Binomial tests use a Logistic prior, not a Cauchy prior.")
   }
   if (test_type %in% c("correlation")) {
-    stop("extractPrior() is not available for correlation tests. ",
+    stop("posteriorToPrior() is not available for correlation tests. ",
          "Correlation tests use a Beta prior, not a Cauchy prior.")
   }
   if (!test_type %in% c("one-sample", "paired", "independent")) {
@@ -242,7 +273,7 @@ extractPrior <- function(x, n.points = 1000, delta.range = NULL) {
   is_parametric <- if (is.null(x$parametric)) TRUE else x$parametric
 
   if (!isTRUE(is_parametric)) {
-    stop("extractPrior() requires a parametric t-test. ",
+    stop("posteriorToPrior() requires a parametric t-test. ",
          "Non-parametric tests do not have an analytically available posterior.")
   }
 
@@ -319,15 +350,44 @@ extractPrior <- function(x, n.points = 1000, delta.range = NULL) {
          "  - Very narrow prior (scale = ", prior_scale, ")\n",
          "Suggestions:\n",
          "  1. Use a wider prior: re-run bfttest() with prior.r >= 0.5\n",
-         "  2. Use fewer observations for extractPrior()\n",
+         "  2. Use fewer observations for posteriorToPrior()\n",
          "  3. This function may not be suitable for very large datasets")
   }
 
-  # Use a wide interval centered on the estimate
-  search_interval <- c(delta_estimate - 20, delta_estimate + 20)
+  # Build a search interval proportional to the posterior width.  For narrow
+  # priors (e.g. Cauchy(0, 0.1)) and/or large n the posterior is a very narrow
+  # peak; a fixed wide interval (the old delta_estimate +/- 20) makes optimize()
+  # skip straight over it and return a spurious boundary "mode" where the
+  # density is 0, which then places delta.range entirely in a zero region and
+  # triggers the "all values non-finite or zero" error.  This mirrors the fix
+  # applied to the delta CI in .compute_bayes_delta().  The posterior width is
+  # bounded by max(prior.scale, 1/sqrt(neff)); the interval brackets both the
+  # MLE (t/sqrt(neff)) and the prior location, since a narrow prior shrinks the
+  # mode toward prior.location.
+  post_width <- max(prior_scale, 1 / sqrt(neff))
+  buffer <- max(5 * post_width, 0.5)
+  search_interval <- c(min(delta_estimate, prior_loc) - buffer,
+                       max(delta_estimate, prior_loc) + buffer)
+
+  # Locate the mode robustly: optimize() alone can miss a peak that is narrow
+  # relative to the interval, so scan a grid first and then refine around the
+  # grid maximum with optimize().
+  mode_grid <- seq(search_interval[1], search_interval[2], length.out = n.points)
+  mode_grid_vals <- post_density(mode_grid)
+  if (all(!is.finite(mode_grid_vals)) || all(mode_grid_vals == 0)) {
+    stop("Posterior density is zero across the search interval [",
+         round(search_interval[1], 4), ", ", round(search_interval[2], 4), "]. ",
+         "This indicates severe numerical underflow, likely due to a very ",
+         "narrow prior (scale = ", prior_scale, ") combined with a large ",
+         "sample size (neff = ", round(neff, 1), "). ",
+         "Consider re-running bfttest() with a wider prior (prior.r >= 0.5).")
+  }
+  grid_mode <- mode_grid[which.max(mode_grid_vals)]
+  grid_step <- (search_interval[2] - search_interval[1]) / (n.points - 1)
+  refine_interval <- c(grid_mode - 2 * grid_step, grid_mode + 2 * grid_step)
 
   # Find posterior mode
-  mode_result <- optimize(post_density, interval = search_interval, maximum = TRUE)
+  mode_result <- optimize(post_density, interval = refine_interval, maximum = TRUE)
   post_mode <- mode_result$maximum
   half_max <- mode_result$objective / 2
 
@@ -337,7 +397,8 @@ extractPrior <- function(x, n.points = 1000, delta.range = NULL) {
          "This may indicate numerical issues with the posterior distribution.")
   }
 
-  # Check if mode is at boundary (within 1% of interval endpoints)
+  # Check if the mode sits at a search-interval boundary, which would mean the
+  # posterior peak extends past the interval and the fit may be unreliable.
   interval_width <- diff(search_interval)
   if (abs(post_mode - search_interval[1]) < 0.01 * interval_width ||
       abs(post_mode - search_interval[2]) < 0.01 * interval_width) {
@@ -424,11 +485,19 @@ extractPrior <- function(x, n.points = 1000, delta.range = NULL) {
   result <- list(
     location = fitted_loc,
     scale = fitted_scale,
+    scale_mild = fitted_scale * inflate.mild,
+    scale_broad = fitted_scale * inflate.broad,
+    inflation = c(mild = inflate.mild, broad = inflate.broad),
     r_squared = r_sq,
     max_abs_deviation = max_dev,
     prior = list(location = prior_loc, scale = prior_scale),
     test_type = test_type,
-    sample_size = x$`sample size`
+    sample_size = x$`sample size`,
+    # Test statistics retained so plot.cauchyFit() can redraw the posterior
+    t = t_val,
+    n1 = n1,
+    n2 = n2,
+    independentSamples = indep
   )
   class(result) <- "cauchyFit"
   return(result)

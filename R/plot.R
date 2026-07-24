@@ -796,6 +796,98 @@ plot.bfRobustness <- function(x, ...) {
 }
 
 
+#' Plot a Cauchy Fit to a t-Test Posterior
+#'
+#' Visualises the output of \code{\link{posteriorToPrior}}: the analytical
+#' posterior of the original t-test, the Cauchy that best fits it (the exact
+#' fit), and the mild and broad inflations of that Cauchy that are the candidate
+#' replication priors. Optionally the original prior is drawn as well.
+#'
+#' @param x A \code{cauchyFit} object created with \code{posteriorToPrior()}.
+#' @param n.points Number of grid points used to draw the curves (default: 512).
+#' @param show.prior Logical; draw the original prior of the source test as a
+#'   dashed reference line (default: TRUE).
+#' @param ... Ignored.
+#' @return A \pkg{ggplot2} object.
+#' @examples
+#' \dontrun{
+#' fit <- posteriorToPrior(bfttest(rnorm(30, 0.5), prior.loc = 0, prior.r = 0.1))
+#' plot(fit)
+#' }
+#' @importFrom stats dcauchy
+#' @method plot cauchyFit
+#' @export
+plot.cauchyFit <- function(x, n.points = 512, show.prior = TRUE, ...) {
+
+  if (!inherits(x, "cauchyFit")) {
+    stop("x must be a cauchyFit object created with posteriorToPrior()")
+  }
+
+  mild_label  <- sprintf("Mild inflation (x%.3g)",  x$inflation[["mild"]])
+  broad_label <- sprintf("Broad inflation (x%.3g)", x$inflation[["broad"]])
+
+  # x-range covering both the broad Cauchy and, if requested, the source prior
+  span_fit   <- 6 * x$scale_broad
+  span_prior <- if (show.prior) 6 * x$prior$scale else 0
+  lo <- min(x$location - span_fit, x$prior$location - span_prior)
+  hi <- max(x$location + span_fit, x$prior$location + span_prior)
+  delta <- seq(lo, hi, length.out = n.points)
+
+  # Assemble the curves in long format
+  curves <- list()
+
+  # The posterior can only be redrawn if the test statistics were retained
+  # (objects created by older package versions may lack them).
+  if (!is.null(x$t)) {
+    post <- posterior_t(delta, t = x$t, n1 = x$n1, n2 = x$n2,
+                        independentSamples = isTRUE(x$independentSamples),
+                        prior.location = x$prior$location,
+                        prior.scale = x$prior$scale, prior.df = 1)
+    curves[["Posterior"]] <- post
+  } else {
+    warning("This cauchyFit predates plot support and has no stored test ",
+            "statistics; the posterior curve cannot be drawn.")
+  }
+
+  curves[["Exact fit"]]  <- dcauchy(delta, x$location, x$scale)
+  curves[[mild_label]]   <- dcauchy(delta, x$location, x$scale_mild)
+  curves[[broad_label]]  <- dcauchy(delta, x$location, x$scale_broad)
+  if (show.prior) {
+    curves[["Original prior"]] <- dcauchy(delta, x$prior$location, x$prior$scale)
+  }
+
+  levels_order <- names(curves)
+  plot_df <- do.call(rbind, lapply(levels_order, function(nm) {
+    data.frame(delta = delta, density = curves[[nm]], distribution = nm,
+               stringsAsFactors = FALSE)
+  }))
+  plot_df$distribution <- factor(plot_df$distribution, levels = levels_order)
+
+  # Colours / linetypes keyed by label
+  col_map <- stats::setNames(rep(NA_character_, length(levels_order)), levels_order)
+  col_map[["Exact fit"]] <- "#1f77b4"
+  col_map[[mild_label]]  <- "#2ca02c"
+  col_map[[broad_label]] <- "#ff7f0e"
+  if ("Posterior" %in% levels_order)      col_map[["Posterior"]] <- "black"
+  if ("Original prior" %in% levels_order) col_map[["Original prior"]] <- "grey60"
+
+  lty_map <- stats::setNames(rep("solid", length(levels_order)), levels_order)
+  if ("Original prior" %in% levels_order) lty_map[["Original prior"]] <- "dashed"
+
+  ggplot2::ggplot(plot_df,
+                  ggplot2::aes(x = delta, y = density,
+                               colour = distribution, linetype = distribution)) +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::scale_colour_manual(values = col_map) +
+    ggplot2::scale_linetype_manual(values = lty_map) +
+    ggplot2::labs(x = expression(delta), y = "Density",
+                  colour = NULL, linetype = NULL,
+                  title = "Posterior and candidate replication priors") +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.position = "bottom")
+}
+
+
 #' Save a ggplot or patchwork figure for publication
 #'
 #' @description

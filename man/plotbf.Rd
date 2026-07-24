@@ -12,7 +12,8 @@ plotbf(
   color = "black",
   coordy = NULL,
   label.x = "N",
-  show_annotations = TRUE
+  show_annotations = TRUE,
+  max_sims = 200
 )
 }
 \arguments{
@@ -33,6 +34,8 @@ a vector of colors applies custom colors to multiple lines (overrides the defaul
 \item{label.x}{A character that overrides the label for the x-axis. Default is "N" (automatically set to "Trials" for binomial data).}
 
 \item{show_annotations}{Logical. If TRUE (default), displays evidence strength annotations (e.g., "Moderate H1", "Strong H0"). Set to FALSE to hide annotations and use full plot width.}
+
+\item{max_sims}{Maximum number of simulations to draw. Drawing thousands of simulation lines over long data can be very slow. Defaults to 200. Set to NULL to draw all simulations (not recommended for large datasets).}
 }
 \value{
 A ggplot2 object.
