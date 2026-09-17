@@ -388,7 +388,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     
     if (nstart == "auto") {
       if (parametric) {
-        nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r)
+        nstart <- .determine_min_n_one_sample(x, alternative, prior.loc, prior.r, mu = mu)
       } else {
         nstart <- 10  # Minimum for stable MCMC
       }
@@ -711,13 +711,7 @@ bfttest <- function(x = NULL, y = NULL, formula = NULL, data = NULL,
     delta_upper[n] <- result$delta_upper
   }
   
-  # Reorganise delta storage.
-  # For parametric tests the loop filled delta_values with sequential Cohen's d
-  # (t/sqrt(n)). Move those to d_values, then compute the proper Bayesian δ
-  # (posterior median + 95% CI) for the final t-statistic and store it in
-  # delta_values/delta_lower/delta_upper at the last valid position.
-  # For non-parametric tests the loop already filled delta_values with Bayesian
-  # posterior medians from MCMC, so d_values is left as all-NA.
+  # Delta
   if (parametric) {
     d_values    <- delta_values
     delta_values <- rep(NA_real_, total_sample_size)
@@ -1336,93 +1330,84 @@ print.bfRobustness <- function(x, ...) {
   }
 }
 
-# Try running bfttest with specific n
-.try_bft_calculation <- function(n, ...) {
-  nstart <- n - 1
+# Validity check for a candidate starting sample size.
+
+.bf_valid_one_sample <- function(x, m, alternative, prior.loc, prior.r, mu = 0) {
   tryCatch({
-    sink(tempfile())  # Redirect output to a temp file
-    # Explicitly call the PACKAGE version to avoid recursion
-    result <- suppressMessages(suppressWarnings(
-      changeofevidence::bfttest(..., nstart = nstart, exact = TRUE)
-    ))
-    sink()  # Restore normal output
-    
-    # Check if we got valid BF values
-    !is.na(result$BF[length(result$BF) - 1])
-  }, error = function(e) {
-    FALSE
-  })
+    tr <- t.test(x[1:m], alternative = alternative, mu = mu)
+    bf <- .get_directional_bf(
+      bf10_t(t = tr$statistic, n1 = m,
+             prior.location = prior.loc, prior.scale = prior.r, prior.df = 1),
+      alternative
+    )
+    isTRUE(!is.na(bf))
+  }, error = function(e) FALSE)
+}
+
+.bf_valid_paired <- function(x, y, m, alternative, prior.loc, prior.r) {
+  tryCatch({
+    tr <- t.test(x[1:m], y[1:m], alternative = alternative, paired = TRUE)
+    bf <- .get_directional_bf(
+      bf10_t(t = tr$statistic, n1 = m, independentSamples = FALSE,
+             prior.location = prior.loc, prior.scale = prior.r, prior.df = 1),
+      alternative
+    )
+    isTRUE(!is.na(bf))
+  }, error = function(e) FALSE)
+}
+
+.bf_valid_independent <- function(subset_data, formula, group_var,
+                                  alternative, prior.loc, prior.r) {
+  tryCatch({
+    tr <- t.test(formula, data = subset_data,
+                 alternative = alternative, var.equal = TRUE)
+    tab <- table(subset_data[[group_var]])
+    bf <- .get_directional_bf(
+      bf10_t(t = tr$statistic, n1 = tab[1], n2 = tab[2],
+             independentSamples = TRUE,
+             prior.location = prior.loc, prior.scale = prior.r, prior.df = 1),
+      alternative
+    )
+    isTRUE(!is.na(bf))
+  }, error = function(e) FALSE)
 }
 
 # Determine minimum n for independent samples test
-.determine_min_n_independent <- function(data, group_var, response_var, 
+.determine_min_n_independent <- function(data, group_var, response_var,
                                          alternative = "two.sided", prior.loc = 0, prior.r = 0.1) {
-  n <- 3
-  nstart <- n - 1
-  while (n <= nrow(data)) {
-    subset <- data[1:n, ]
-    subsetstart <- data[1:nstart, ]
-    # Check basic conditions first
+  formula <- as.formula(paste(response_var, "~", group_var))
+  for (m in 2:nrow(data)) {
+    # Cheap pre-checks mirror the main loop's requirements; the BF check below
+    # (via tryCatch) is the authoritative test.
+    subsetstart <- data[1:m, ]
     if (length(unique(subsetstart[[group_var]])) == 2 &&
-        var(subsetstart[[response_var]]) > 0) {
-      # Create formula for the test
-      formula <- as.formula(paste(response_var, "~", group_var))
-      # Try running bfttest
-      if (.try_bft_calculation(n, 
-                               formula = formula, 
-                               data = subset,
-                               alternative = alternative,
-                               prior.loc = prior.loc,
-                               prior.r = prior.r)) {
-        return(nstart)
-      }
+        var(subsetstart[[response_var]]) > 0 &&
+        .bf_valid_independent(subsetstart, formula, group_var,
+                              alternative, prior.loc, prior.r)) {
+      return(m)
     }
-    n <- n + 1
-    nstart <- n - 1
   }
   stop("Could not find valid starting point for Bayes Factor calculation")
 }
 
 # Determine minimum n for paired samples test
 .determine_min_n_paired <- function(x, y, alternative = "two.sided", prior.loc = 0, prior.r = 0.1) {
-  n <- 3
-  nstart <- n - 1
-  while (n <= length(x)) {
-    if (var(x[1:nstart] - y[1:nstart]) > 0) {
-      # Try running bfttest
-      if (.try_bft_calculation(n,
-                               x = x[1:n],
-                               y = y[1:n],
-                               alternative = alternative,
-                               prior.loc = prior.loc,
-                               prior.r = prior.r)) {
-        return(nstart)
-      }
+  for (m in 2:length(x)) {
+    if (var(x[1:m] - y[1:m]) > 0 &&
+        .bf_valid_paired(x, y, m, alternative, prior.loc, prior.r)) {
+      return(m)
     }
-    n <- n + 1
-    nstart <- n - 1
   }
   stop("Could not find valid starting point for Bayes Factor calculation")
 }
 
 # Determine minimum n for one sample test
 .determine_min_n_one_sample <- function(x, alternative = "two.sided", prior.loc = 0, prior.r = 0.1, mu = 0) {
-  n <- 3
-  nstart <- n - 1
-  while (n <= length(x)) {
-    if (var(x[1:nstart]) > 0) {
-      # Try running bfttest - NOW PASSING mu!
-      if (.try_bft_calculation(n,
-                               x = x[1:n],
-                               alternative = alternative,
-                               prior.loc = prior.loc,
-                               prior.r = prior.r,
-                               mu = mu)) {
-        return(nstart)
-      }
+  for (m in 2:length(x)) {
+    if (var(x[1:m]) > 0 &&
+        .bf_valid_one_sample(x, m, alternative, prior.loc, prior.r, mu)) {
+      return(m)
     }
-    n <- n + 1
-    nstart <- n - 1
   }
   stop("Could not find valid starting point for Bayes Factor calculation")
 }
