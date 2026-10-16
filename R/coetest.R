@@ -496,6 +496,22 @@ plot.coe <- function(x, sims.df = NULL, ...) {
     percentile / 100
   }
 
+  # Truncate longer simulations to the data length (as coe() does via simredo).
+  # Only the bf column is used here, so recalculating FFT densities is unnecessary.
+  if (!is.null(sims.df)) {
+    data_length <- if (!is.null(x$Data_Length)) x$Data_Length else length(x$maxbf$data)
+    sim_length <- max(sims.df$index)
+    if (sim_length < data_length) {
+      stop(paste("Simulation length (", sim_length, ") is shorter than data length (",
+                 data_length, "). Cannot proceed.", sep = ""))
+    }
+    if (sim_length > data_length) {
+      message(paste("Simulation length (", sim_length, ") is longer than data length (",
+                    data_length, "). Truncating simulations.", sep = ""))
+      sims.df <- sims.df[sims.df$index <= data_length, ]
+    }
+  }
+
   # Aggregate coe object — build plots
   if (!is.null(x$maxbf) || !is.null(x$energybf) || !is.null(x$ffttest)) {
 
